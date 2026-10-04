@@ -2529,19 +2529,24 @@
 
       const s = dashboardState || {};
       const w = s.wallet || {};
-      const k = s.kpis || {};
-      const openLegs = (s.open_positions || []).length;
-      const eqInr = Number(w.balance_inr || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 });
-      const eqUsd = Number(w.balance_usd || 0).toFixed(2);
-      const netInr = Number(k.net_pnl_inr || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 });
-      const netUsd = Number(k.net_pnl_usd || 0).toFixed(2);
-      const wr = Number(k.win_rate_pct || 0).toFixed(1);
+      const positions = s.open_positions || [];
+      const eqUsd = Number(w.balance_usd || 0);
+      const eqInr = Number(w.balance_inr_est || eqUsd * 85).toLocaleString('en-IN', { maximumFractionDigits: 0 });
+      const availUsd = Number(w.available_usd || 0).toFixed(2);
+      const spot = Number(s.btc_spot_price || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const upnlSign = currentLiveUpnlUsd >= 0 ? '+' : '';
+      const legLines = positions.slice(0, 4).map(p => {
+        const up = Number(p.unrealized_pnl_usd || 0);
+        return ` • \`${p.symbol}\` (${p.lots}L): $${Number(p.entry_price || 0).toFixed(1)} → $${Number(p.mark_price || 0).toFixed(1)} | SL $${Number(p.sl_trigger || 0).toFixed(1)} (${up >= 0 ? '+' : ''}$${up.toFixed(2)})`;
+      });
       const msg = [
-        '📲 *Delta Strangle Bot — WhatsApp Test*',
-        `• *Wallet Equity:* ₹${eqInr} ($${eqUsd})`,
-        `• *Open Legs:* ${openLegs} active | *Live uPnL:* $${currentLiveUpnlUsd.toFixed(2)}`,
-        `• *All-Time Net P&L:* ₹${netInr} ($${netUsd}) | *Win Rate:* ${wr}%`,
-        '• *Status:* Daily 10:30 PM Entry & 5:35 PM Settlement alerts active ✅'
+        '📲 *Delta Strangle Bot — Live Portfolio Status*',
+        `₿ *BTC Spot:* $${spot}`,
+        `💼 *Wallet Equity:* $${eqUsd.toFixed(2)} (₹${eqInr}) | Avail: $${availUsd}`,
+        `🛡️ *Open Positions (${positions.length} legs):* uPnL *${upnlSign}$${currentLiveUpnlUsd.toFixed(2)}*`,
+        ...legLines,
+        '✅ *Automation:* Daily 10:30 PM Entry & 5:35 PM Settlement alerts active',
+        '🌐 https://ajay14sharma.github.io/'
       ].join('\n');
 
       showToast('Sending test WhatsApp notification...', 'info');
