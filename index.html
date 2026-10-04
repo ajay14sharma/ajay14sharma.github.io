@@ -761,34 +761,61 @@
           </p>
         </div>
 
-        <!-- Section B: CallMeBot WhatsApp Setup -->
+        <!-- Section B: WhatsApp Notifications (Meta Official Cloud API + CallMeBot) -->
         <div class="p-3.5 rounded-xl bg-slate-900/90 border border-emerald-500/30 space-y-3">
           <div class="flex items-center justify-between">
             <span class="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
-              📲 2. WhatsApp Notifications (CallMeBot Free API)
+              📲 2. WhatsApp Notifications (Meta Official Cloud API + CallMeBot)
             </span>
-            <a href="https://wa.me/34644059217?text=I%20allow%20callmebot%20to%20send%20me%20messages"
-              target="_blank" rel="noopener"
-              class="px-2.5 py-1 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 text-[11px] font-semibold">
-              1-Tap Activate on WhatsApp ↗
-            </a>
           </div>
-          <ol class="list-decimal pl-4 space-y-1 text-[11px] text-slate-300">
-            <li>Send <code>I allow callmebot to send me messages</code> on WhatsApp to <strong>+34 644 05 92 17</strong> (or click the button above).</li>
-            <li>CallMeBot replies in ~15 seconds with: <code>Your APIKEY is 1234567</code>.</li>
-            <li>Paste your WhatsApp Phone Number (with country code, e.g. <code>+919876543210</code>) and API Key below, then click <strong>Save &amp; Sync to GitHub</strong>.</li>
-          </ol>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-            <div>
-              <label class="block text-[11px] font-semibold text-slate-300 mb-1">WhatsApp Phone (`+91...`):</label>
-              <input type="text" id="wa-phone-input" placeholder="+919876543210"
-                class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white mono" />
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-200 mb-1">Your Recipient WhatsApp Number (with country code, e.g. `+919876543210`):</label>
+            <input type="text" id="wa-phone-input" placeholder="+919876543210"
+              class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white mono" />
+          </div>
+
+          <!-- Provider A: Official Meta WhatsApp Cloud API -->
+          <div class="p-3 rounded-lg bg-slate-950/90 border border-indigo-500/30 space-y-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-bold text-indigo-300">Option A (Recommended): Official Meta WhatsApp Cloud API</span>
+              <a href="https://developers.facebook.com/apps/" target="_blank" rel="noopener"
+                class="px-2 py-0.5 rounded bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 text-[10px] font-semibold">
+                Open Meta Developer Portal ↗
+              </a>
+            </div>
+            <ol class="list-decimal pl-4 space-y-0.5 text-[11px] text-slate-300">
+              <li>On <strong>developers.facebook.com/apps</strong> → Create App → <strong>Other</strong> → <strong>Business</strong> → Add <strong>WhatsApp</strong> product.</li>
+              <li>In <strong>WhatsApp → API Setup</strong>, select the free <strong>Test Number</strong>, add your WhatsApp number under the <strong>"To"</strong> recipient dropdown (verify the 6-digit OTP on WhatsApp), and copy <strong>Phone number ID</strong> &amp; <strong>Temporary/System Access Token</strong> below:</li>
+            </ol>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+              <div>
+                <label class="block text-[10px] font-semibold text-slate-300 mb-1">Meta Phone Number ID (`META_WA_PHONE_ID`):</label>
+                <input type="text" id="meta-phone-id-input" placeholder="e.g. 105928374651234"
+                  class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white mono" />
+              </div>
+              <div>
+                <label class="block text-[10px] font-semibold text-slate-300 mb-1">Meta Access Token (`META_WA_TOKEN`):</label>
+                <input type="password" id="meta-wa-token-input" placeholder="EAAG..."
+                  class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white mono" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Provider B: CallMeBot Free API (Kept Intact) -->
+          <div class="p-3 rounded-lg bg-slate-950/70 border border-slate-800 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-semibold text-slate-300">Option B (Optional Fallback): CallMeBot Free API</span>
+              <a href="https://wa.me/34644059217?text=I%20allow%20callmebot%20to%20send%20me%20messages"
+                target="_blank" rel="noopener"
+                class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-[10px] font-medium">
+                1-Tap Activate CallMeBot ↗
+              </a>
             </div>
             <div>
-              <label class="block text-[11px] font-semibold text-slate-300 mb-1">CallMeBot API Key:</label>
-              <input type="text" id="wa-apikey-input" placeholder="e.g. 1234567"
-                class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white mono" />
+              <label class="block text-[10px] font-semibold text-slate-400 mb-1">CallMeBot API Key (`WHATSAPP_API_KEY` — if/when received):</label>
+              <input type="text" id="wa-apikey-input" placeholder="e.g. 1234567 (optional if using Meta Cloud API)"
+                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white mono" />
             </div>
           </div>
         </div>
@@ -828,6 +855,8 @@
     const STORAGE_TOKEN_KEY = 'delta_strangle_gh_pat';
     const STORAGE_WA_PHONE_KEY = 'delta_strangle_wa_phone';
     const STORAGE_WA_APIKEY_KEY = 'delta_strangle_wa_apikey';
+    const STORAGE_META_PHONE_ID_KEY = 'delta_strangle_meta_phone_id';
+    const STORAGE_META_TOKEN_KEY = 'delta_strangle_meta_wa_token';
     const ONE_MONTH_MS = 30 * 24 * 60 * 60 * 1000;
 
     let dashboardState = null;
@@ -845,16 +874,20 @@
     let filteredAuditOrders = [];
     let currentLiveUpnlUsd = 0;
 
-    // Check URL hash for #token=...&waphone=...&wakey=... for 1-tap mobile/anywhere setup
+    // Check URL hash for #token=...&waphone=...&wakey=...&metapid=...&metatok=...
     (function checkHashToken() {
       if (window.location.hash && (window.location.hash.includes('token=') || window.location.hash.includes('waphone='))) {
         const params = new URLSearchParams(window.location.hash.slice(1));
         const tok = params.get('token');
         const waPhone = params.get('waphone');
         const waKey = params.get('wakey');
+        const metaPid = params.get('metapid');
+        const metaTok = params.get('metatok');
         if (tok) localStorage.setItem(STORAGE_TOKEN_KEY, tok.trim());
         if (waPhone) localStorage.setItem(STORAGE_WA_PHONE_KEY, waPhone.trim());
         if (waKey) localStorage.setItem(STORAGE_WA_APIKEY_KEY, waKey.trim());
+        if (metaPid) localStorage.setItem(STORAGE_META_PHONE_ID_KEY, metaPid.trim());
+        if (metaTok) localStorage.setItem(STORAGE_META_TOKEN_KEY, metaTok.trim());
         history.replaceState(null, '', window.location.pathname + window.location.search);
       }
     })();
@@ -869,6 +902,14 @@
 
     function getSavedWaApiKey() {
       return localStorage.getItem(STORAGE_WA_APIKEY_KEY) || '';
+    }
+
+    function getSavedMetaPhoneId() {
+      return localStorage.getItem(STORAGE_META_PHONE_ID_KEY) || '';
+    }
+
+    function getSavedMetaToken() {
+      return localStorage.getItem(STORAGE_META_TOKEN_KEY) || '';
     }
 
     function showToast(msg, type = 'info') {
@@ -2320,36 +2361,39 @@
       document.getElementById('gh-pat-input').value = getSavedToken();
       const waPhoneEl = document.getElementById('wa-phone-input');
       const waKeyEl = document.getElementById('wa-apikey-input');
+      const metaPidEl = document.getElementById('meta-phone-id-input');
+      const metaTokEl = document.getElementById('meta-wa-token-input');
       if (waPhoneEl) waPhoneEl.value = getSavedWaPhone();
       if (waKeyEl) waKeyEl.value = getSavedWaApiKey();
+      if (metaPidEl) metaPidEl.value = getSavedMetaPhoneId();
+      if (metaTokEl) metaTokEl.value = getSavedMetaToken();
       document.getElementById('settings-modal').classList.remove('hidden');
 
-      // If PAT is saved but local WA fields are empty, try fetching existing GitHub Actions variables
+      // If PAT is saved, try fetching any existing GitHub Actions variables
       const token = getSavedToken();
-      if (token && (!getSavedWaPhone() || !getSavedWaApiKey())) {
+      if (token) {
         try {
           const headers = {
             'Authorization': `Bearer ${token}`,
             'Accept': 'application/vnd.github+json'
           };
-          const [pRes, kRes] = await Promise.all([
-            fetch(`https://api.github.com/repos/${REPO_SLUG}/actions/variables/WHATSAPP_PHONE`, { headers }),
-            fetch(`https://api.github.com/repos/${REPO_SLUG}/actions/variables/WHATSAPP_API_KEY`, { headers })
-          ]);
-          if (pRes.ok) {
-            const pJson = await pRes.json();
-            if (pJson.value) {
-              localStorage.setItem(STORAGE_WA_PHONE_KEY, pJson.value);
-              if (waPhoneEl && !waPhoneEl.value) waPhoneEl.value = pJson.value;
+          const varSpecs = [
+            ['WHATSAPP_PHONE', STORAGE_WA_PHONE_KEY, waPhoneEl],
+            ['WHATSAPP_API_KEY', STORAGE_WA_APIKEY_KEY, waKeyEl],
+            ['META_WA_PHONE_ID', STORAGE_META_PHONE_ID_KEY, metaPidEl],
+            ['META_WA_TOKEN', STORAGE_META_TOKEN_KEY, metaTokEl]
+          ];
+          await Promise.all(varSpecs.map(async ([varName, storageKey, inputEl]) => {
+            if (localStorage.getItem(storageKey)) return;
+            const res = await fetch(`https://api.github.com/repos/${REPO_SLUG}/actions/variables/${varName}`, { headers });
+            if (res.ok) {
+              const j = await res.json();
+              if (j.value) {
+                localStorage.setItem(storageKey, j.value);
+                if (inputEl && !inputEl.value) inputEl.value = j.value;
+              }
             }
-          }
-          if (kRes.ok) {
-            const kJson = await kRes.json();
-            if (kJson.value) {
-              localStorage.setItem(STORAGE_WA_APIKEY_KEY, kJson.value);
-              if (waKeyEl && !waKeyEl.value) waKeyEl.value = kJson.value;
-            }
-          }
+          }));
         } catch (e) {}
       }
     }
@@ -2384,21 +2428,25 @@
 
     async function saveSettingsToken() {
       const val = document.getElementById('gh-pat-input').value.trim();
-      const waPhoneEl = document.getElementById('wa-phone-input');
-      const waKeyEl = document.getElementById('wa-apikey-input');
-      const waPhone = waPhoneEl ? waPhoneEl.value.trim() : '';
-      const waKey = waKeyEl ? waKeyEl.value.trim() : '';
+      const waPhone = (document.getElementById('wa-phone-input')?.value || '').trim();
+      const waKey = (document.getElementById('wa-apikey-input')?.value || '').trim();
+      const metaPid = (document.getElementById('meta-phone-id-input')?.value || '').trim();
+      const metaTok = (document.getElementById('meta-wa-token-input')?.value || '').trim();
 
       if (val) localStorage.setItem(STORAGE_TOKEN_KEY, val);
       if (waPhone) localStorage.setItem(STORAGE_WA_PHONE_KEY, waPhone);
       if (waKey) localStorage.setItem(STORAGE_WA_APIKEY_KEY, waKey);
+      if (metaPid) localStorage.setItem(STORAGE_META_PHONE_ID_KEY, metaPid);
+      if (metaTok) localStorage.setItem(STORAGE_META_TOKEN_KEY, metaTok);
 
       const activeToken = val || getSavedToken();
-      if (activeToken && (waPhone || waKey)) {
+      if (activeToken && (waPhone || waKey || metaPid || metaTok)) {
         try {
           await Promise.all([
             waPhone ? upsertGitHubVariable(activeToken, 'WHATSAPP_PHONE', waPhone) : Promise.resolve(true),
-            waKey ? upsertGitHubVariable(activeToken, 'WHATSAPP_API_KEY', waKey) : Promise.resolve(true)
+            waKey ? upsertGitHubVariable(activeToken, 'WHATSAPP_API_KEY', waKey) : Promise.resolve(true),
+            metaPid ? upsertGitHubVariable(activeToken, 'META_WA_PHONE_ID', metaPid) : Promise.resolve(true),
+            metaTok ? upsertGitHubVariable(activeToken, 'META_WA_TOKEN', metaTok) : Promise.resolve(true)
           ]);
           showToast('Saved & synced GitHub PAT + WhatsApp settings to GitHub Actions!', 'success');
         } catch (err) {
@@ -2406,7 +2454,7 @@
         }
       } else if (val) {
         showToast('GitHub PAT saved locally! Connecting to GitHub API...', 'success');
-      } else if (waPhone && waKey) {
+      } else {
         showToast('WhatsApp credentials saved locally!', 'success');
       }
       closeSettingsModal();
@@ -2417,9 +2465,13 @@
       localStorage.removeItem(STORAGE_TOKEN_KEY);
       localStorage.removeItem(STORAGE_WA_PHONE_KEY);
       localStorage.removeItem(STORAGE_WA_APIKEY_KEY);
+      localStorage.removeItem(STORAGE_META_PHONE_ID_KEY);
+      localStorage.removeItem(STORAGE_META_TOKEN_KEY);
       document.getElementById('gh-pat-input').value = '';
-      if (document.getElementById('wa-phone-input')) document.getElementById('wa-phone-input').value = '';
-      if (document.getElementById('wa-apikey-input')) document.getElementById('wa-apikey-input').value = '';
+      ['wa-phone-input', 'wa-apikey-input', 'meta-phone-id-input', 'meta-wa-token-input'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
       showToast('Saved token & WhatsApp credentials cleared from browser.', 'info');
     }
 
@@ -2427,6 +2479,8 @@
       const val = document.getElementById('gh-pat-input').value.trim() || getSavedToken();
       const waPhone = (document.getElementById('wa-phone-input')?.value || getSavedWaPhone()).trim();
       const waKey = (document.getElementById('wa-apikey-input')?.value || getSavedWaApiKey()).trim();
+      const metaPid = (document.getElementById('meta-phone-id-input')?.value || getSavedMetaPhoneId()).trim();
+      const metaTok = (document.getElementById('meta-wa-token-input')?.value || getSavedMetaToken()).trim();
       if (!val) {
         showToast('Enter a GitHub PAT first to generate a bookmarkable URL.', 'error');
         return;
@@ -2434,6 +2488,8 @@
       let hash = `token=${encodeURIComponent(val)}`;
       if (waPhone) hash += `&waphone=${encodeURIComponent(waPhone)}`;
       if (waKey) hash += `&wakey=${encodeURIComponent(waKey)}`;
+      if (metaPid) hash += `&metapid=${encodeURIComponent(metaPid)}`;
+      if (metaTok) hash += `&metatok=${encodeURIComponent(metaTok)}`;
       const url = `${window.location.origin}${window.location.pathname}#${hash}`;
       navigator.clipboard.writeText(url);
       showToast('Bookmarkable URL (with Token & WhatsApp config) copied!', 'success');
@@ -2442,17 +2498,34 @@
     async function sendTestWhatsAppFromDashboard() {
       const waPhone = (document.getElementById('wa-phone-input')?.value || getSavedWaPhone()).trim().replace(/\s+/g, '');
       const waKey = (document.getElementById('wa-apikey-input')?.value || getSavedWaApiKey()).trim();
+      const metaPid = (document.getElementById('meta-phone-id-input')?.value || getSavedMetaPhoneId()).trim();
+      const metaTok = (document.getElementById('meta-wa-token-input')?.value || getSavedMetaToken()).trim();
       const token = getSavedToken();
 
-      if (!waPhone || !waKey) {
+      const hasMeta = Boolean(waPhone && metaPid && metaTok);
+      const hasCallMeBot = Boolean(waPhone && waKey);
+
+      if (!hasMeta && !hasCallMeBot) {
         openSettingsModal();
-        showToast('Please enter your WhatsApp Phone (+91...) and CallMeBot API Key first!', 'info');
+        showToast('Enter your WhatsApp Number + Meta Cloud API (or CallMeBot) credentials first!', 'info');
         return;
       }
 
       // Save locally if typed in modal
-      localStorage.setItem(STORAGE_WA_PHONE_KEY, waPhone);
-      localStorage.setItem(STORAGE_WA_APIKEY_KEY, waKey);
+      if (waPhone) localStorage.setItem(STORAGE_WA_PHONE_KEY, waPhone);
+      if (waKey) localStorage.setItem(STORAGE_WA_APIKEY_KEY, waKey);
+      if (metaPid) localStorage.setItem(STORAGE_META_PHONE_ID_KEY, metaPid);
+      if (metaTok) localStorage.setItem(STORAGE_META_TOKEN_KEY, metaTok);
+
+      // Sync to GitHub Actions variables if token exists
+      if (token) {
+        Promise.all([
+          waPhone ? upsertGitHubVariable(token, 'WHATSAPP_PHONE', waPhone) : Promise.resolve(true),
+          waKey ? upsertGitHubVariable(token, 'WHATSAPP_API_KEY', waKey) : Promise.resolve(true),
+          metaPid ? upsertGitHubVariable(token, 'META_WA_PHONE_ID', metaPid) : Promise.resolve(true),
+          metaTok ? upsertGitHubVariable(token, 'META_WA_TOKEN', metaTok) : Promise.resolve(true)
+        ]).catch(() => {});
+      }
 
       const s = dashboardState || {};
       const w = s.wallet || {};
@@ -2471,18 +2544,56 @@
         '• *Status:* Daily 10:30 PM Entry & 5:35 PM Settlement alerts active ✅'
       ].join('\n');
 
-      showToast('Sending test WhatsApp message via CallMeBot...', 'info');
+      showToast('Sending test WhatsApp notification...', 'info');
       try {
-        // Sync to GitHub Actions variables if token exists
-        if (token) {
-          await Promise.all([
-            upsertGitHubVariable(token, 'WHATSAPP_PHONE', waPhone),
-            upsertGitHubVariable(token, 'WHATSAPP_API_KEY', waKey)
-          ]);
+        if (hasMeta) {
+          const toDigits = waPhone.replace(/\D/g, '');
+          const metaUrl = `https://graph.facebook.com/v20.0/${encodeURIComponent(metaPid)}/messages`;
+          const metaHeaders = {
+            'Authorization': `Bearer ${metaTok}`,
+            'Content-Type': 'application/json'
+          };
+          const textRes = await fetch(metaUrl, {
+            method: 'POST',
+            headers: metaHeaders,
+            body: JSON.stringify({
+              messaging_product: 'whatsapp',
+              recipient_type: 'individual',
+              to: toDigits,
+              type: 'text',
+              text: { preview_url: false, body: msg }
+            })
+          });
+          if (textRes.ok) {
+            showToast(`Meta WhatsApp rich status sent to +${toDigits}!`, 'success');
+          } else {
+            // Fallback to hello_world starter template if 24h window isn't open yet
+            const tplRes = await fetch(metaUrl, {
+              method: 'POST',
+              headers: metaHeaders,
+              body: JSON.stringify({
+                messaging_product: 'whatsapp',
+                to: toDigits,
+                type: 'template',
+                template: { name: 'hello_world', language: { code: 'en_US' } }
+              })
+            });
+            if (tplRes.ok) {
+              showToast(`Sent Meta starter template to +${toDigits}! Reply "Hi" on WhatsApp to unlock rich text alerts.`, 'success');
+            } else {
+              const errJson = await tplRes.json().catch(() => ({}));
+              throw new Error(errJson?.error?.message || `Meta HTTP ${tplRes.status}`);
+            }
+          }
         }
-        const callUrl = `https://api.callmebot.com/whatsapp.php?phone=${encodeURIComponent(waPhone)}&text=${encodeURIComponent(msg)}&apikey=${encodeURIComponent(waKey)}`;
-        await fetch(callUrl, { mode: 'no-cors' });
-        showToast(`WhatsApp test dispatched to ${waPhone}! Check your WhatsApp in ~5s.`, 'success');
+
+        if (hasCallMeBot) {
+          const callUrl = `https://api.callmebot.com/whatsapp.php?phone=${encodeURIComponent(waPhone)}&text=${encodeURIComponent(msg)}&apikey=${encodeURIComponent(waKey)}`;
+          await fetch(callUrl, { mode: 'no-cors' });
+          if (!hasMeta) {
+            showToast(`CallMeBot WhatsApp test dispatched to ${waPhone}!`, 'success');
+          }
+        }
       } catch (err) {
         showToast(`WhatsApp test error: ${err.message}`, 'error');
       }
