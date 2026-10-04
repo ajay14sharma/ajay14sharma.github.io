@@ -1,0 +1,1432 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Delta 1DTE BTC Short Strangle (1.8x) — Actionable Cloud Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            slate: {
+              850: '#151f32',
+              950: '#0a0f1a'
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    body {
+      background-color: #0a0f1a;
+      color: #e2e8f0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    .glass-card {
+      background: rgba(21, 31, 50, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(148, 163, 184, 0.14);
+    }
+    .pulse-dot {
+      animation: pulse-ring 2s infinite;
+    }
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+      70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+  </style>
+</head>
+<body class="min-h-screen pb-16">
+
+  <!-- Top Navigation Header -->
+  <header class="border-b border-slate-800 bg-slate-900/90 sticky top-0 z-40 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/40 flex items-center justify-center text-amber-400 font-bold text-lg">
+          Δ
+        </div>
+        <div>
+          <div class="flex items-center gap-2.5">
+            <h1 class="text-lg font-bold tracking-tight text-white">1DTE BTC Short Strangle (`1.8x`)</h1>
+            <span class="px-2 py-0.5 text-[11px] font-semibold rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 pulse-dot"></span>
+              LIVE CLOUD BOT
+            </span>
+          </div>
+          <p class="text-xs text-slate-400">
+            Delta Exchange India • Daily Entry <span class="text-slate-200 font-medium">10:30 PM IST</span> (`T+2` Expiry) • `2x` Mark-Price Bracket SL • Idempotency Guard Active
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3 flex-wrap">
+        <div class="text-right px-3 py-1 rounded-lg bg-slate-800/70 border border-slate-700/60">
+          <div class="text-[10px] uppercase tracking-wider text-slate-400">Live BTC Spot</div>
+          <div id="live-btc-spot" class="text-base font-bold text-amber-400 mono">$--,--</div>
+        </div>
+        <button onclick="syncNow()" id="btn-sync-cloud"
+           class="px-3 py-2 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5">
+          <span>🔄 Sync Cloud Data</span>
+        </button>
+        <button onclick="openSettingsModal()"
+           class="px-3 py-2 text-xs font-medium rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 transition flex items-center gap-1.5">
+          <span>🔑 Cloud Controls & Token</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Toast Notification Banner -->
+  <div id="toast-banner" class="hidden fixed bottom-5 right-5 z-50 max-w-md px-4 py-3 rounded-xl shadow-2xl border text-xs font-medium transition-all"></div>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 space-y-6">
+
+    <!-- SECTION 6: Alert Banner for Last 5 Critical Failures / Risk Events -->
+    <section class="glass-card rounded-xl overflow-hidden border-l-4 border-l-rose-500">
+      <div class="px-5 py-3.5 border-b border-slate-800/80 flex flex-wrap items-center justify-between gap-2 bg-rose-950/20">
+        <div class="flex items-center gap-2.5">
+          <span class="px-2 py-0.5 text-[11px] font-bold rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 uppercase tracking-wider">
+            🚨 Critical Alert Monitor
+          </span>
+          <h2 class="text-sm font-semibold text-white">Last 5 Critical Failures, SL Cancellations & Risk Anomalies</h2>
+        </div>
+        <div class="flex items-center gap-3">
+          <span id="alerts-summary-badge" class="text-xs text-slate-400 mono">Scanning audit history...</span>
+          <button onclick="toggleSection('alerts-panel-body')" class="text-xs text-slate-400 hover:text-white underline">Toggle</button>
+        </div>
+      </div>
+      <div id="alerts-panel-body" class="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        <!-- Populated by JS -->
+      </div>
+    </section>
+
+    <!-- SECTION 1A: KPI Summary Cards -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="glass-card rounded-xl p-4">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Wallet Balance (BTC Sub)</span>
+          <span class="text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-300 mono">USD / INR</span>
+        </div>
+        <div id="kpi-balance" class="text-2xl font-bold text-white mt-2 mono">$--</div>
+        <div id="kpi-available" class="text-xs text-slate-400 mt-1">Available Margin: $--</div>
+      </div>
+
+      <div class="glass-card rounded-xl p-4">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Open Unrealized PnL</span>
+          <span id="live-tick-badge" class="text-[11px] px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">Live 3s Tick</span>
+        </div>
+        <div id="kpi-upnl" class="text-2xl font-bold text-slate-200 mt-2 mono">$0.00</div>
+        <div id="kpi-premium" class="text-xs text-slate-400 mt-1">Active Premium Sold: $0.00 (0 legs)</div>
+      </div>
+
+      <div class="glass-card rounded-xl p-4">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Realized PnL (Selected Period)</span>
+          <span id="kpi-winrate-badge" class="text-[11px] px-2 py-0.5 rounded bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 mono">Win Rate: --%</span>
+        </div>
+        <div id="kpi-period-net-pnl" class="text-2xl font-bold text-white mt-2 mono">$0.00</div>
+        <div id="kpi-period-fees" class="text-xs text-slate-400 mt-1">Gross: $0.00 • Fees: $0.00</div>
+      </div>
+
+      <div class="glass-card rounded-xl p-4">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Next Scheduled Entry</span>
+          <span id="kpi-countdown" class="text-[11px] px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 mono">--h --m</span>
+        </div>
+        <div id="kpi-sync-time" class="text-sm font-semibold text-white mt-2">--</div>
+        <div id="tick-counter" class="text-xs text-emerald-400 mt-1.5 mono">Connecting to Delta India live feed...</div>
+      </div>
+    </section>
+
+    <!-- SECTION 4: GitHub Actions Status & Actionable Controls (Enable / Disable / Pause / Trigger) -->
+    <section class="glass-card rounded-xl overflow-hidden">
+      <div class="px-5 py-4 border-b border-slate-800 flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center gap-3 flex-wrap">
+          <h2 class="text-base font-semibold text-white flex items-center gap-2">
+            ⚙️ GitHub Actions Scheduler & Actionable Controls
+          </h2>
+          <span id="gh-wf-state-badge" class="px-2.5 py-0.5 text-xs font-bold rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+            ● WORKFLOW ACTIVE
+          </span>
+          <span id="gh-bot-mode-badge" class="px-2.5 py-0.5 text-xs font-bold rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 mono">
+            BOT_MODE: LIVE (500 LOTS)
+          </span>
+        </div>
+
+        <!-- Actionable Buttons -->
+        <div class="flex items-center gap-2 flex-wrap">
+          <select id="dispatch-mode-select" class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 mono">
+            <option value="sync-dashboard">Mode: sync-dashboard (Safe Sync)</option>
+            <option value="dry-run">Mode: dry-run (Preview Strikes)</option>
+            <option value="verify-auth">Mode: verify-auth (Test Proxy & Key)</option>
+            <option value="attach-sl-only">Mode: attach-sl-only (Ensure 2x SL)</option>
+            <option value="live">Mode: live (Execute Strangle)</option>
+          </select>
+          <button onclick="triggerWorkflowDispatch()"
+            class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition shadow">
+            ▶️ Run Workflow
+          </button>
+          <button onclick="togglePauseLiveMode('dry-run')"
+            class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 transition"
+            title="Pause live trading by setting repository variable BOT_MODE=dry-run">
+            ⏸️ Pause (Dry-Run)
+          </button>
+          <button onclick="togglePauseLiveMode('live')"
+            class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/40 transition"
+            title="Resume live trading by setting repository variable BOT_MODE=live">
+            ⚡ Set Live
+          </button>
+          <button onclick="setWorkflowEnabled('disable')"
+            class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 transition"
+            title="Disable scheduled GitHub Actions workflow">
+            🛑 Disable Action
+          </button>
+          <button onclick="setWorkflowEnabled('enable')"
+            class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition"
+            title="Enable scheduled GitHub Actions workflow">
+            🟢 Enable Action
+          </button>
+          <a href="https://github.com/ajay14sharma/delta-strangle-bot/actions/workflows/daily_strangle.yml" target="_blank" rel="noopener"
+            class="px-2.5 py-1.5 text-xs text-slate-400 hover:text-white border border-slate-800 rounded-lg">
+            ↗ GitHub UI
+          </a>
+        </div>
+      </div>
+
+      <!-- Recent GitHub Actions Runs -->
+      <div class="px-5 py-3 bg-slate-900/40 flex items-center justify-between text-xs text-slate-400">
+        <span>Schedule: <strong class="text-slate-200">10:30 PM IST (`0 17 * * *`)</strong> Entry + <strong class="text-slate-200">5:35 PM IST (`5 12 * * *`)</strong> Post-Expiry Sync • Static Proxy IPs: `31.59.20.176`, `45.38.107.97`, `31.58.9.4`</span>
+        <button onclick="toggleSection('gh-runs-table-wrap')" class="text-indigo-400 hover:text-indigo-300 font-medium">
+          Show/Hide Recent Runs ▾
+        </button>
+      </div>
+      <div id="gh-runs-table-wrap" class="overflow-x-auto border-t border-slate-800/80">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="border-b border-slate-800 text-[11px] uppercase tracking-wider text-slate-400 bg-slate-900/60">
+              <th class="py-2.5 px-4">Run #</th>
+              <th class="py-2.5 px-4">Workflow / Title</th>
+              <th class="py-2.5 px-4">Trigger Event</th>
+              <th class="py-2.5 px-4">Status / Conclusion</th>
+              <th class="py-2.5 px-4">Timestamp (IST)</th>
+              <th class="py-2.5 px-4 text-right">Duration</th>
+              <th class="py-2.5 px-4 text-right">Logs</th>
+            </tr>
+          </thead>
+          <tbody id="gh-runs-tbody" class="divide-y divide-slate-800/60 text-xs mono">
+            <!-- Populated by JS -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- SECTION 1B: Open Option Positions & Live 2x Stop-Loss Brackets -->
+    <section class="glass-card rounded-xl overflow-hidden">
+      <div class="px-5 py-4 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h2 class="text-base font-semibold text-white flex items-center gap-2">
+            🛡️ Active Short Option Positions & `2x` Stop-Loss Brackets
+          </h2>
+          <p class="text-xs text-slate-400">
+            Mark prices & Unrealized PnL stream live every 3 seconds from Delta Exchange India `/v2/tickers` (`1 lot = 0.001 BTC`).
+          </p>
+        </div>
+        <span class="text-xs mono text-slate-400">Trigger Method: <strong class="text-slate-200">mark_price (/v2/orders/bracket)</strong></span>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="border-b border-slate-800 text-[11px] uppercase tracking-wider text-slate-400 bg-slate-900/50">
+              <th class="py-3 px-4">Contract Symbol</th>
+              <th class="py-3 px-4">Side & Size</th>
+              <th class="py-3 px-4 text-right">Sold Entry</th>
+              <th class="py-3 px-4 text-right">Live Mark Price</th>
+              <th class="py-3 px-4 text-right">2x SL Trigger (#Order)</th>
+              <th class="py-3 px-4">SL Buffer (Mark → 2x SL)</th>
+              <th class="py-3 px-4 text-right">Live Unrealized PnL</th>
+            </tr>
+          </thead>
+          <tbody id="open-positions-body" class="divide-y divide-slate-800/70 text-sm mono">
+            <tr>
+              <td colspan="7" class="py-8 text-center text-slate-500">Loading open positions...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- SECTION 2 & 3: Date Range Selector + Daily P&L Bar Chart & Calendar Heatmap View -->
+    <section class="glass-card rounded-xl overflow-hidden">
+      <div class="px-5 py-4 border-b border-slate-800 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h2 class="text-base font-semibold text-white">📊 Daily P&L Analytics — Bar Chart & Calendar View</h2>
+          <p class="text-xs text-slate-400">Select any date range or click a calendar day to filter historical trades & P&L below.</p>
+        </div>
+
+        <!-- View Switcher Tabs (Bar Chart vs Calendar View vs Both) -->
+        <div class="flex items-center gap-1.5 bg-slate-900 p-1 rounded-lg border border-slate-800">
+          <button onclick="setChartMode('both')" id="tab-chart-both" class="px-3 py-1 text-xs font-semibold rounded-md bg-indigo-600 text-white transition">
+            Split View (Bar + Calendar)
+          </button>
+          <button onclick="setChartMode('bar')" id="tab-chart-bar" class="px-3 py-1 text-xs font-semibold rounded-md text-slate-400 hover:text-white transition">
+            📊 Bar Chart Only
+          </button>
+          <button onclick="setChartMode('calendar')" id="tab-chart-calendar" class="px-3 py-1 text-xs font-semibold rounded-md text-slate-400 hover:text-white transition">
+            📅 Calendar View Only
+          </button>
+        </div>
+      </div>
+
+      <!-- Date Picker & Quick Presets Toolbar -->
+      <div class="px-5 py-3 bg-slate-900/60 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-2 flex-wrap">
+          <label class="text-xs text-slate-400">From:</label>
+          <input type="date" id="filter-from-date" onchange="applyAllFilters()"
+            class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-white mono" />
+          <label class="text-xs text-slate-400">To:</label>
+          <input type="date" id="filter-to-date" onchange="applyAllFilters()"
+            class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-white mono" />
+
+          <div class="flex items-center gap-1 ml-2 flex-wrap">
+            <button onclick="setDatePreset('all')" class="px-2.5 py-1 text-xs rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">All Time</button>
+            <button onclick="setDatePreset('today')" class="px-2.5 py-1 text-xs rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">Today</button>
+            <button onclick="setDatePreset('7d')" class="px-2.5 py-1 text-xs rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">Last 7D</button>
+            <button onclick="setDatePreset('oct2026')" class="px-2.5 py-1 text-xs rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">Oct 2026</button>
+            <button onclick="setDatePreset('feb2026')" class="px-2.5 py-1 text-xs rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">Feb 2026</button>
+            <button onclick="setDatePreset('jan2026')" class="px-2.5 py-1 text-xs rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">Jan 2026</button>
+          </div>
+        </div>
+
+        <div id="selected-range-summary" class="text-xs mono text-slate-300">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- Charts Grid -->
+      <div id="charts-grid" class="p-5 grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- 3A: Daily PnL Bar Chart -->
+        <div id="panel-bar-chart" class="bg-slate-900/50 border border-slate-800/80 rounded-xl p-4 flex flex-col justify-between">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <h3 class="text-sm font-semibold text-white">Daily Net Realized P&L Bar Chart (USD)</h3>
+              <p class="text-[11px] text-slate-400">Green = Net Profit Day • Red = Net Loss Day (After Commissions)</p>
+            </div>
+            <span id="bar-chart-days-count" class="text-xs mono text-slate-400">0 active days</span>
+          </div>
+          <div id="bar-chart-container" class="h-64 flex items-end gap-2 pt-6 pb-2 px-2 overflow-x-auto border-b border-slate-800 relative">
+            <!-- Populated by JS -->
+          </div>
+          <div id="bar-chart-legend" class="mt-3 flex items-center justify-between text-[11px] text-slate-400 mono">
+            <span>Click any bar to filter that date's orders</span>
+            <span id="bar-chart-best-worst">Best: -- | Worst: --</span>
+          </div>
+        </div>
+
+        <!-- 3B: Monthly Calendar Heatmap View -->
+        <div id="panel-calendar-view" class="bg-slate-900/50 border border-slate-800/80 rounded-xl p-4">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <h3 class="text-sm font-semibold text-white">Monthly P&L Calendar Heatmap</h3>
+              <p class="text-[11px] text-slate-400">Click any date cell to inspect that day's orders</p>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button onclick="changeCalendarMonth(-1)" class="px-2 py-1 text-xs rounded bg-slate-800 hover:bg-slate-700 text-slate-200">◀</button>
+              <select id="calendar-month-select" onchange="onCalendarMonthSelect()" class="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-white mono">
+              </select>
+              <button onclick="changeCalendarMonth(1)" class="px-2 py-1 text-xs rounded bg-slate-800 hover:bg-slate-700 text-slate-200">▶</button>
+            </div>
+          </div>
+
+          <!-- Weekday Headers -->
+          <div class="grid grid-cols-7 gap-1.5 text-center text-[10px] uppercase tracking-wider text-slate-400 mb-1.5 font-semibold">
+            <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
+          </div>
+          <!-- Calendar Days Grid -->
+          <div id="calendar-days-grid" class="grid grid-cols-7 gap-1.5">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 5: Complete Audit History & Historical Trades (Success, Pending SL, Cancelled, Failed) -->
+    <section class="glass-card rounded-xl overflow-hidden">
+      <div class="px-5 py-4 border-b border-slate-800 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h2 class="text-base font-semibold text-white">📜 Complete Order Audit History & Historical Trades Ledger</h2>
+          <p class="text-xs text-slate-400">
+            Full audit trail of all <span class="text-emerald-400">Success (Filled)</span>, <span class="text-sky-400">Pending 2x SL</span>, <span class="text-amber-400">Cancelled</span>, and <span class="text-rose-400">Failed/Rejected</span> orders.
+          </p>
+        </div>
+
+        <div class="flex items-center gap-2 flex-wrap">
+          <input type="text" id="filter-search" oninput="applyAllFilters()" placeholder="Search symbol (e.g. 051026), #ID, IP..."
+            class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500 w-56" />
+          <select id="filter-instrument" onchange="applyAllFilters()"
+            class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200">
+            <option value="ALL">All Contracts</option>
+            <option value="OPTIONS">BTC Options Only (C- / P-)</option>
+            <option value="CALLS">Call Options Only (C-)</option>
+            <option value="PUTS">Put Options Only (P-)</option>
+            <option value="FUTURES">Futures Only (BTCUSD)</option>
+          </select>
+          <button onclick="exportAuditCSV()"
+            class="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+            ⬇️ Export CSV
+          </button>
+        </div>
+      </div>
+
+      <!-- Audit Status Filter Tabs -->
+      <div class="px-5 py-2.5 bg-slate-900/70 border-b border-slate-800 flex items-center gap-2 overflow-x-auto">
+        <button onclick="setAuditTab('ALL')" id="audit-tab-ALL"
+          class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 text-white transition">
+          All Audit Events (<span id="count-ALL">0</span>)
+        </button>
+        <button onclick="setAuditTab('SUCCESS')" id="audit-tab-SUCCESS"
+          class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 text-slate-300 hover:text-white transition">
+          ✅ Success / Filled (<span id="count-SUCCESS">0</span>)
+        </button>
+        <button onclick="setAuditTab('PENDING_SL')" id="audit-tab-PENDING_SL"
+          class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 text-slate-300 hover:text-white transition">
+          🛡️ Pending 2x SL (<span id="count-PENDING_SL">0</span>)
+        </button>
+        <button onclick="setAuditTab('CANCELLED')" id="audit-tab-CANCELLED"
+          class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 text-slate-300 hover:text-white transition">
+          ⚠️ Cancelled (<span id="count-CANCELLED">0</span>)
+        </button>
+        <button onclick="setAuditTab('FAILED')" id="audit-tab-FAILED"
+          class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 text-slate-300 hover:text-white transition">
+          🚨 Failed / Rejected (<span id="count-FAILED">0</span>)
+        </button>
+      </div>
+
+      <div class="overflow-x-auto max-h-[540px]">
+        <table class="w-full text-left border-collapse">
+          <thead class="sticky top-0 z-10 bg-slate-900 shadow">
+            <tr class="border-b border-slate-800 text-[11px] uppercase tracking-wider text-slate-400">
+              <th class="py-3 px-4">Time (IST)</th>
+              <th class="py-3 px-4">Order ID</th>
+              <th class="py-3 px-4">Contract</th>
+              <th class="py-3 px-4">Side / Type</th>
+              <th class="py-3 px-4">Audit Status & Reason</th>
+              <th class="py-3 px-4 text-right">Size (BTC)</th>
+              <th class="py-3 px-4 text-right">Fill / Stop Price</th>
+              <th class="py-3 px-4 text-right">Cashflow</th>
+              <th class="py-3 px-4 text-right">Realized PnL</th>
+              <th class="py-3 px-4 text-right">Fee</th>
+              <th class="py-3 px-4">Source IP</th>
+            </tr>
+          </thead>
+          <tbody id="audit-orders-body" class="divide-y divide-slate-800/70 text-xs mono">
+            <tr>
+              <td colspan="11" class="py-8 text-center text-slate-500">Loading audit history...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Cloud Connection & GitHub Token Modal -->
+  <div id="settings-modal" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="glass-card rounded-2xl max-w-lg w-full p-6 border border-slate-700 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="text-base font-bold text-white">🔑 Cloud Control & Anywhere Access Setup</h3>
+        <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-white text-lg">✕</button>
+      </div>
+      <div class="space-y-3 text-xs text-slate-300 leading-relaxed">
+        <p>
+          Save your GitHub Fine-Grained Personal Access Token (PAT) in your browser's local storage (`localStorage`) to:
+        </p>
+        <ul class="list-disc pl-5 space-y-1 text-slate-400">
+          <li>Fetch the latest cloud `dashboard_data.json` directly from your private GitHub repo from <strong class="text-white">any device or phone</strong>.</li>
+          <li><strong class="text-white">Enable / Disable</strong> the GitHub Actions workflow (`Actions: Read and write`).</li>
+          <li><strong class="text-white">Pause / Resume</strong> live trading (`Variables: Read and write` for `BOT_MODE`).</li>
+          <li><strong class="text-white">Trigger workflow runs</strong> (`sync-dashboard`, `dry-run`, `live`) with 1 click.</li>
+        </ul>
+        <div>
+          <label class="block text-xs font-semibold text-slate-200 mb-1">GitHub Personal Access Token (`github_pat_...`):</label>
+          <input type="password" id="gh-pat-input" placeholder="github_pat_..."
+            class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white mono" />
+        </div>
+        <div class="p-3 rounded-lg bg-slate-900/90 border border-slate-800 text-[11px] text-slate-400">
+          💡 <strong>Tip for Mobile / Anywhere Access:</strong> Once saved, click <strong>Copy Bookmarkable URL</strong> below to copy a link with `#token=...` that auto-configures your phone or laptop browser in one tap.
+        </div>
+      </div>
+      <div class="flex items-center justify-between pt-2 border-t border-slate-800">
+        <button onclick="copyBookmarkUrl()" class="px-3 py-2 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">
+          🔗 Copy Bookmarkable URL
+        </button>
+        <div class="flex items-center gap-2">
+          <button onclick="clearSavedToken()" class="px-3 py-2 text-xs font-medium rounded-lg bg-rose-500/15 text-rose-300 border border-rose-500/30">
+            Clear Token
+          </button>
+          <button onclick="saveSettingsToken()" class="px-4 py-2 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white">
+            Save & Connect
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Embedded Fallback Snapshot so file:// opening works out-of-the-box -->
+  <script id="embedded-fallback-script" src="./fallback_snapshot.js"></script>
+
+  <script>
+    const REPO_SLUG = 'ajay14sharma/delta-strangle-bot';
+    const WORKFLOW_FILE = 'daily_strangle.yml';
+    const STORAGE_TOKEN_KEY = 'delta_strangle_gh_pat';
+
+    let dashboardState = null;
+    let liveTickersBySymbol = {};
+    let currentAuditTab = 'ALL';
+    let currentChartMode = 'both';
+    let availableMonths = [];
+    let currentCalendarMonth = ''; // 'YYYY-MM'
+    let filteredAuditOrders = [];
+
+    // Check URL hash for #token=... for 1-tap mobile/anywhere setup
+    (function checkHashToken() {
+      if (window.location.hash && window.location.hash.includes('token=')) {
+        const params = new URLSearchParams(window.location.hash.slice(1));
+        const tok = params.get('token');
+        if (tok) {
+          localStorage.setItem(STORAGE_TOKEN_KEY, tok.trim());
+          history.replaceState(null, '', window.location.pathname + window.location.search);
+        }
+      }
+    })();
+
+    function getSavedToken() {
+      return localStorage.getItem(STORAGE_TOKEN_KEY) || '';
+    }
+
+    function showToast(msg, type = 'info') {
+      const el = document.getElementById('toast-banner');
+      const colors = {
+        success: 'bg-emerald-950/95 border-emerald-500/50 text-emerald-200',
+        error: 'bg-rose-950/95 border-rose-500/50 text-rose-200',
+        info: 'bg-slate-900/95 border-indigo-500/50 text-indigo-200'
+      };
+      el.className = `fixed bottom-5 right-5 z-50 max-w-md px-4 py-3 rounded-xl shadow-2xl border text-xs font-medium transition-all ${colors[type] || colors.info}`;
+      el.textContent = msg;
+      el.classList.remove('hidden');
+      setTimeout(() => el.classList.add('hidden'), 6000);
+    }
+
+    function toggleSection(id) {
+      const el = document.getElementById(id);
+      if (el) el.classList.toggle('hidden');
+    }
+
+    function formatUSD(val, showSign = false) {
+      const n = Number(val || 0);
+      const sign = showSign ? (n >= 0 ? '+' : '-') : (n < 0 ? '-' : '');
+      return `${sign}$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+
+    function formatIST(isoStr) {
+      if (!isoStr) return '--';
+      try {
+        const dt = new Date(isoStr);
+        return dt.toLocaleString('en-IN', {
+          timeZone: 'Asia/Kolkata',
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: true
+        }) + ' IST';
+      } catch (e) {
+        return isoStr;
+      }
+    }
+
+    function updateNextEntryCountdown() {
+      const now = new Date();
+      // Convert current UTC time to IST (UTC + 5:30)
+      const istOffsetMs = (5 * 60 + 30) * 60 * 1000;
+      const nowIst = new Date(now.getTime() + istOffsetMs);
+      const targetIst = new Date(nowIst);
+      targetIst.setUTCHours(22, 30, 0, 0);
+      if (nowIst >= targetIst) {
+        targetIst.setUTCDate(targetIst.getUTCDate() + 1);
+      }
+      const diffSec = Math.max(0, Math.floor((targetIst - nowIst) / 1000));
+      const h = Math.floor(diffSec / 3600);
+      const m = Math.floor((diffSec % 3600) / 60);
+      document.getElementById('kpi-countdown').textContent = `10:30 PM IST (in ${h}h ${m}m)`;
+    }
+
+    async function loadDashboardSnapshot() {
+      const token = getSavedToken();
+      // 1. Try local/relative dashboard_data.json first
+      try {
+        const resp = await fetch(`./dashboard_data.json?t=${Date.now()}`);
+        if (resp.ok) {
+          dashboardState = await resp.json();
+        }
+      } catch (err) {
+        // Ignore file:// CORS fetch error
+      }
+
+      // 2. If GitHub token is saved, fetch latest docs/dashboard_data.json from GitHub API
+      if (token) {
+        try {
+          const ghResp = await fetch(`https://api.github.com/repos/${REPO_SLUG}/contents/docs/dashboard_data.json?ref=main&t=${Date.now()}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Accept': 'application/vnd.github.raw+json',
+              'X-GitHub-Api-Version': '2022-11-28'
+            }
+          });
+          if (ghResp.ok) {
+            dashboardState = await ghResp.json();
+          }
+        } catch (err) {
+          console.warn('GitHub API snapshot fetch failed:', err);
+        }
+      }
+
+      // 3. Fallback to embedded snapshot if opened via file:// without token
+      if (!dashboardState && window.FALLBACK_DASHBOARD_DATA) {
+        dashboardState = window.FALLBACK_DASHBOARD_DATA;
+      }
+
+      if (dashboardState) {
+        initCalendarMonths();
+        renderHeaderAndKPIs();
+        renderCriticalAlerts();
+        renderGitHubActionsSection();
+        renderLivePositions();
+        applyAllFilters();
+      } else {
+        openSettingsModal();
+        showToast('🔒 Private Cloud Dashboard: Paste your GitHub PAT (or use your #token=... bookmark) to load private trade & position data.', 'info');
+      }
+
+      // Also refresh live GitHub Actions runs from browser if token has Actions permission
+      if (token) {
+        refreshLiveGitHubStatusFromBrowser(token);
+      }
+    }
+
+    async function syncNow() {
+      showToast('Syncing latest cloud data & live Delta option tickers...', 'info');
+      await loadDashboardSnapshot();
+      await fetchLiveDeltaTickers();
+      showToast('Dashboard synced!', 'success');
+    }
+
+    async function fetchLiveDeltaTickers() {
+      try {
+        const resp = await fetch('https://api.india.delta.exchange/v2/tickers?contract_types=call_options,put_options&underlying_asset_symbols=BTC');
+        const json = await resp.json();
+        if (json && json.result) {
+          liveTickersBySymbol = {};
+          let spot = null;
+          for (const t of json.result) {
+            liveTickersBySymbol[t.symbol] = t;
+            if (!spot && t.spot_price) spot = parseFloat(t.spot_price);
+          }
+          if (spot) {
+            document.getElementById('live-btc-spot').textContent = '$' + spot.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          }
+          const nowStr = new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' });
+          document.getElementById('tick-counter').textContent = `Live feed active • Tick: ${nowStr} IST`;
+          renderLivePositions();
+        }
+      } catch (err) {
+        document.getElementById('tick-counter').textContent = 'Using Cloud Snapshot Prices';
+      }
+    }
+
+    function renderHeaderAndKPIs() {
+      if (!dashboardState) return;
+      const w = dashboardState.wallet || {};
+      document.getElementById('kpi-balance').textContent = '$' + Number(w.balance_usd || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      document.getElementById('kpi-available').textContent = `Available: $${Number(w.available_usd || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} • Blocked: $${Number(w.blocked_margin_usd || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (₹${Number(w.balance_inr_est || 0).toLocaleString('en-IN')})`;
+      document.getElementById('kpi-sync-time').textContent = `Synced: ${dashboardState.last_synced_ist || '--'}`;
+
+      if (dashboardState.btc_spot_price && document.getElementById('live-btc-spot').textContent === '$--,--') {
+        document.getElementById('live-btc-spot').textContent = '$' + Number(dashboardState.btc_spot_price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+      updateNextEntryCountdown();
+    }
+
+    // SECTION 6: Critical Alerts (Last 5 Failures / Risk Events)
+    function renderCriticalAlerts() {
+      const alerts = (dashboardState && dashboardState.critical_alerts) ? dashboardState.critical_alerts.slice(0, 5) : [];
+      const container = document.getElementById('alerts-panel-body');
+      const badge = document.getElementById('alerts-summary-badge');
+
+      if (!alerts.length) {
+        badge.textContent = '0 critical failures';
+        container.innerHTML = `<div class="col-span-full py-4 text-center text-xs text-emerald-400">✅ No critical failures or unprotected option positions detected.</div>`;
+        return;
+      }
+
+      const critCount = alerts.filter(a => a.severity === 'CRITICAL').length;
+      const warnCount = alerts.filter(a => a.severity !== 'CRITICAL').length;
+      badge.textContent = `Showing Last ${alerts.length} Events (${critCount} Critical, ${warnCount} Warning)`;
+
+      container.innerHTML = alerts.map(a => {
+        const isCrit = a.severity === 'CRITICAL';
+        const borderCls = isCrit ? 'border-rose-500/40 bg-rose-950/25' : 'border-amber-500/40 bg-amber-950/20';
+        const badgeCls = isCrit ? 'bg-rose-500/20 text-rose-300 border-rose-500/40' : 'bg-amber-500/20 text-amber-300 border-amber-500/40';
+        return `
+          <div class="rounded-lg border p-3.5 flex flex-col justify-between ${borderCls}">
+            <div>
+              <div class="flex items-center justify-between gap-2 mb-1.5">
+                <span class="px-2 py-0.5 text-[10px] font-bold rounded border ${badgeCls}">${a.severity}</span>
+                <span class="text-[11px] text-slate-400 mono">${a.timestamp_ist || ''}</span>
+              </div>
+              <div class="text-xs font-bold text-white mb-1">${a.title}</div>
+              <p class="text-[11px] text-slate-300 leading-relaxed">${a.message}</p>
+            </div>
+            <div class="mt-2.5 pt-2 border-t border-slate-800/70 flex items-center justify-between text-[10px] mono">
+              <span class="text-slate-400">Status: <strong class="text-slate-200">${a.status || 'LOGGED'}</strong></span>
+              ${a.url ? `<a href="${a.url}" target="_blank" class="text-indigo-400 hover:underline">Inspect Run ↗</a>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // SECTION 4: GitHub Actions Status & Actionable Controls
+    function renderGitHubActionsSection() {
+      const gh = (dashboardState && dashboardState.github_actions) || {};
+      const wfBadge = document.getElementById('gh-wf-state-badge');
+      const modeBadge = document.getElementById('gh-bot-mode-badge');
+
+      const isActive = (gh.state || 'active') === 'active';
+      wfBadge.className = isActive
+        ? 'px-2.5 py-0.5 text-xs font-bold rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+        : 'px-2.5 py-0.5 text-xs font-bold rounded-full bg-rose-500/15 text-rose-400 border border-rose-500/30';
+      wfBadge.textContent = isActive ? '● WORKFLOW ACTIVE' : '● WORKFLOW DISABLED';
+
+      const mode = (gh.bot_mode || 'live').toUpperCase();
+      const lots = gh.bot_lots || 500;
+      modeBadge.className = mode === 'LIVE'
+        ? 'px-2.5 py-0.5 text-xs font-bold rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 mono'
+        : 'px-2.5 py-0.5 text-xs font-bold rounded-full bg-sky-500/15 text-sky-300 border border-sky-500/30 mono';
+      modeBadge.textContent = `BOT_MODE: ${mode} (${lots} LOTS)`;
+
+      const runs = gh.runs || [];
+      const tbody = document.getElementById('gh-runs-tbody');
+      if (!runs.length) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7" class="py-4 px-4 text-center text-slate-400">
+              No workflow runs cached in snapshot yet. Click <strong>🔑 Cloud Controls & Token</strong> (or <a href="https://github.com/${REPO_SLUG}/actions" target="_blank" class="text-indigo-400 underline">open GitHub Actions ↗</a>) to view live runs.
+            </td>
+          </tr>`;
+        return;
+      }
+
+      tbody.innerHTML = runs.slice(0, 10).map(r => {
+        const conc = (r.conclusion || r.status || '').toLowerCase();
+        let badge = `<span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300">${conc.toUpperCase()}</span>`;
+        if (conc === 'success') {
+          badge = `<span class="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">✅ SUCCESS</span>`;
+        } else if (conc === 'failure' || conc === 'timed_out') {
+          badge = `<span class="px-2 py-0.5 rounded bg-rose-500/15 text-rose-400 border border-rose-500/30">🚨 ${conc.toUpperCase()}</span>`;
+        } else if (conc === 'cancelled') {
+          badge = `<span class="px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30">⚠️ CANCELLED</span>`;
+        } else if (conc === 'in_progress' || conc === 'queued') {
+          badge = `<span class="px-2 py-0.5 rounded bg-sky-500/15 text-sky-300 border border-sky-500/30">⏳ RUNNING</span>`;
+        }
+        return `
+          <tr class="hover:bg-slate-800/40">
+            <td class="py-2.5 px-4 font-bold text-white">#${r.run_number || r.id}</td>
+            <td class="py-2.5 px-4 text-slate-200">${r.name || 'Delta 1DTE BTC Short Strangle'}</td>
+            <td class="py-2.5 px-4 text-slate-400">${r.event || 'schedule'}</td>
+            <td class="py-2.5 px-4">${badge}</td>
+            <td class="py-2.5 px-4 text-slate-300">${r.created_ist || formatIST(r.created_at)}</td>
+            <td class="py-2.5 px-4 text-right text-slate-400">${r.duration_sec ? r.duration_sec + 's' : '--'}</td>
+            <td class="py-2.5 px-4 text-right">
+              <a href="${r.html_url || ('https://github.com/' + REPO_SLUG + '/actions')}" target="_blank" class="text-indigo-400 hover:underline">View ↗</a>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    async function refreshLiveGitHubStatusFromBrowser(token) {
+      try {
+        const headers = {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28'
+        };
+        const [wfResp, runsResp, varResp] = await Promise.all([
+          fetch(`https://api.github.com/repos/${REPO_SLUG}/actions/workflows/${WORKFLOW_FILE}`, { headers }),
+          fetch(`https://api.github.com/repos/${REPO_SLUG}/actions/runs?per_page=10`, { headers }),
+          fetch(`https://api.github.com/repos/${REPO_SLUG}/actions/variables/BOT_MODE`, { headers })
+        ]);
+        if (!dashboardState.github_actions) dashboardState.github_actions = {};
+        if (wfResp.ok) {
+          const wf = await wfResp.json();
+          dashboardState.github_actions.state = wf.state;
+        }
+        if (varResp.ok) {
+          const v = await varResp.json();
+          if (v.value) dashboardState.github_actions.bot_mode = v.value;
+        }
+        if (runsResp.ok) {
+          const rd = await runsResp.json();
+          dashboardState.github_actions.runs = (rd.workflow_runs || []).map(r => ({
+            id: r.id,
+            run_number: r.run_number,
+            name: r.display_title || r.name,
+            event: r.event,
+            status: r.status,
+            conclusion: r.conclusion || r.status,
+            created_at: r.created_at,
+            created_ist: formatIST(r.created_at),
+            duration_sec: r.updated_at && r.created_at ? Math.max(0, Math.round((new Date(r.updated_at) - new Date(r.created_at)) / 1000)) : 0,
+            html_url: r.html_url
+          }));
+        }
+        renderGitHubActionsSection();
+      } catch (err) {
+        console.warn('Browser GitHub Actions status check skipped:', err);
+      }
+    }
+
+    async function setWorkflowEnabled(action) {
+      const token = getSavedToken();
+      if (!token) {
+        openSettingsModal();
+        showToast('Please save a GitHub PAT (with Actions: Read & Write permission) to enable/disable workflows from the dashboard.', 'info');
+        return;
+      }
+      try {
+        const resp = await fetch(`https://api.github.com/repos/${REPO_SLUG}/actions/workflows/${WORKFLOW_FILE}/${action}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28'
+          }
+        });
+        if (resp.status === 204 || resp.ok) {
+          showToast(`Successfully ${action}d GitHub Actions workflow!`, 'success');
+          refreshLiveGitHubStatusFromBrowser(token);
+        } else {
+          const errText = await resp.text();
+          showToast(`GitHub API returned ${resp.status}: Ensure your PAT has 'Actions: Read and write' permission. (${errText})`, 'error');
+        }
+      } catch (e) {
+        showToast(`Failed to ${action} workflow: ${e.message}`, 'error');
+      }
+    }
+
+    async function togglePauseLiveMode(targetMode) {
+      const token = getSavedToken();
+      if (!token) {
+        openSettingsModal();
+        showToast('Please save a GitHub PAT (with Variables: Read & Write permission) to switch BOT_MODE.', 'info');
+        return;
+      }
+      try {
+        const resp = await fetch(`https://api.github.com/repos/${REPO_SLUG}/actions/variables/BOT_MODE`, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/vnd.github+json',
+            'Content-Type': 'application/json',
+            'X-GitHub-Api-Version': '2022-11-28'
+          },
+          body: JSON.stringify({ name: 'BOT_MODE', value: targetMode })
+        });
+        if (resp.status === 204 || resp.ok) {
+          showToast(`BOT_MODE updated to '${targetMode}'!`, 'success');
+          if (dashboardState && dashboardState.github_actions) {
+            dashboardState.github_actions.bot_mode = targetMode;
+            renderGitHubActionsSection();
+          }
+        } else {
+          showToast(`GitHub API ${resp.status}: Ensure your PAT has 'Variables: Read and write' permission.`, 'error');
+        }
+      } catch (e) {
+        showToast(`Failed to update BOT_MODE: ${e.message}`, 'error');
+      }
+    }
+
+    async function triggerWorkflowDispatch() {
+      const token = getSavedToken();
+      const mode = document.getElementById('dispatch-mode-select').value;
+      if (!token) {
+        openSettingsModal();
+        showToast('Please save a GitHub PAT (with Actions: Read & Write permission) to trigger runs directly.', 'info');
+        return;
+      }
+      if (mode === 'live' && !confirm('Trigger a LIVE strangle execution right now? (Note: Idempotency guard will skip if target expiry already has an open strangle.)')) {
+        return;
+      }
+      try {
+        const resp = await fetch(`https://api.github.com/repos/${REPO_SLUG}/actions/workflows/${WORKFLOW_FILE}/dispatches`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/vnd.github+json',
+            'Content-Type': 'application/json',
+            'X-GitHub-Api-Version': '2022-11-28'
+          },
+          body: JSON.stringify({
+            ref: 'main',
+            inputs: { mode: mode, lots: '500' }
+          })
+        });
+        if (resp.status === 204 || resp.ok) {
+          showToast(`Workflow dispatched in '${mode}' mode! Refreshing run list in 4s...`, 'success');
+          setTimeout(() => refreshLiveGitHubStatusFromBrowser(token), 4000);
+        } else {
+          showToast(`GitHub API ${resp.status}: Ensure your PAT has 'Actions: Read and write' permission.`, 'error');
+        }
+      } catch (e) {
+        showToast(`Failed to dispatch workflow: ${e.message}`, 'error');
+      }
+    }
+
+    // SECTION 1B: Live Open Positions
+    function renderLivePositions() {
+      if (!dashboardState) return;
+      const positions = dashboardState.open_positions || [];
+      const tbody = document.getElementById('open-positions-body');
+
+      if (!positions.length) {
+        tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-slate-500">No open option positions right now. Next entry at 10:30 PM IST.</td></tr>`;
+        document.getElementById('kpi-upnl').textContent = '$0.00';
+        document.getElementById('kpi-premium').textContent = 'Active Premium Sold: $0.00 (0 legs)';
+        return;
+      }
+
+      let totalUpnl = 0;
+      let totalPremium = 0;
+
+      tbody.innerHTML = positions.map(p => {
+        const liveTicker = liveTickersBySymbol[p.symbol];
+        const markPx = liveTicker && liveTicker.mark_price ? parseFloat(liveTicker.mark_price) : Number(p.mark_price);
+        const entryPx = Number(p.entry_price);
+        const slTrigger = Number(p.sl_trigger || entryPx * 2);
+        const btcQty = Math.abs(Number(p.lots)) * 0.001;
+
+        const legPremium = entryPx * btcQty;
+        totalPremium += legPremium;
+
+        const legUpnl = (entryPx - markPx) * btcQty;
+        totalUpnl += legUpnl;
+
+        const slRange = Math.max(0.01, slTrigger - entryPx);
+        const slUsedPct = Math.max(0, Math.min(100, ((markPx - entryPx) / slRange) * 100));
+        const slRemainingPct = Math.max(0, ((slTrigger - markPx) / slTrigger) * 100);
+
+        const isCall = p.symbol.startsWith('C-');
+        const typeBadge = isCall
+          ? 'bg-purple-500/15 text-purple-300 border-purple-500/30'
+          : 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30';
+
+        const pnlColor = legUpnl >= 0 ? 'text-emerald-400' : 'text-rose-400';
+        const barColor = slUsedPct > 70 ? 'bg-rose-500' : (slUsedPct > 35 ? 'bg-amber-400' : 'bg-emerald-500');
+
+        return `
+          <tr class="hover:bg-slate-800/40 transition">
+            <td class="py-3.5 px-4 font-bold text-white flex items-center gap-2">
+              <span class="px-1.5 py-0.5 text-[10px] rounded border ${typeBadge}">${isCall ? 'CALL' : 'PUT'}</span>
+              ${p.symbol}
+            </td>
+            <td class="py-3.5 px-4">
+              <span class="px-2 py-0.5 text-xs rounded bg-rose-500/15 text-rose-300 border border-rose-500/30 font-semibold">
+                ${p.lots} lots
+              </span>
+              <span class="text-xs text-slate-400 ml-1">(${btcQty.toFixed(3)} BTC)</span>
+            </td>
+            <td class="py-3.5 px-4 text-right text-slate-200">$${entryPx.toFixed(2)}</td>
+            <td class="py-3.5 px-4 text-right font-bold text-amber-300">$${markPx.toFixed(2)}</td>
+            <td class="py-3.5 px-4 text-right">
+              <span class="px-2 py-0.5 text-xs rounded bg-slate-800 text-slate-200 border border-slate-700">
+                $${slTrigger.toFixed(1)}
+              </span>
+              ${p.sl_order_id ? `<div class="text-[10px] text-emerald-400 mt-0.5">#${p.sl_order_id} (${p.sl_size}L)</div>` : ''}
+            </td>
+            <td class="py-3.5 px-4 w-52">
+              <div class="flex items-center justify-between text-[11px] text-slate-400 mb-1">
+                <span>${slUsedPct === 0 ? 'In Profit' : slUsedPct.toFixed(0) + '% to SL'}</span>
+                <span>$${(slTrigger - markPx).toFixed(1)} buffer (${slRemainingPct.toFixed(0)}%)</span>
+              </div>
+              <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                <div class="h-full ${barColor} transition-all duration-300" style="width: ${Math.max(4, slUsedPct)}%"></div>
+              </div>
+            </td>
+            <td class="py-3.5 px-4 text-right font-bold ${pnlColor}">
+              ${formatUSD(legUpnl, true)}
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      const upnlEl = document.getElementById('kpi-upnl');
+      upnlEl.textContent = formatUSD(totalUpnl, true);
+      upnlEl.className = `text-2xl font-bold mt-2 mono ${totalUpnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+      document.getElementById('kpi-premium').textContent = `Active Premium Sold: ${formatUSD(totalPremium)} (${positions.length} open legs)`;
+    }
+
+    // SECTION 2 & 3: Date Filtering, Bar Chart & Monthly Calendar View
+    function initCalendarMonths() {
+      const daily = (dashboardState && dashboardState.daily_pnl) || [];
+      const monthSet = new Set();
+      for (const d of daily) {
+        if (d.date && d.date.length >= 7) monthSet.add(d.date.slice(0, 7));
+      }
+      const nowMonth = new Date().toISOString().slice(0, 7);
+      monthSet.add(nowMonth);
+      availableMonths = Array.from(monthSet).sort();
+      currentCalendarMonth = availableMonths[availableMonths.length - 1] || nowMonth;
+
+      const sel = document.getElementById('calendar-month-select');
+      sel.innerHTML = availableMonths.map(m => {
+        const [y, mo] = m.split('-');
+        const label = new Date(Number(y), Number(mo) - 1, 1).toLocaleString('en-US', { month: 'short', year: 'numeric' });
+        return `<option value="${m}" ${m === currentCalendarMonth ? 'selected' : ''}>${label}</option>`;
+      }).join('');
+    }
+
+    function changeCalendarMonth(delta) {
+      if (!currentCalendarMonth) return;
+      const [y, m] = currentCalendarMonth.split('-').map(Number);
+      const dt = new Date(y, m - 1 + delta, 1);
+      const nextYm = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
+      currentCalendarMonth = nextYm;
+      const sel = document.getElementById('calendar-month-select');
+      if (![...sel.options].some(o => o.value === nextYm)) {
+        const label = dt.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+        sel.insertAdjacentHTML('beforeend', `<option value="${nextYm}">${label}</option>`);
+      }
+      sel.value = nextYm;
+      renderCalendarHeatmap();
+    }
+
+    function onCalendarMonthSelect() {
+      currentCalendarMonth = document.getElementById('calendar-month-select').value;
+      renderCalendarHeatmap();
+    }
+
+    function setChartMode(mode) {
+      currentChartMode = mode;
+      const barPanel = document.getElementById('panel-bar-chart');
+      const calPanel = document.getElementById('panel-calendar-view');
+      const grid = document.getElementById('charts-grid');
+
+      ['both', 'bar', 'calendar'].forEach(m => {
+        const btn = document.getElementById(`tab-chart-${m}`);
+        btn.className = m === mode
+          ? 'px-3 py-1 text-xs font-semibold rounded-md bg-indigo-600 text-white transition'
+          : 'px-3 py-1 text-xs font-semibold rounded-md text-slate-400 hover:text-white transition';
+      });
+
+      if (mode === 'both') {
+        grid.className = 'p-5 grid grid-cols-1 lg:grid-cols-2 gap-6';
+        barPanel.classList.remove('hidden');
+        calPanel.classList.remove('hidden');
+      } else if (mode === 'bar') {
+        grid.className = 'p-5 grid grid-cols-1 gap-6';
+        barPanel.classList.remove('hidden');
+        calPanel.classList.add('hidden');
+      } else {
+        grid.className = 'p-5 grid grid-cols-1 gap-6';
+        barPanel.classList.add('hidden');
+        calPanel.classList.remove('hidden');
+      }
+    }
+
+    function setDatePreset(preset) {
+      const fromEl = document.getElementById('filter-from-date');
+      const toEl = document.getElementById('filter-to-date');
+      const today = new Date().toISOString().slice(0, 10);
+
+      if (preset === 'all') {
+        fromEl.value = '';
+        toEl.value = '';
+      } else if (preset === 'today') {
+        fromEl.value = today;
+        toEl.value = today;
+      } else if (preset === '7d') {
+        const d = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+        fromEl.value = d;
+        toEl.value = today;
+      } else if (preset === 'oct2026') {
+        fromEl.value = '2026-10-01';
+        toEl.value = '2026-10-31';
+        currentCalendarMonth = '2026-10';
+        document.getElementById('calendar-month-select').value = '2026-10';
+      } else if (preset === 'feb2026') {
+        fromEl.value = '2026-02-01';
+        toEl.value = '2026-02-28';
+        currentCalendarMonth = '2026-02';
+        document.getElementById('calendar-month-select').value = '2026-02';
+      } else if (preset === 'jan2026') {
+        fromEl.value = '2026-01-01';
+        toEl.value = '2026-01-31';
+        currentCalendarMonth = '2026-01';
+        document.getElementById('calendar-month-select').value = '2026-01';
+      }
+      applyAllFilters();
+    }
+
+    function selectSingleDate(dateStr) {
+      document.getElementById('filter-from-date').value = dateStr;
+      document.getElementById('filter-to-date').value = dateStr;
+      applyAllFilters();
+    }
+
+    function setAuditTab(tab) {
+      currentAuditTab = tab;
+      ['ALL', 'SUCCESS', 'PENDING_SL', 'CANCELLED', 'FAILED'].forEach(t => {
+        const btn = document.getElementById(`audit-tab-${t}`);
+        btn.className = t === tab
+          ? 'px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 text-white transition'
+          : 'px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 text-slate-300 hover:text-white transition';
+      });
+      applyAllFilters();
+    }
+
+    function applyAllFilters() {
+      if (!dashboardState) return;
+      const fromDate = document.getElementById('filter-from-date').value;
+      const toDate = document.getElementById('filter-to-date').value;
+      const search = (document.getElementById('filter-search').value || '').trim().toLowerCase();
+      const inst = document.getElementById('filter-instrument').value;
+
+      const allAudit = dashboardState.audit_orders || [];
+
+      // Filter by date, search, and instrument first (to compute tab badge counts)
+      const baseFiltered = allAudit.filter(o => {
+        const d = o.date_ist || (o.created_at || '').slice(0, 10);
+        if (fromDate && d < fromDate) return false;
+        if (toDate && d > toDate) return false;
+
+        const sym = (o.symbol || '').toUpperCase();
+        if (inst === 'OPTIONS' && !(sym.startsWith('C-') || sym.startsWith('P-'))) return false;
+        if (inst === 'CALLS' && !sym.startsWith('C-')) return false;
+        if (inst === 'PUTS' && !sym.startsWith('P-')) return false;
+        if (inst === 'FUTURES' && (sym.startsWith('C-') || sym.startsWith('P-'))) return false;
+
+        if (search) {
+          const hay = `${o.symbol} ${o.id} ${o.reason} ${o.source_ip} ${o.audit_status}`.toLowerCase();
+          if (!hay.includes(search)) return false;
+        }
+        return true;
+      });
+
+      // Update Tab Counts
+      const counts = { ALL: baseFiltered.length, SUCCESS: 0, PENDING_SL: 0, CANCELLED: 0, FAILED: 0 };
+      let grossPnl = 0;
+      let totalFees = 0;
+      let winCount = 0;
+      let lossCount = 0;
+
+      for (const o of baseFiltered) {
+        const st = o.audit_status || 'SUCCESS';
+        if (counts[st] !== undefined) counts[st]++;
+        if (st === 'SUCCESS') {
+          const pnl = Number(o.pnl_usd || 0);
+          const fee = Number(o.paid_commission || 0);
+          grossPnl += pnl;
+          totalFees += fee;
+          if (pnl > 0) winCount++;
+          else if (pnl < 0) lossCount++;
+        }
+      }
+
+      Object.keys(counts).forEach(k => {
+        const el = document.getElementById(`count-${k}`);
+        if (el) el.textContent = counts[k];
+      });
+
+      const netPnl = grossPnl - totalFees;
+      const pnlEl = document.getElementById('kpi-period-net-pnl');
+      pnlEl.textContent = formatUSD(netPnl, true);
+      pnlEl.className = `text-2xl font-bold mt-2 mono ${netPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+      document.getElementById('kpi-period-fees').textContent = `Gross: ${formatUSD(grossPnl, true)} • Fees: $${totalFees.toFixed(2)}`;
+      const totalClosedWithPnl = winCount + lossCount;
+      const winRate = totalClosedWithPnl > 0 ? ((winCount / totalClosedWithPnl) * 100).toFixed(0) : '--';
+      document.getElementById('kpi-winrate-badge').textContent = `Win Rate: ${winRate}% (${winCount}W / ${lossCount}L)`;
+
+      document.getElementById('selected-range-summary').innerHTML =
+        `Range: <strong class="text-white">${fromDate || 'Start'} → ${toDate || 'Now'}</strong> • Orders: <strong class="text-white">${baseFiltered.length}</strong> • Net Realized: <strong class="${netPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${formatUSD(netPnl, true)}</strong>`;
+
+      // Filter by selected Audit Status tab
+      filteredAuditOrders = currentAuditTab === 'ALL'
+        ? baseFiltered
+        : baseFiltered.filter(o => o.audit_status === currentAuditTab);
+
+      renderAuditTable(filteredAuditOrders);
+      renderDailyBarChart(fromDate, toDate);
+      renderCalendarHeatmap();
+    }
+
+    function renderDailyBarChart(fromDate, toDate) {
+      const allDaily = (dashboardState && dashboardState.daily_pnl) || [];
+      const days = allDaily.filter(d => {
+        if (fromDate && d.date < fromDate) return false;
+        if (toDate && d.date > toDate) return false;
+        return true;
+      });
+
+      const container = document.getElementById('bar-chart-container');
+      document.getElementById('bar-chart-days-count').textContent = `${days.length} active day(s)`;
+
+      if (!days.length) {
+        container.innerHTML = `<div class="w-full h-full flex items-center justify-center text-xs text-slate-500">No closed trades in selected date range.</div>`;
+        document.getElementById('bar-chart-best-worst').textContent = 'Best: -- | Worst: --';
+        return;
+      }
+
+      const maxAbs = Math.max(10, ...days.map(d => Math.abs(Number(d.net_pnl_usd || 0))));
+      let bestDay = days[0];
+      let worstDay = days[0];
+
+      container.innerHTML = days.map(d => {
+        const net = Number(d.net_pnl_usd || 0);
+        if (net > bestDay.net_pnl_usd) bestDay = d;
+        if (net < worstDay.net_pnl_usd) worstDay = d;
+
+        const heightPct = Math.max(8, Math.round((Math.abs(net) / maxAbs) * 85));
+        const barColor = net >= 0
+          ? 'bg-emerald-500/80 hover:bg-emerald-400 border-emerald-400'
+          : 'bg-rose-500/80 hover:bg-rose-400 border-rose-400';
+        const textColor = net >= 0 ? 'text-emerald-400' : 'text-rose-400';
+
+        return `
+          <div onclick="selectSingleDate('${d.date}')"
+            class="flex-1 min-w-[48px] flex flex-col items-center justify-end h-full cursor-pointer group"
+            title="${d.date}: Net ${formatUSD(net, true)} (Gross ${formatUSD(d.realized_pnl_usd, true)}, Fees $${d.commissions_usd}, ${d.closed_orders_count} closed orders)">
+            <div class="text-[10px] mono ${textColor} mb-1 opacity-90 group-hover:font-bold">${formatUSD(net, true)}</div>
+            <div class="w-full max-w-[36px] rounded-t border-t ${barColor} transition-all" style="height: ${heightPct}%"></div>
+            <div class="text-[10px] mono text-slate-400 mt-1.5">${d.date.slice(5)}</div>
+          </div>
+        `;
+      }).join('');
+
+      document.getElementById('bar-chart-best-worst').textContent =
+        `Best: ${bestDay.date} (${formatUSD(bestDay.net_pnl_usd, true)}) | Worst: ${worstDay.date} (${formatUSD(worstDay.net_pnl_usd, true)})`;
+    }
+
+    function renderCalendarHeatmap() {
+      const grid = document.getElementById('calendar-days-grid');
+      if (!currentCalendarMonth) return;
+
+      const [year, month] = currentCalendarMonth.split('-').map(Number);
+      const firstDay = new Date(year, month - 1, 1);
+      const daysInMonth = new Date(year, month, 0).getDate();
+      // Monday-based weekday index (0 = Mon, 6 = Sun)
+      const startOffset = (firstDay.getDay() + 6) % 7;
+
+      const dailyMap = {};
+      for (const d of (dashboardState.daily_pnl || [])) {
+        dailyMap[d.date] = d;
+      }
+
+      const cells = [];
+      for (let i = 0; i < startOffset; i++) {
+        cells.push(`<div class="h-16 rounded-lg bg-slate-950/30 border border-slate-900/40"></div>`);
+      }
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const info = dailyMap[dateStr];
+
+        if (!info) {
+          cells.push(`
+            <div onclick="selectSingleDate('${dateStr}')"
+              class="h-16 rounded-lg bg-slate-900/40 hover:bg-slate-800/50 border border-slate-800/60 p-1.5 flex flex-col justify-between cursor-pointer transition">
+              <span class="text-[10px] text-slate-500 mono">${day}</span>
+              <span class="text-[10px] text-slate-600 text-right mono">—</span>
+            </div>
+          `);
+        } else {
+          const net = Number(info.net_pnl_usd || 0);
+          const isPos = net > 0;
+          const isZero = Math.abs(net) < 0.01;
+          const bgCls = isZero
+            ? 'bg-amber-500/10 border-amber-500/40 text-amber-300'
+            : (isPos ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300' : 'bg-rose-500/15 border-rose-500/40 text-rose-300');
+
+          cells.push(`
+            <div onclick="selectSingleDate('${dateStr}')"
+              class="h-16 rounded-lg border ${bgCls} hover:scale-[1.02] p-1.5 flex flex-col justify-between cursor-pointer transition shadow-sm"
+              title="${dateStr}: Net PnL ${formatUSD(net, true)} | Cashflow ${formatUSD(info.cashflow_usd, true)} | Fees $${info.commissions_usd} | ${info.closed_orders_count} closed, ${info.cancelled_orders_count} cancelled">
+              <div class="flex items-center justify-between">
+                <span class="text-[10px] font-bold text-white mono">${day}</span>
+                <span class="text-[9px] px-1 rounded bg-black/30 text-slate-300 mono">${info.closed_orders_count}T</span>
+              </div>
+              <div class="text-[11px] font-bold text-right mono truncate">
+                ${isZero ? formatUSD(info.cashflow_usd, true) + ' CF' : formatUSD(net, true)}
+              </div>
+            </div>
+          `);
+        }
+      }
+
+      grid.innerHTML = cells.join('');
+    }
+
+    // SECTION 5: Render Audit Table
+    function renderAuditTable(orders) {
+      const tbody = document.getElementById('audit-orders-body');
+      if (!orders.length) {
+        tbody.innerHTML = `<tr><td colspan="11" class="py-8 text-center text-slate-500">No audit events match the selected filters.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = orders.map(o => {
+        const isSell = o.side === 'SELL';
+        const sideBadge = isSell
+          ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+          : 'bg-sky-500/15 text-sky-300 border-sky-500/30';
+
+        let statusBadge = '';
+        if (o.audit_status === 'SUCCESS') {
+          statusBadge = `<span class="px-2 py-0.5 text-[10px] font-bold rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">✅ FILLED</span>`;
+        } else if (o.audit_status === 'PENDING_SL') {
+          statusBadge = `<span class="px-2 py-0.5 text-[10px] font-bold rounded bg-sky-500/15 text-sky-300 border border-sky-500/30">🛡️ PENDING SL</span>`;
+        } else if (o.audit_status === 'CANCELLED') {
+          statusBadge = `<span class="px-2 py-0.5 text-[10px] font-bold rounded bg-amber-500/15 text-amber-300 border border-amber-500/30">⚠️ CANCELLED</span>`;
+        } else {
+          statusBadge = `<span class="px-2 py-0.5 text-[10px] font-bold rounded bg-rose-500/15 text-rose-400 border border-rose-500/30">🚨 FAILED</span>`;
+        }
+
+        const btcQty = (Number(o.size || 0) * 0.001).toFixed(3);
+        const priceDisplay = o.avg_fill_price > 0
+          ? `$${Number(o.avg_fill_price).toFixed(2)}`
+          : (o.stop_price > 0 ? `SL @ $${Number(o.stop_price).toFixed(1)}` : '$0.00 (Expiry)');
+
+        const pnl = Number(o.pnl_usd || 0);
+        const cf = Number(o.cashflow_usd || 0);
+
+        return `
+          <tr class="hover:bg-slate-800/40 transition">
+            <td class="py-3 px-4 text-slate-300 whitespace-nowrap">${formatIST(o.updated_at || o.created_at)}</td>
+            <td class="py-3 px-4 text-slate-400">#${o.id}</td>
+            <td class="py-3 px-4 font-bold text-white">${o.symbol}</td>
+            <td class="py-3 px-4">
+              <span class="px-2 py-0.5 text-[10px] rounded border ${sideBadge}">
+                ${o.side} ${o.stop_order_type ? '(SL)' : ''}
+              </span>
+            </td>
+            <td class="py-3 px-4">
+              <div class="flex items-center gap-2">
+                ${statusBadge}
+                <span class="text-slate-300 text-[11px]">${o.reason || ''}</span>
+              </div>
+            </td>
+            <td class="py-3 px-4 text-right text-slate-200">${o.size} <span class="text-slate-500">(${btcQty} BTC)</span></td>
+            <td class="py-3 px-4 text-right text-slate-200">${priceDisplay}</td>
+            <td class="py-3 px-4 text-right ${cf >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${cf !== 0 ? formatUSD(cf, true) : '—'}</td>
+            <td class="py-3 px-4 text-right font-semibold ${pnl > 0 ? 'text-emerald-400' : (pnl < 0 ? 'text-rose-400' : 'text-slate-500')}">
+              ${pnl !== 0 ? formatUSD(pnl, true) : '—'}
+            </td>
+            <td class="py-3 px-4 text-right text-slate-400">$${Number(o.paid_commission || 0).toFixed(4)}</td>
+            <td class="py-3 px-4 text-[11px] text-slate-400">${o.source_ip || 'api'}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function exportAuditCSV() {
+      if (!filteredAuditOrders.length) {
+        showToast('No orders to export!', 'error');
+        return;
+      }
+      const headers = ['Date_IST', 'Timestamp_UTC', 'Order_ID', 'Symbol', 'Side', 'Audit_Status', 'Reason', 'Lots', 'Avg_Fill_Price', 'Stop_Price', 'Cashflow_USD', 'Realized_PnL_USD', 'Commission_USD', 'Source_IP'];
+      const rows = filteredAuditOrders.map(o => [
+        o.date_ist || '',
+        o.updated_at || o.created_at || '',
+        o.id,
+        o.symbol,
+        o.side,
+        o.audit_status,
+        `"${(o.reason || '').replace(/"/g, '""')}"`,
+        o.size,
+        o.avg_fill_price,
+        o.stop_price,
+        o.cashflow_usd,
+        o.pnl_usd,
+        o.paid_commission,
+        o.source_ip
+      ]);
+      const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `delta_strangle_audit_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+    }
+
+    // Settings Modal Functions
+    function openSettingsModal() {
+      document.getElementById('gh-pat-input').value = getSavedToken();
+      document.getElementById('settings-modal').classList.remove('hidden');
+    }
+
+    function closeSettingsModal() {
+      document.getElementById('settings-modal').classList.add('hidden');
+    }
+
+    function saveSettingsToken() {
+      const val = document.getElementById('gh-pat-input').value.trim();
+      if (val) {
+        localStorage.setItem(STORAGE_TOKEN_KEY, val);
+        showToast('GitHub PAT saved locally! Connecting to GitHub API...', 'success');
+      }
+      closeSettingsModal();
+      loadDashboardSnapshot();
+    }
+
+    function clearSavedToken() {
+      localStorage.removeItem(STORAGE_TOKEN_KEY);
+      document.getElementById('gh-pat-input').value = '';
+      showToast('Saved GitHub token cleared from browser.', 'info');
+    }
+
+    function copyBookmarkUrl() {
+      const val = document.getElementById('gh-pat-input').value.trim() || getSavedToken();
+      if (!val) {
+        showToast('Enter a GitHub PAT first to generate a bookmarkable URL.', 'error');
+        return;
+      }
+      const url = `${window.location.origin}${window.location.pathname}#token=${encodeURIComponent(val)}`;
+      navigator.clipboard.writeText(url);
+      showToast('Bookmarkable URL with #token copied to clipboard!', 'success');
+    }
+
+    // Boot Dashboard
+    loadDashboardSnapshot().then(() => {
+      fetchLiveDeltaTickers();
+      setInterval(fetchLiveDeltaTickers, 3000);
+      setInterval(loadDashboardSnapshot, 60000);
+      setInterval(updateNextEntryCountdown, 30000);
+    });
+  </script>
+</body>
+</html>
