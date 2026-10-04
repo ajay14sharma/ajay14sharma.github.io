@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Delta 1DTE BTC Short Strangle (1.8x) — Actionable Cloud Dashboard</title>
+  <title>Delta 1DTE BTC Short Strangle (1.8x) — Cloud Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -27,9 +27,9 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
     .glass-card {
-      background: rgba(21, 31, 50, 0.85);
+      background: rgba(21, 31, 50, 0.82);
       backdrop-filter: blur(12px);
-      border: 1px solid rgba(148, 163, 184, 0.14);
+      border: 1px solid rgba(148, 163, 184, 0.13);
     }
     .pulse-dot {
       animation: pulse-ring 2s infinite;
@@ -49,39 +49,48 @@
 </head>
 <body class="min-h-screen pb-16">
 
-  <!-- Top Navigation Header -->
-  <header class="border-b border-slate-800 bg-slate-900/90 sticky top-0 z-40 backdrop-blur-md">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-4">
+  <!-- Top Navigation Header (Simplified & Clean) -->
+  <header class="border-b border-slate-800/90 bg-slate-900/90 sticky top-0 z-40 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/40 flex items-center justify-center text-amber-400 font-bold text-lg">
+        <div class="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/40 flex items-center justify-center text-amber-400 font-bold text-base">
           Δ
         </div>
         <div>
-          <div class="flex items-center gap-2.5">
-            <h1 class="text-lg font-bold tracking-tight text-white">1DTE BTC Short Strangle (`1.8x`)</h1>
-            <span class="px-2 py-0.5 text-[11px] font-semibold rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
-              <span class="w-2 h-2 rounded-full bg-emerald-400 pulse-dot"></span>
-              LIVE CLOUD BOT
+          <div class="flex items-center gap-2">
+            <h1 class="text-base sm:text-lg font-bold tracking-tight text-white">BTC 1DTE Short Strangle (`1.8x`)</h1>
+            <span class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 pulse-dot"></span>
+              LIVE
             </span>
           </div>
-          <p class="text-xs text-slate-400">
-            Delta Exchange India • Daily Entry <span class="text-slate-200 font-medium">10:30 PM IST</span> (`T+2` Expiry) • `2x` Mark-Price Bracket SL • Idempotency Guard Active
+          <p class="text-[11px] text-slate-400 hidden sm:block">
+            Delta Exchange India • Daily Entry <span class="text-slate-200 font-medium">10:30 PM IST</span> (`T+2` Expiry) • `2x` Mark-Price SL
           </p>
         </div>
       </div>
 
-      <div class="flex items-center gap-3 flex-wrap">
+      <div class="flex items-center gap-2 sm:gap-2.5 flex-wrap">
         <div class="text-right px-3 py-1 rounded-lg bg-slate-800/70 border border-slate-700/60">
-          <div class="text-[10px] uppercase tracking-wider text-slate-400">Live BTC Spot</div>
-          <div id="live-btc-spot" class="text-base font-bold text-amber-400 mono">$--,--</div>
+          <div class="text-[9px] uppercase tracking-wider text-slate-400">BTC Spot</div>
+          <div id="live-btc-spot" class="text-sm font-bold text-amber-400 mono">$--,--</div>
         </div>
-        <button onclick="syncNow()" id="btn-sync-cloud"
-           class="px-3 py-2 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5">
-          <span>🔄 Sync Cloud Data</span>
+
+        <!-- Button to Open Critical Alert Monitor Dialog (Last 1 Month) -->
+        <button onclick="openAlertsModal()" id="btn-open-alerts-modal"
+          class="px-3 py-2 text-xs font-semibold rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-200 border border-rose-500/40 transition flex items-center gap-2 shadow-sm">
+          <span>🚨 Critical Alert Monitor</span>
+          <span id="header-alerts-count" class="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-rose-500/30 text-white mono">0</span>
         </button>
+
+        <button onclick="syncNow()" id="btn-sync-cloud"
+          class="px-3 py-2 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5">
+          <span>🔄 Sync</span>
+        </button>
+
         <button onclick="openSettingsModal()"
-           class="px-3 py-2 text-xs font-medium rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 transition flex items-center gap-1.5">
-          <span>🔑 Cloud Controls & Token</span>
+          class="px-3 py-2 text-xs font-medium rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 transition flex items-center gap-1.5">
+          <span>🔑 Cloud Setup</span>
         </button>
       </div>
     </div>
@@ -90,357 +99,565 @@
   <!-- Toast Notification Banner -->
   <div id="toast-banner" class="hidden fixed bottom-5 right-5 z-50 max-w-md px-4 py-3 rounded-xl shadow-2xl border text-xs font-medium transition-all"></div>
 
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 space-y-6">
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 pt-5 space-y-5">
 
-    <!-- SECTION 6: Alert Banner for Last 5 Critical Failures / Risk Events -->
-    <section class="glass-card rounded-xl overflow-hidden border-l-4 border-l-rose-500">
-      <div class="px-5 py-3.5 border-b border-slate-800/80 flex flex-wrap items-center justify-between gap-2 bg-rose-950/20">
-        <div class="flex items-center gap-2.5">
-          <span class="px-2 py-0.5 text-[11px] font-bold rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 uppercase tracking-wider">
-            🚨 Critical Alert Monitor
-          </span>
-          <h2 class="text-sm font-semibold text-white">Last 5 Critical Failures, SL Cancellations & Risk Anomalies</h2>
-        </div>
-        <div class="flex items-center gap-3">
-          <span id="alerts-summary-badge" class="text-xs text-slate-400 mono">Scanning audit history...</span>
-          <button onclick="toggleSection('alerts-panel-body')" class="text-xs text-slate-400 hover:text-white underline">Toggle</button>
-        </div>
+    <!-- Compact 1-Line Critical Alert Monitor Bar (Opens 2-Section Modal Dialog) -->
+    <div class="glass-card rounded-xl px-4 py-2.5 border-l-4 border-l-rose-500 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-2.5 flex-wrap text-xs">
+        <span class="px-2 py-0.5 text-[10px] font-bold rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 uppercase tracking-wider">
+          Last 1 Month (30D)
+        </span>
+        <span id="alerts-summary-badge" class="text-slate-200 font-medium">
+          Scanning last 30 days of Technical & Portfolio alerts...
+        </span>
       </div>
-      <div id="alerts-panel-body" class="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-        <!-- Populated by JS -->
+      <div class="flex items-center gap-2">
+        <button onclick="openAlertsModal('technical')"
+          class="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 border border-indigo-500/30 transition mono">
+          🔧 Technical (<span id="strip-tech-count">0</span>)
+        </button>
+        <button onclick="openAlertsModal('portfolio')"
+          class="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 transition mono">
+          💼 Portfolio (<span id="strip-port-count">0</span>)
+        </button>
+        <button onclick="openAlertsModal('all')"
+          class="px-3 py-1 text-xs font-semibold rounded-lg bg-rose-600 hover:bg-rose-500 text-white transition">
+          Open Alert Monitor ↗
+        </button>
+      </div>
+    </div>
+
+    <!-- 4-Card KPI Summary Strip -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+      <div class="glass-card rounded-xl p-4">
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Wallet Equity</span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 mono">USD / INR</span>
+        </div>
+        <div id="kpi-balance" class="text-2xl font-bold text-white mt-1.5 mono">$--</div>
+        <div id="kpi-available" class="text-[11px] text-slate-400 mt-1 truncate">Available: $--</div>
+      </div>
+
+      <div class="glass-card rounded-xl p-4">
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Open Unrealized PnL</span>
+          <span id="live-tick-badge" class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">Live 3s</span>
+        </div>
+        <div id="kpi-upnl" class="text-2xl font-bold text-slate-200 mt-1.5 mono">$0.00</div>
+        <div id="kpi-premium" class="text-[11px] text-slate-400 mt-1">Active Premium Sold: $0.00 (0 legs)</div>
+      </div>
+
+      <div class="glass-card rounded-xl p-4">
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Realized PnL (Period)</span>
+          <span id="kpi-winrate-badge" class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 mono">Win: --%</span>
+        </div>
+        <div id="kpi-period-net-pnl" class="text-2xl font-bold text-white mt-1.5 mono">$0.00</div>
+        <div id="kpi-period-fees" class="text-[11px] text-slate-400 mt-1">Gross: $0.00 • Fees: $0.00</div>
+      </div>
+
+      <div class="glass-card rounded-xl p-4 flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Next Entry</span>
+          <span id="kpi-countdown" class="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 mono">--h --m</span>
+        </div>
+        <div id="kpi-sync-time" class="text-xs font-semibold text-white mt-1.5 truncate">--</div>
+        <div id="tick-counter" class="text-[11px] text-emerald-400 mt-1 mono truncate">Connecting live feed...</div>
       </div>
     </section>
 
-    <!-- SECTION 1A: KPI Summary Cards -->
-    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      <div class="glass-card rounded-xl p-4">
-        <div class="flex items-center justify-between">
-          <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Wallet Balance (BTC Sub)</span>
-          <span class="text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-300 mono">USD / INR</span>
-        </div>
-        <div id="kpi-balance" class="text-2xl font-bold text-white mt-2 mono">$--</div>
-        <div id="kpi-available" class="text-xs text-slate-400 mt-1">Available Margin: $--</div>
+    <!-- Simplified Primary Navigation Bar (3 Focused Views + Full View Toggle) -->
+    <nav class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+      <div class="flex items-center gap-1.5 bg-slate-900/90 p-1 rounded-xl border border-slate-800">
+        <button onclick="setMainViewTab('overview')" id="main-tab-btn-overview"
+          class="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 text-white transition">
+          📊 Overview & Performance
+        </button>
+        <button onclick="setMainViewTab('history')" id="main-tab-btn-history"
+          class="px-3.5 py-1.5 text-xs font-semibold rounded-lg text-slate-400 hover:text-white transition">
+          📜 Trade & Audit Ledger
+        </button>
+        <button onclick="setMainViewTab('automation')" id="main-tab-btn-automation"
+          class="px-3.5 py-1.5 text-xs font-semibold rounded-lg text-slate-400 hover:text-white transition">
+          ⚙️ Scheduler & Controls
+        </button>
+        <button onclick="setMainViewTab('all')" id="main-tab-btn-all"
+          class="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-400 hover:text-white transition"
+          title="Display all panels on one page">
+          📑 All Panels
+        </button>
       </div>
 
-      <div class="glass-card rounded-xl p-4">
-        <div class="flex items-center justify-between">
-          <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Open Unrealized PnL</span>
-          <span id="live-tick-badge" class="text-[11px] px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">Live 3s Tick</span>
-        </div>
-        <div id="kpi-upnl" class="text-2xl font-bold text-slate-200 mt-2 mono">$0.00</div>
-        <div id="kpi-premium" class="text-xs text-slate-400 mt-1">Active Premium Sold: $0.00 (0 legs)</div>
+      <!-- Quick Date Range Presets (Shared across Performance Charts & Ledger) -->
+      <div class="flex items-center gap-1.5 flex-wrap">
+        <span class="text-[11px] text-slate-400 mr-1">Period:</span>
+        <button onclick="setDatePreset('all')" id="preset-btn-all" class="px-2.5 py-1 text-xs font-medium rounded-lg bg-indigo-600 text-white border border-indigo-500">All Time</button>
+        <button onclick="setDatePreset('30d')" id="preset-btn-30d" class="px-2.5 py-1 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">Last 30D</button>
+        <button onclick="setDatePreset('7d')" id="preset-btn-7d" class="px-2.5 py-1 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">Last 7D</button>
+        <button onclick="setDatePreset('oct2026')" id="preset-btn-oct2026" class="px-2.5 py-1 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">Oct 2026</button>
+        <button onclick="setDatePreset('today')" id="preset-btn-today" class="px-2.5 py-1 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">Today</button>
       </div>
+    </nav>
 
-      <div class="glass-card rounded-xl p-4">
-        <div class="flex items-center justify-between">
-          <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Realized PnL (Selected Period)</span>
-          <span id="kpi-winrate-badge" class="text-[11px] px-2 py-0.5 rounded bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 mono">Win Rate: --%</span>
-        </div>
-        <div id="kpi-period-net-pnl" class="text-2xl font-bold text-white mt-2 mono">$0.00</div>
-        <div id="kpi-period-fees" class="text-xs text-slate-400 mt-1">Gross: $0.00 • Fees: $0.00</div>
-      </div>
+    <!-- ========================================================================= -->
+    <!-- VIEW 1: OVERVIEW & PORTFOLIO PERFORMANCE (Default View)                   -->
+    <!-- ========================================================================= -->
+    <div id="main-view-overview" class="space-y-5">
 
-      <div class="glass-card rounded-xl p-4">
-        <div class="flex items-center justify-between">
-          <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Next Scheduled Entry</span>
-          <span id="kpi-countdown" class="text-[11px] px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 mono">--h --m</span>
-        </div>
-        <div id="kpi-sync-time" class="text-sm font-semibold text-white mt-2">--</div>
-        <div id="tick-counter" class="text-xs text-emerald-400 mt-1.5 mono">Connecting to Delta India live feed...</div>
-      </div>
-    </section>
-
-    <!-- SECTION 4: GitHub Actions Status & Actionable Controls (Enable / Disable / Pause / Trigger) -->
-    <section class="glass-card rounded-xl overflow-hidden">
-      <div class="px-5 py-4 border-b border-slate-800 flex flex-wrap items-center justify-between gap-4">
-        <div class="flex items-center gap-3 flex-wrap">
-          <h2 class="text-base font-semibold text-white flex items-center gap-2">
-            ⚙️ GitHub Actions Scheduler & Actionable Controls
-          </h2>
-          <span id="gh-wf-state-badge" class="px-2.5 py-0.5 text-xs font-bold rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-            ● WORKFLOW ACTIVE
-          </span>
-          <span id="gh-bot-mode-badge" class="px-2.5 py-0.5 text-xs font-bold rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 mono">
-            BOT_MODE: LIVE (500 LOTS)
-          </span>
+      <!-- 1A: Active Short Option Positions & Live 2x Stop-Loss Brackets -->
+      <section class="glass-card rounded-xl overflow-hidden">
+        <div class="px-5 py-3.5 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 class="text-sm sm:text-base font-semibold text-white flex items-center gap-2">
+              🛡️ Open Short Option Positions & `2x` Stop-Loss Brackets
+            </h2>
+            <p class="text-[11px] text-slate-400">
+              Live 3s mark prices from Delta Exchange India `/v2/tickers` (`1 lot = 0.001 BTC`).
+            </p>
+          </div>
+          <span class="text-[11px] mono text-slate-400">SL Trigger: <strong class="text-emerald-400">2.0x Entry (mark_price)</strong></span>
         </div>
 
-        <!-- Actionable Buttons -->
-        <div class="flex items-center gap-2 flex-wrap">
-          <select id="dispatch-mode-select" class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 mono">
-            <option value="sync-dashboard">Mode: sync-dashboard (Safe Sync)</option>
-            <option value="dry-run">Mode: dry-run (Preview Strikes)</option>
-            <option value="verify-auth">Mode: verify-auth (Test Proxy & Key)</option>
-            <option value="attach-sl-only">Mode: attach-sl-only (Ensure 2x SL)</option>
-            <option value="live">Mode: live (Execute Strangle)</option>
-          </select>
-          <button onclick="triggerWorkflowDispatch()"
-            class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition shadow">
-            ▶️ Run Workflow
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b border-slate-800 text-[11px] uppercase tracking-wider text-slate-400 bg-slate-900/50">
+                <th class="py-2.5 px-4">Contract</th>
+                <th class="py-2.5 px-4">Size</th>
+                <th class="py-2.5 px-4 text-right">Sold Entry</th>
+                <th class="py-2.5 px-4 text-right">Live Mark</th>
+                <th class="py-2.5 px-4 text-right">2x SL Trigger</th>
+                <th class="py-2.5 px-4">SL Buffer</th>
+                <th class="py-2.5 px-4 text-right">Unrealized PnL</th>
+              </tr>
+            </thead>
+            <tbody id="open-positions-body" class="divide-y divide-slate-800/70 text-sm mono">
+              <tr>
+                <td colspan="7" class="py-8 text-center text-slate-500">Loading open positions...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 1B: Portfolio Performance Chart + Daily PnL Bar Chart & Monthly Calendar -->
+      <section class="glass-card rounded-xl overflow-hidden">
+        <div class="px-5 py-3.5 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-sm sm:text-base font-semibold text-white flex items-center gap-2">
+              📈 Portfolio Performance & P&L Analytics
+            </h2>
+            <p class="text-[11px] text-slate-400">
+              Track cumulative portfolio equity, drawdown, daily realized bars, and monthly calendar heatmap.
+            </p>
+          </div>
+
+          <!-- Chart Mode Switcher -->
+          <div class="flex items-center gap-1 bg-slate-900 p-1 rounded-lg border border-slate-800">
+            <button onclick="setChartMode('performance')" id="tab-chart-performance"
+              class="px-3 py-1 text-xs font-semibold rounded-md bg-indigo-600 text-white transition">
+              📈 Performance Curve
+            </button>
+            <button onclick="setChartMode('bar')" id="tab-chart-bar"
+              class="px-3 py-1 text-xs font-semibold rounded-md text-slate-400 hover:text-white transition">
+              📊 Daily Bars
+            </button>
+            <button onclick="setChartMode('calendar')" id="tab-chart-calendar"
+              class="px-3 py-1 text-xs font-semibold rounded-md text-slate-400 hover:text-white transition">
+              📅 Monthly Calendar
+            </button>
+            <button onclick="setChartMode('both')" id="tab-chart-both"
+              class="px-3 py-1 text-xs font-semibold rounded-md text-slate-400 hover:text-white transition">
+              🔀 All Charts
+            </button>
+          </div>
+        </div>
+
+        <!-- Custom Date Range & Chart Options Bar -->
+        <div class="px-5 py-2.5 bg-slate-900/60 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div class="flex items-center gap-2 flex-wrap">
+            <label class="text-slate-400">From:</label>
+            <input type="date" id="filter-from-date" onchange="applyAllFilters()"
+              class="bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-xs text-white mono" />
+            <label class="text-slate-400">To:</label>
+            <input type="date" id="filter-to-date" onchange="applyAllFilters()"
+              class="bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-xs text-white mono" />
+            <button onclick="setDatePreset('feb2026')" class="px-2 py-1 text-[11px] rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">Feb 2026</button>
+            <button onclick="setDatePreset('jan2026')" class="px-2 py-1 text-[11px] rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">Jan 2026</button>
+          </div>
+
+          <div class="flex items-center gap-4 flex-wrap">
+            <label class="flex items-center gap-1.5 text-slate-300 cursor-pointer select-none">
+              <input type="checkbox" id="toggle-include-live-upnl" checked onchange="applyAllFilters()"
+                class="rounded bg-slate-900 border-slate-700 text-indigo-500" />
+              <span>Include Live Open uPnL</span>
+            </label>
+            <div id="selected-range-summary" class="mono text-slate-300"></div>
+          </div>
+        </div>
+
+        <div class="p-5 space-y-6">
+          <!-- PANEL A: Interactive Portfolio Performance Chart (Cumulative Equity & Drawdown Curve) -->
+          <div id="panel-performance-chart" class="bg-slate-900/50 border border-slate-800/80 rounded-xl p-4 space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 class="text-sm font-semibold text-white flex items-center gap-2">
+                  Portfolio Performance Curve (Cumulative Net P&L)
+                  <span id="perf-curve-badge" class="px-2 py-0.5 text-[10px] rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 mono">Mark-to-Market</span>
+                </h3>
+                <p class="text-[11px] text-slate-400">
+                  Cumulative net realized P&L after fees + live open position mark-to-market equity. Hover or click any point to inspect.
+                </p>
+              </div>
+
+              <!-- 4 Mini Portfolio Performance Metrics -->
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-right mono">
+                <div class="px-3 py-1.5 rounded-lg bg-slate-950/70 border border-slate-800">
+                  <div class="text-[9px] uppercase text-slate-400">Period Net Return</div>
+                  <div id="perf-stat-return" class="text-xs font-bold text-emerald-400">$0.00</div>
+                </div>
+                <div class="px-3 py-1.5 rounded-lg bg-slate-950/70 border border-slate-800">
+                  <div class="text-[9px] uppercase text-slate-400">Peak Equity (HWM)</div>
+                  <div id="perf-stat-peak" class="text-xs font-bold text-slate-200">$0.00</div>
+                </div>
+                <div class="px-3 py-1.5 rounded-lg bg-slate-950/70 border border-slate-800">
+                  <div class="text-[9px] uppercase text-slate-400">Max Drawdown</div>
+                  <div id="perf-stat-dd" class="text-xs font-bold text-rose-400">$0.00</div>
+                </div>
+                <div class="px-3 py-1.5 rounded-lg bg-slate-950/70 border border-slate-800">
+                  <div class="text-[9px] uppercase text-slate-400">Active Days</div>
+                  <div id="perf-stat-days" class="text-xs font-bold text-indigo-300">0D</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Interactive SVG Chart Container -->
+            <div class="relative w-full h-72 bg-slate-950/50 rounded-xl border border-slate-800/70 p-3">
+              <div id="perf-chart-tooltip" class="hidden absolute z-20 pointer-events-none px-3 py-2 rounded-lg bg-slate-900/95 border border-slate-700 shadow-xl text-[11px] mono text-slate-200 whitespace-nowrap"></div>
+              <div id="portfolio-performance-svg-wrap" class="w-full h-full">
+                <!-- Populated by renderPortfolioPerformanceChart() -->
+              </div>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400 mono">
+              <span>💡 Click any point on the equity curve to filter trades for that date</span>
+              <span id="perf-chart-footer-summary">USD / INR (1 USD ≈ ₹85)</span>
+            </div>
+          </div>
+
+          <!-- PANEL B & C: Daily PnL Bar Chart & Monthly Calendar Heatmap -->
+          <div id="charts-grid" class="hidden grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Daily PnL Bar Chart -->
+            <div id="panel-bar-chart" class="bg-slate-900/50 border border-slate-800/80 rounded-xl p-4 flex flex-col justify-between">
+              <div class="flex items-center justify-between mb-3">
+                <div>
+                  <h3 class="text-sm font-semibold text-white">Daily Net Realized P&L Bar Chart (USD)</h3>
+                  <p class="text-[11px] text-slate-400">Green = Net Profit Day • Red = Net Loss Day (After Commissions)</p>
+                </div>
+                <span id="bar-chart-days-count" class="text-xs mono text-slate-400">0 active days</span>
+              </div>
+              <div id="bar-chart-container" class="h-64 flex items-end gap-2 pt-6 pb-2 px-2 overflow-x-auto border-b border-slate-800 relative">
+                <!-- Populated by JS -->
+              </div>
+              <div id="bar-chart-legend" class="mt-3 flex items-center justify-between text-[11px] text-slate-400 mono">
+                <span>Click any bar to filter that date's orders</span>
+                <span id="bar-chart-best-worst">Best: -- | Worst: --</span>
+              </div>
+            </div>
+
+            <!-- Monthly Calendar Heatmap View -->
+            <div id="panel-calendar-view" class="bg-slate-900/50 border border-slate-800/80 rounded-xl p-4">
+              <div class="flex items-center justify-between mb-3">
+                <div>
+                  <h3 class="text-sm font-semibold text-white">Monthly P&L Calendar Heatmap</h3>
+                  <p class="text-[11px] text-slate-400">Click any date cell to inspect that day's orders</p>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <button onclick="changeCalendarMonth(-1)" class="px-2 py-1 text-xs rounded bg-slate-800 hover:bg-slate-700 text-slate-200">◀</button>
+                  <select id="calendar-month-select" onchange="onCalendarMonthSelect()" class="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-white mono">
+                  </select>
+                  <button onclick="changeCalendarMonth(1)" class="px-2 py-1 text-xs rounded bg-slate-800 hover:bg-slate-700 text-slate-200">▶</button>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-7 gap-1.5 text-center text-[10px] uppercase tracking-wider text-slate-400 mb-1.5 font-semibold">
+                <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
+              </div>
+              <div id="calendar-days-grid" class="grid grid-cols-7 gap-1.5">
+                <!-- Populated by JS -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- VIEW 2: TRADE & ORDER AUDIT LEDGER                                        -->
+    <!-- ========================================================================= -->
+    <div id="main-view-history" class="hidden space-y-5">
+      <section class="glass-card rounded-xl overflow-hidden">
+        <div class="px-5 py-4 border-b border-slate-800 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h2 class="text-base font-semibold text-white">📜 Complete Order Audit History & Trades Ledger</h2>
+            <p class="text-xs text-slate-400">
+              Full audit trail of <span class="text-emerald-400">Filled</span>, <span class="text-sky-400">Pending 2x SL</span>, <span class="text-amber-400">Cancelled</span>, and <span class="text-rose-400">Failed</span> orders.
+            </p>
+          </div>
+
+          <div class="flex items-center gap-2 flex-wrap">
+            <input type="text" id="filter-search" oninput="applyAllFilters()" placeholder="Search symbol (e.g. 051026), #ID, IP..."
+              class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500 w-56" />
+            <select id="filter-instrument" onchange="applyAllFilters()"
+              class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200">
+              <option value="ALL">All Contracts</option>
+              <option value="OPTIONS">BTC Options Only (C- / P-)</option>
+              <option value="CALLS">Call Options Only (C-)</option>
+              <option value="PUTS">Put Options Only (P-)</option>
+              <option value="FUTURES">Futures Only (BTCUSD)</option>
+            </select>
+            <button onclick="exportAuditCSV()"
+              class="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+              ⬇️ Export CSV
+            </button>
+          </div>
+        </div>
+
+        <!-- Audit Status Filter Tabs -->
+        <div class="px-5 py-2.5 bg-slate-900/70 border-b border-slate-800 flex items-center gap-2 overflow-x-auto">
+          <button onclick="setAuditTab('ALL')" id="audit-tab-ALL"
+            class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 text-white transition">
+            All Events (<span id="count-ALL">0</span>)
           </button>
-          <button onclick="togglePauseLiveMode('dry-run')"
-            class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 transition"
-            title="Pause live trading by setting repository variable BOT_MODE=dry-run">
-            ⏸️ Pause (Dry-Run)
+          <button onclick="setAuditTab('SUCCESS')" id="audit-tab-SUCCESS"
+            class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 text-slate-300 hover:text-white transition">
+            ✅ Filled (<span id="count-SUCCESS">0</span>)
           </button>
-          <button onclick="togglePauseLiveMode('live')"
-            class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/40 transition"
-            title="Resume live trading by setting repository variable BOT_MODE=live">
-            ⚡ Set Live
+          <button onclick="setAuditTab('PENDING_SL')" id="audit-tab-PENDING_SL"
+            class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 text-slate-300 hover:text-white transition">
+            🛡️ Pending 2x SL (<span id="count-PENDING_SL">0</span>)
           </button>
-          <button onclick="setWorkflowEnabled('disable')"
-            class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 transition"
-            title="Disable scheduled GitHub Actions workflow">
-            🛑 Disable Action
+          <button onclick="setAuditTab('CANCELLED')" id="audit-tab-CANCELLED"
+            class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 text-slate-300 hover:text-white transition">
+            ⚠️ Cancelled (<span id="count-CANCELLED">0</span>)
           </button>
-          <button onclick="setWorkflowEnabled('enable')"
-            class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition"
-            title="Enable scheduled GitHub Actions workflow">
-            🟢 Enable Action
+          <button onclick="setAuditTab('FAILED')" id="audit-tab-FAILED"
+            class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 text-slate-300 hover:text-white transition">
+            🚨 Failed (<span id="count-FAILED">0</span>)
           </button>
+        </div>
+
+        <div class="overflow-x-auto max-h-[540px]">
+          <table class="w-full text-left border-collapse">
+            <thead class="sticky top-0 z-10 bg-slate-900 shadow">
+              <tr class="border-b border-slate-800 text-[11px] uppercase tracking-wider text-slate-400">
+                <th class="py-3 px-4">Time (IST)</th>
+                <th class="py-3 px-4">Order ID</th>
+                <th class="py-3 px-4">Contract</th>
+                <th class="py-3 px-4">Side / Type</th>
+                <th class="py-3 px-4">Status & Reason</th>
+                <th class="py-3 px-4 text-right">Size (BTC)</th>
+                <th class="py-3 px-4 text-right">Fill / Stop</th>
+                <th class="py-3 px-4 text-right">Cashflow</th>
+                <th class="py-3 px-4 text-right">Realized PnL</th>
+                <th class="py-3 px-4 text-right">Fee</th>
+                <th class="py-3 px-4">Source IP</th>
+              </tr>
+            </thead>
+            <tbody id="audit-orders-body" class="divide-y divide-slate-800/70 text-xs mono">
+              <tr>
+                <td colspan="11" class="py-8 text-center text-slate-500">Loading audit history...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- VIEW 3: GITHUB ACTIONS SCHEDULER & ACTIONABLE CONTROLS                    -->
+    <!-- ========================================================================= -->
+    <div id="main-view-automation" class="hidden space-y-5">
+      <section class="glass-card rounded-xl overflow-hidden">
+        <div class="px-5 py-4 border-b border-slate-800 flex flex-wrap items-center justify-between gap-4">
+          <div class="flex items-center gap-3 flex-wrap">
+            <h2 class="text-base font-semibold text-white flex items-center gap-2">
+              ⚙️ GitHub Actions Scheduler & Actionable Controls
+            </h2>
+            <span id="gh-wf-state-badge" class="px-2.5 py-0.5 text-xs font-bold rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+              ● WORKFLOW ACTIVE
+            </span>
+            <span id="gh-bot-mode-badge" class="px-2.5 py-0.5 text-xs font-bold rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 mono">
+              BOT_MODE: LIVE (500 LOTS)
+            </span>
+          </div>
+
+          <div class="flex items-center gap-2 flex-wrap">
+            <select id="dispatch-mode-select" class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 mono">
+              <option value="sync-dashboard">Mode: sync-dashboard (Safe Sync)</option>
+              <option value="dry-run">Mode: dry-run (Preview Strikes)</option>
+              <option value="verify-auth">Mode: verify-auth (Test Proxy & Key)</option>
+              <option value="attach-sl-only">Mode: attach-sl-only (Ensure 2x SL)</option>
+              <option value="live">Mode: live (Execute Strangle)</option>
+            </select>
+            <button onclick="triggerWorkflowDispatch()"
+              class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition shadow">
+              ▶️ Run Workflow
+            </button>
+            <button onclick="togglePauseLiveMode('dry-run')"
+              class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 transition">
+              ⏸️ Pause (Dry-Run)
+            </button>
+            <button onclick="togglePauseLiveMode('live')"
+              class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/40 transition">
+              ⚡ Set Live
+            </button>
+            <button onclick="setWorkflowEnabled('disable')"
+              class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 transition">
+              🛑 Disable
+            </button>
+            <button onclick="setWorkflowEnabled('enable')"
+              class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+              🟢 Enable
+            </button>
+          </div>
+        </div>
+
+        <div class="px-5 py-2.5 bg-slate-900/40 flex items-center justify-between text-xs text-slate-400">
+          <span>Schedule: <strong class="text-slate-200">10:30 PM IST (`0 17 * * *`)</strong> Entry + <strong class="text-slate-200">5:35 PM IST (`5 12 * * *`)</strong> Post-Expiry Sync • Concurrency & Idempotency Guard Active</span>
           <a href="https://github.com/ajay14sharma/delta-strangle-bot/actions/workflows/daily_strangle.yml" target="_blank" rel="noopener"
-            class="px-2.5 py-1.5 text-xs text-slate-400 hover:text-white border border-slate-800 rounded-lg">
-            ↗ GitHub UI
+            class="text-indigo-400 hover:text-indigo-300 font-medium">
+            Open GitHub Actions ↗
           </a>
         </div>
-      </div>
 
-      <!-- Recent GitHub Actions Runs -->
-      <div class="px-5 py-3 bg-slate-900/40 flex items-center justify-between text-xs text-slate-400">
-        <span>Schedule: <strong class="text-slate-200">10:30 PM IST (`0 17 * * *`)</strong> Entry + <strong class="text-slate-200">5:35 PM IST (`5 12 * * *`)</strong> Post-Expiry Sync • Static Proxy IPs: `31.59.20.176`, `45.38.107.97`, `31.58.9.4`</span>
-        <button onclick="toggleSection('gh-runs-table-wrap')" class="text-indigo-400 hover:text-indigo-300 font-medium">
-          Show/Hide Recent Runs ▾
-        </button>
-      </div>
-      <div id="gh-runs-table-wrap" class="overflow-x-auto border-t border-slate-800/80">
-        <table class="w-full text-left border-collapse">
-          <thead>
-            <tr class="border-b border-slate-800 text-[11px] uppercase tracking-wider text-slate-400 bg-slate-900/60">
-              <th class="py-2.5 px-4">Run #</th>
-              <th class="py-2.5 px-4">Workflow / Title</th>
-              <th class="py-2.5 px-4">Trigger Event</th>
-              <th class="py-2.5 px-4">Status / Conclusion</th>
-              <th class="py-2.5 px-4">Timestamp (IST)</th>
-              <th class="py-2.5 px-4 text-right">Duration</th>
-              <th class="py-2.5 px-4 text-right">Logs</th>
-            </tr>
-          </thead>
-          <tbody id="gh-runs-tbody" class="divide-y divide-slate-800/60 text-xs mono">
-            <!-- Populated by JS -->
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- SECTION 1B: Open Option Positions & Live 2x Stop-Loss Brackets -->
-    <section class="glass-card rounded-xl overflow-hidden">
-      <div class="px-5 py-4 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h2 class="text-base font-semibold text-white flex items-center gap-2">
-            🛡️ Active Short Option Positions & `2x` Stop-Loss Brackets
-          </h2>
-          <p class="text-xs text-slate-400">
-            Mark prices & Unrealized PnL stream live every 3 seconds from Delta Exchange India `/v2/tickers` (`1 lot = 0.001 BTC`).
-          </p>
+        <div id="gh-runs-table-wrap" class="overflow-x-auto border-t border-slate-800/80">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b border-slate-800 text-[11px] uppercase tracking-wider text-slate-400 bg-slate-900/60">
+                <th class="py-2.5 px-4">Run #</th>
+                <th class="py-2.5 px-4">Workflow / Title</th>
+                <th class="py-2.5 px-4">Trigger Event</th>
+                <th class="py-2.5 px-4">Status / Conclusion</th>
+                <th class="py-2.5 px-4">Timestamp (IST)</th>
+                <th class="py-2.5 px-4 text-right">Duration</th>
+                <th class="py-2.5 px-4 text-right">Logs</th>
+              </tr>
+            </thead>
+            <tbody id="gh-runs-tbody" class="divide-y divide-slate-800/60 text-xs mono">
+              <!-- Populated by JS -->
+            </tbody>
+          </table>
         </div>
-        <span class="text-xs mono text-slate-400">Trigger Method: <strong class="text-slate-200">mark_price (/v2/orders/bracket)</strong></span>
-      </div>
-
-      <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse">
-          <thead>
-            <tr class="border-b border-slate-800 text-[11px] uppercase tracking-wider text-slate-400 bg-slate-900/50">
-              <th class="py-3 px-4">Contract Symbol</th>
-              <th class="py-3 px-4">Side & Size</th>
-              <th class="py-3 px-4 text-right">Sold Entry</th>
-              <th class="py-3 px-4 text-right">Live Mark Price</th>
-              <th class="py-3 px-4 text-right">2x SL Trigger (#Order)</th>
-              <th class="py-3 px-4">SL Buffer (Mark → 2x SL)</th>
-              <th class="py-3 px-4 text-right">Live Unrealized PnL</th>
-            </tr>
-          </thead>
-          <tbody id="open-positions-body" class="divide-y divide-slate-800/70 text-sm mono">
-            <tr>
-              <td colspan="7" class="py-8 text-center text-slate-500">Loading open positions...</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- SECTION 2 & 3: Date Range Selector + Daily P&L Bar Chart & Calendar Heatmap View -->
-    <section class="glass-card rounded-xl overflow-hidden">
-      <div class="px-5 py-4 border-b border-slate-800 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h2 class="text-base font-semibold text-white">📊 Daily P&L Analytics — Bar Chart & Calendar View</h2>
-          <p class="text-xs text-slate-400">Select any date range or click a calendar day to filter historical trades & P&L below.</p>
-        </div>
-
-        <!-- View Switcher Tabs (Bar Chart vs Calendar View vs Both) -->
-        <div class="flex items-center gap-1.5 bg-slate-900 p-1 rounded-lg border border-slate-800">
-          <button onclick="setChartMode('both')" id="tab-chart-both" class="px-3 py-1 text-xs font-semibold rounded-md bg-indigo-600 text-white transition">
-            Split View (Bar + Calendar)
-          </button>
-          <button onclick="setChartMode('bar')" id="tab-chart-bar" class="px-3 py-1 text-xs font-semibold rounded-md text-slate-400 hover:text-white transition">
-            📊 Bar Chart Only
-          </button>
-          <button onclick="setChartMode('calendar')" id="tab-chart-calendar" class="px-3 py-1 text-xs font-semibold rounded-md text-slate-400 hover:text-white transition">
-            📅 Calendar View Only
-          </button>
-        </div>
-      </div>
-
-      <!-- Date Picker & Quick Presets Toolbar -->
-      <div class="px-5 py-3 bg-slate-900/60 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
-        <div class="flex items-center gap-2 flex-wrap">
-          <label class="text-xs text-slate-400">From:</label>
-          <input type="date" id="filter-from-date" onchange="applyAllFilters()"
-            class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-white mono" />
-          <label class="text-xs text-slate-400">To:</label>
-          <input type="date" id="filter-to-date" onchange="applyAllFilters()"
-            class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-white mono" />
-
-          <div class="flex items-center gap-1 ml-2 flex-wrap">
-            <button onclick="setDatePreset('all')" class="px-2.5 py-1 text-xs rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">All Time</button>
-            <button onclick="setDatePreset('today')" class="px-2.5 py-1 text-xs rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">Today</button>
-            <button onclick="setDatePreset('7d')" class="px-2.5 py-1 text-xs rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">Last 7D</button>
-            <button onclick="setDatePreset('oct2026')" class="px-2.5 py-1 text-xs rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">Oct 2026</button>
-            <button onclick="setDatePreset('feb2026')" class="px-2.5 py-1 text-xs rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">Feb 2026</button>
-            <button onclick="setDatePreset('jan2026')" class="px-2.5 py-1 text-xs rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">Jan 2026</button>
-          </div>
-        </div>
-
-        <div id="selected-range-summary" class="text-xs mono text-slate-300">
-          <!-- Populated by JS -->
-        </div>
-      </div>
-
-      <!-- Charts Grid -->
-      <div id="charts-grid" class="p-5 grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- 3A: Daily PnL Bar Chart -->
-        <div id="panel-bar-chart" class="bg-slate-900/50 border border-slate-800/80 rounded-xl p-4 flex flex-col justify-between">
-          <div class="flex items-center justify-between mb-3">
-            <div>
-              <h3 class="text-sm font-semibold text-white">Daily Net Realized P&L Bar Chart (USD)</h3>
-              <p class="text-[11px] text-slate-400">Green = Net Profit Day • Red = Net Loss Day (After Commissions)</p>
-            </div>
-            <span id="bar-chart-days-count" class="text-xs mono text-slate-400">0 active days</span>
-          </div>
-          <div id="bar-chart-container" class="h-64 flex items-end gap-2 pt-6 pb-2 px-2 overflow-x-auto border-b border-slate-800 relative">
-            <!-- Populated by JS -->
-          </div>
-          <div id="bar-chart-legend" class="mt-3 flex items-center justify-between text-[11px] text-slate-400 mono">
-            <span>Click any bar to filter that date's orders</span>
-            <span id="bar-chart-best-worst">Best: -- | Worst: --</span>
-          </div>
-        </div>
-
-        <!-- 3B: Monthly Calendar Heatmap View -->
-        <div id="panel-calendar-view" class="bg-slate-900/50 border border-slate-800/80 rounded-xl p-4">
-          <div class="flex items-center justify-between mb-3">
-            <div>
-              <h3 class="text-sm font-semibold text-white">Monthly P&L Calendar Heatmap</h3>
-              <p class="text-[11px] text-slate-400">Click any date cell to inspect that day's orders</p>
-            </div>
-            <div class="flex items-center gap-1.5">
-              <button onclick="changeCalendarMonth(-1)" class="px-2 py-1 text-xs rounded bg-slate-800 hover:bg-slate-700 text-slate-200">◀</button>
-              <select id="calendar-month-select" onchange="onCalendarMonthSelect()" class="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-white mono">
-              </select>
-              <button onclick="changeCalendarMonth(1)" class="px-2 py-1 text-xs rounded bg-slate-800 hover:bg-slate-700 text-slate-200">▶</button>
-            </div>
-          </div>
-
-          <!-- Weekday Headers -->
-          <div class="grid grid-cols-7 gap-1.5 text-center text-[10px] uppercase tracking-wider text-slate-400 mb-1.5 font-semibold">
-            <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
-          </div>
-          <!-- Calendar Days Grid -->
-          <div id="calendar-days-grid" class="grid grid-cols-7 gap-1.5">
-            <!-- Populated by JS -->
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- SECTION 5: Complete Audit History & Historical Trades (Success, Pending SL, Cancelled, Failed) -->
-    <section class="glass-card rounded-xl overflow-hidden">
-      <div class="px-5 py-4 border-b border-slate-800 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h2 class="text-base font-semibold text-white">📜 Complete Order Audit History & Historical Trades Ledger</h2>
-          <p class="text-xs text-slate-400">
-            Full audit trail of all <span class="text-emerald-400">Success (Filled)</span>, <span class="text-sky-400">Pending 2x SL</span>, <span class="text-amber-400">Cancelled</span>, and <span class="text-rose-400">Failed/Rejected</span> orders.
-          </p>
-        </div>
-
-        <div class="flex items-center gap-2 flex-wrap">
-          <input type="text" id="filter-search" oninput="applyAllFilters()" placeholder="Search symbol (e.g. 051026), #ID, IP..."
-            class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500 w-56" />
-          <select id="filter-instrument" onchange="applyAllFilters()"
-            class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200">
-            <option value="ALL">All Contracts</option>
-            <option value="OPTIONS">BTC Options Only (C- / P-)</option>
-            <option value="CALLS">Call Options Only (C-)</option>
-            <option value="PUTS">Put Options Only (P-)</option>
-            <option value="FUTURES">Futures Only (BTCUSD)</option>
-          </select>
-          <button onclick="exportAuditCSV()"
-            class="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
-            ⬇️ Export CSV
-          </button>
-        </div>
-      </div>
-
-      <!-- Audit Status Filter Tabs -->
-      <div class="px-5 py-2.5 bg-slate-900/70 border-b border-slate-800 flex items-center gap-2 overflow-x-auto">
-        <button onclick="setAuditTab('ALL')" id="audit-tab-ALL"
-          class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 text-white transition">
-          All Audit Events (<span id="count-ALL">0</span>)
-        </button>
-        <button onclick="setAuditTab('SUCCESS')" id="audit-tab-SUCCESS"
-          class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 text-slate-300 hover:text-white transition">
-          ✅ Success / Filled (<span id="count-SUCCESS">0</span>)
-        </button>
-        <button onclick="setAuditTab('PENDING_SL')" id="audit-tab-PENDING_SL"
-          class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 text-slate-300 hover:text-white transition">
-          🛡️ Pending 2x SL (<span id="count-PENDING_SL">0</span>)
-        </button>
-        <button onclick="setAuditTab('CANCELLED')" id="audit-tab-CANCELLED"
-          class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 text-slate-300 hover:text-white transition">
-          ⚠️ Cancelled (<span id="count-CANCELLED">0</span>)
-        </button>
-        <button onclick="setAuditTab('FAILED')" id="audit-tab-FAILED"
-          class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 text-slate-300 hover:text-white transition">
-          🚨 Failed / Rejected (<span id="count-FAILED">0</span>)
-        </button>
-      </div>
-
-      <div class="overflow-x-auto max-h-[540px]">
-        <table class="w-full text-left border-collapse">
-          <thead class="sticky top-0 z-10 bg-slate-900 shadow">
-            <tr class="border-b border-slate-800 text-[11px] uppercase tracking-wider text-slate-400">
-              <th class="py-3 px-4">Time (IST)</th>
-              <th class="py-3 px-4">Order ID</th>
-              <th class="py-3 px-4">Contract</th>
-              <th class="py-3 px-4">Side / Type</th>
-              <th class="py-3 px-4">Audit Status & Reason</th>
-              <th class="py-3 px-4 text-right">Size (BTC)</th>
-              <th class="py-3 px-4 text-right">Fill / Stop Price</th>
-              <th class="py-3 px-4 text-right">Cashflow</th>
-              <th class="py-3 px-4 text-right">Realized PnL</th>
-              <th class="py-3 px-4 text-right">Fee</th>
-              <th class="py-3 px-4">Source IP</th>
-            </tr>
-          </thead>
-          <tbody id="audit-orders-body" class="divide-y divide-slate-800/70 text-xs mono">
-            <tr>
-              <td colspan="11" class="py-8 text-center text-slate-500">Loading audit history...</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
+      </section>
+    </div>
 
   </main>
+
+  <!-- =========================================================================== -->
+  <!-- CRITICAL ALERT MONITOR DIALOG (LAST 1 MONTH / 30 DAYS, 2 DISTINCT SECTIONS) -->
+  <!-- =========================================================================== -->
+  <div id="critical-alerts-modal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="glass-card rounded-2xl max-w-4xl w-full max-h-[88vh] flex flex-col border border-slate-700 shadow-2xl overflow-hidden">
+      <!-- Dialog Header -->
+      <div class="px-6 py-4 border-b border-slate-800 bg-slate-900/90 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div class="flex items-center gap-2.5">
+            <span class="px-2 py-0.5 text-[11px] font-bold rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 uppercase tracking-wider">
+              🚨 Critical Alert Monitor
+            </span>
+            <h2 class="text-base font-bold text-white">Last 1 Month (30 Days) — Technical & Portfolio Alerts</h2>
+          </div>
+          <p id="modal-alert-window-subtitle" class="text-xs text-slate-400 mt-1">
+            Strictly filtered to the last 30 days. Earlier historical events are excluded.
+          </p>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <!-- Section Filter Pills inside Dialog -->
+          <div class="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800 text-xs">
+            <button onclick="setAlertModalFilter('all')" id="modal-tab-all"
+              class="px-2.5 py-1 rounded font-semibold bg-indigo-600 text-white transition">
+              Both Sections
+            </button>
+            <button onclick="setAlertModalFilter('technical')" id="modal-tab-technical"
+              class="px-2.5 py-1 rounded font-semibold text-slate-400 hover:text-white transition">
+              1. Technical (<span id="modal-count-tech">0</span>)
+            </button>
+            <button onclick="setAlertModalFilter('portfolio')" id="modal-tab-portfolio"
+              class="px-2.5 py-1 rounded font-semibold text-slate-400 hover:text-white transition">
+              2. Portfolio (<span id="modal-count-port">0</span>)
+            </button>
+          </div>
+          <button onclick="closeAlertsModal()" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center text-sm font-bold">
+            ✕
+          </button>
+        </div>
+      </div>
+
+      <!-- Dialog Body: 2 Distinct Sections -->
+      <div id="alerts-panel-body" class="p-6 overflow-y-auto space-y-6">
+
+        <!-- SECTION 1: TECHNICAL ALERTS (System, Scheduler, CI/CD & Execution — To Improve/Fix on Review) -->
+        <div id="modal-section-technical" class="space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-800">
+            <div>
+              <h3 class="text-sm font-bold text-indigo-300 flex items-center gap-2">
+                <span>🔧 Section 1: Technical Alerts (System, CI/CD & Execution)</span>
+                <span id="badge-section-tech" class="px-2 py-0.5 text-[10px] rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 mono">0 in Last 30D</span>
+              </h3>
+              <p class="text-xs text-slate-400">
+                Workflow failures, duplicate execution anomalies, and SL bracket verification checks — includes root cause & technical fix status.
+              </p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="quickRunModeFromAlert('attach-sl-only')"
+                class="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 transition">
+                🛡️ Verify / Attach 2x SL
+              </button>
+              <button onclick="quickRunModeFromAlert('verify-auth')"
+                class="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+                🔑 Verify Auth & Proxy
+              </button>
+            </div>
+          </div>
+
+          <div id="modal-technical-alerts-list" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <!-- Populated by renderCriticalAlerts() -->
+          </div>
+        </div>
+
+        <!-- SECTION 2: PORTFOLIO ALERTS (Trading, Stop-Loss, Drawdown & Exposure Risk — Last 1 Month) -->
+        <div id="modal-section-portfolio" class="space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-800">
+            <div>
+              <h3 class="text-sm font-bold text-amber-300 flex items-center gap-2">
+                <span>💼 Section 2: Portfolio Alerts (Risk, Stop-Loss & Exposure)</span>
+                <span id="badge-section-port" class="px-2 py-0.5 text-[10px] rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 mono">0 in Last 30D</span>
+              </h3>
+              <p class="text-xs text-slate-400">
+                2x Stop-Loss triggers, manual SL cancellations, large realized drawdowns (≤ -$350), and active margin/exposure risk in the last 30 days.
+              </p>
+            </div>
+            <span id="excluded-older-alerts-note" class="text-[11px] text-slate-400 mono"></span>
+          </div>
+
+          <div id="modal-portfolio-alerts-list" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <!-- Populated by renderCriticalAlerts() -->
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Dialog Footer -->
+      <div class="px-6 py-3 border-t border-slate-800 bg-slate-900/90 flex items-center justify-between text-xs text-slate-400">
+        <span>Window: <strong class="text-slate-200">Last 30 Days</strong> (Rolling 1-Month Filter Enforced)</span>
+        <button onclick="closeAlertsModal()" class="px-4 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-semibold">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- Cloud Connection & GitHub Token Modal -->
   <div id="settings-modal" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
@@ -451,13 +668,13 @@
       </div>
       <div class="space-y-3 text-xs text-slate-300 leading-relaxed">
         <p>
-          Save your GitHub Fine-Grained Personal Access Token (PAT) in your browser's local storage (`localStorage`) to:
+          Save your GitHub Fine-Grained Personal Access Token (PAT) in your browser's `localStorage` to:
         </p>
         <ul class="list-disc pl-5 space-y-1 text-slate-400">
-          <li>Fetch the latest cloud `dashboard_data.json` directly from your private GitHub repo from <strong class="text-white">any device or phone</strong>.</li>
+          <li>Fetch the latest cloud `dashboard_data.json` from your private GitHub repo from <strong class="text-white">any device or phone</strong>.</li>
           <li><strong class="text-white">Enable / Disable</strong> the GitHub Actions workflow (`Actions: Read and write`).</li>
           <li><strong class="text-white">Pause / Resume</strong> live trading (`Variables: Read and write` for `BOT_MODE`).</li>
-          <li><strong class="text-white">Trigger workflow runs</strong> (`sync-dashboard`, `dry-run`, `live`) with 1 click.</li>
+          <li><strong class="text-white">Trigger workflow runs</strong> (`sync-dashboard`, `dry-run`, `attach-sl-only`, `live`) with 1 click.</li>
         </ul>
         <div>
           <label class="block text-xs font-semibold text-slate-200 mb-1">GitHub Personal Access Token (`github_pat_...`):</label>
@@ -491,14 +708,18 @@
     const REPO_SLUG = 'ajay14sharma/delta-strangle-bot';
     const WORKFLOW_FILE = 'daily_strangle.yml';
     const STORAGE_TOKEN_KEY = 'delta_strangle_gh_pat';
+    const ONE_MONTH_MS = 30 * 24 * 60 * 60 * 1000;
 
     let dashboardState = null;
     let liveTickersBySymbol = {};
+    let currentMainTab = 'overview';
     let currentAuditTab = 'ALL';
-    let currentChartMode = 'both';
+    let currentChartMode = 'performance';
+    let currentDatePreset = 'all';
     let availableMonths = [];
-    let currentCalendarMonth = ''; // 'YYYY-MM'
+    let currentCalendarMonth = '';
     let filteredAuditOrders = [];
+    let currentLiveUpnlUsd = 0;
 
     // Check URL hash for #token=... for 1-tap mobile/anywhere setup
     (function checkHashToken() {
@@ -529,15 +750,16 @@
       setTimeout(() => el.classList.add('hidden'), 6000);
     }
 
-    function toggleSection(id) {
-      const el = document.getElementById(id);
-      if (el) el.classList.toggle('hidden');
-    }
-
     function formatUSD(val, showSign = false) {
       const n = Number(val || 0);
       const sign = showSign ? (n >= 0 ? '+' : '-') : (n < 0 ? '-' : '');
       return `${sign}$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+
+    function formatINR(usdVal, showSign = false) {
+      const inr = Math.round(Number(usdVal || 0) * 85);
+      const sign = showSign ? (inr >= 0 ? '+' : '-') : (inr < 0 ? '-' : '');
+      return `${sign}₹${Math.abs(inr).toLocaleString('en-IN')}`;
     }
 
     function formatIST(isoStr) {
@@ -559,9 +781,35 @@
       }
     }
 
+    // Simplified Main Navigation Tabs
+    function setMainViewTab(tab) {
+      currentMainTab = tab;
+      ['overview', 'history', 'automation', 'all'].forEach(t => {
+        const btn = document.getElementById(`main-tab-btn-${t}`);
+        if (btn) {
+          btn.className = t === tab
+            ? 'px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 text-white transition'
+            : 'px-3.5 py-1.5 text-xs font-semibold rounded-lg text-slate-400 hover:text-white transition';
+        }
+      });
+
+      const vOverview = document.getElementById('main-view-overview');
+      const vHistory = document.getElementById('main-view-history');
+      const vAuto = document.getElementById('main-view-automation');
+
+      if (tab === 'all') {
+        vOverview.classList.remove('hidden');
+        vHistory.classList.remove('hidden');
+        vAuto.classList.remove('hidden');
+      } else {
+        vOverview.classList.toggle('hidden', tab !== 'overview');
+        vHistory.classList.toggle('hidden', tab !== 'history');
+        vAuto.classList.toggle('hidden', tab !== 'automation');
+      }
+    }
+
     function updateNextEntryCountdown() {
       const now = new Date();
-      // Convert current UTC time to IST (UTC + 5:30)
       const istOffsetMs = (5 * 60 + 30) * 60 * 1000;
       const nowIst = new Date(now.getTime() + istOffsetMs);
       const targetIst = new Date(nowIst);
@@ -572,12 +820,11 @@
       const diffSec = Math.max(0, Math.floor((targetIst - nowIst) / 1000));
       const h = Math.floor(diffSec / 3600);
       const m = Math.floor((diffSec % 3600) / 60);
-      document.getElementById('kpi-countdown').textContent = `10:30 PM IST (in ${h}h ${m}m)`;
+      document.getElementById('kpi-countdown').textContent = `10:30 PM IST (${h}h ${m}m)`;
     }
 
     async function loadDashboardSnapshot() {
       const token = getSavedToken();
-      // 1. Try local/relative dashboard_data.json first
       try {
         const resp = await fetch(`./dashboard_data.json?t=${Date.now()}`);
         if (resp.ok) {
@@ -587,7 +834,6 @@
         // Ignore file:// CORS fetch error
       }
 
-      // 2. If GitHub token is saved, fetch latest docs/dashboard_data.json from GitHub API
       if (token) {
         try {
           const ghResp = await fetch(`https://api.github.com/repos/${REPO_SLUG}/contents/docs/dashboard_data.json?ref=main&t=${Date.now()}`, {
@@ -605,7 +851,6 @@
         }
       }
 
-      // 3. Fallback to embedded snapshot if opened via file:// without token
       if (!dashboardState && window.FALLBACK_DASHBOARD_DATA) {
         dashboardState = window.FALLBACK_DASHBOARD_DATA;
       }
@@ -613,16 +858,15 @@
       if (dashboardState) {
         initCalendarMonths();
         renderHeaderAndKPIs();
+        renderLivePositions();
         renderCriticalAlerts();
         renderGitHubActionsSection();
-        renderLivePositions();
         applyAllFilters();
       } else {
         openSettingsModal();
-        showToast('🔒 Private Cloud Dashboard: Paste your GitHub PAT (or use your #token=... bookmark) to load private trade & position data.', 'info');
+        showToast('🔒 Private Cloud Dashboard: Paste your GitHub PAT (or use your #token=... bookmark) to load data.', 'info');
       }
 
-      // Also refresh live GitHub Actions runs from browser if token has Actions permission
       if (token) {
         refreshLiveGitHubStatusFromBrowser(token);
       }
@@ -650,8 +894,12 @@
             document.getElementById('live-btc-spot').textContent = '$' + spot.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
           }
           const nowStr = new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' });
-          document.getElementById('tick-counter').textContent = `Live feed active • Tick: ${nowStr} IST`;
+          document.getElementById('tick-counter').textContent = `Live feed • ${nowStr} IST`;
           renderLivePositions();
+          renderPortfolioPerformanceChart(
+            document.getElementById('filter-from-date').value,
+            document.getElementById('filter-to-date').value
+          );
         }
       } catch (err) {
         document.getElementById('tick-counter').textContent = 'Using Cloud Snapshot Prices';
@@ -662,7 +910,7 @@
       if (!dashboardState) return;
       const w = dashboardState.wallet || {};
       document.getElementById('kpi-balance').textContent = '$' + Number(w.balance_usd || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      document.getElementById('kpi-available').textContent = `Available: $${Number(w.available_usd || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} • Blocked: $${Number(w.blocked_margin_usd || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (₹${Number(w.balance_inr_est || 0).toLocaleString('en-IN')})`;
+      document.getElementById('kpi-available').textContent = `Avail: $${Number(w.available_usd || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} • Margin: $${Number(w.blocked_margin_usd || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (₹${Number(w.balance_inr_est || 0).toLocaleString('en-IN')})`;
       document.getElementById('kpi-sync-time').textContent = `Synced: ${dashboardState.last_synced_ist || '--'}`;
 
       if (dashboardState.btc_spot_price && document.getElementById('live-btc-spot').textContent === '$--,--') {
@@ -671,46 +919,511 @@
       updateNextEntryCountdown();
     }
 
-    // SECTION 6: Critical Alerts (Last 5 Failures / Risk Events)
-    function renderCriticalAlerts() {
-      const alerts = (dashboardState && dashboardState.critical_alerts) ? dashboardState.critical_alerts.slice(0, 5) : [];
-      const container = document.getElementById('alerts-panel-body');
-      const badge = document.getElementById('alerts-summary-badge');
+    // ============================================================================
+    // CRITICAL ALERT MONITOR DIALOG (STRICT 1-MONTH FILTER, 2 SECTIONS)
+    // ============================================================================
+    function getReferenceNowMs() {
+      if (dashboardState && dashboardState.last_synced_utc) {
+        const parsed = Date.parse(dashboardState.last_synced_utc);
+        if (!isNaN(parsed)) return Math.max(parsed, Date.now());
+      }
+      return Date.now();
+    }
 
-      if (!alerts.length) {
-        badge.textContent = '0 critical failures';
-        container.innerHTML = `<div class="col-span-full py-4 text-center text-xs text-emerald-400">✅ No critical failures or unprotected option positions detected.</div>`;
+    function parseAlertTimestampMs(alertObj) {
+      if (!alertObj) return NaN;
+      if (alertObj.timestamp_utc) {
+        const ms = Date.parse(alertObj.timestamp_utc);
+        if (!isNaN(ms)) return ms;
+      }
+      if (alertObj.timestamp_ist) {
+        const clean = String(alertObj.timestamp_ist).replace(/\s*IST$/i, '').trim();
+        const ms = Date.parse(clean);
+        if (!isNaN(ms)) return ms;
+      }
+      return NaN;
+    }
+
+    function isAlertWithinLastOneMonth(alertObj, refNowMs) {
+      const cutoffMs = refNowMs - ONE_MONTH_MS;
+      const alertMs = parseAlertTimestampMs(alertObj);
+      if (isNaN(alertMs)) return false;
+      return alertMs >= cutoffMs;
+    }
+
+    function classifyAlertSection(alertObj) {
+      if (alertObj.section === 'technical' || alertObj.section === 'portfolio') {
+        return alertObj.section;
+      }
+      const cat = String(alertObj.category || '').toUpperCase();
+      if (
+        cat.includes('GITHUB_ACTION') ||
+        cat.includes('DUPLICATE') ||
+        cat.includes('UNPROTECTED') ||
+        cat.includes('SL_SIZE_MISMATCH') ||
+        cat.includes('SYSTEM') ||
+        cat.includes('AUTH')
+      ) {
+        return 'technical';
+      }
+      return 'portfolio';
+    }
+
+    function openAlertsModal(initialSection = 'all') {
+      setAlertModalFilter(initialSection);
+      document.getElementById('critical-alerts-modal').classList.remove('hidden');
+    }
+
+    function closeAlertsModal() {
+      document.getElementById('critical-alerts-modal').classList.add('hidden');
+    }
+
+    function setAlertModalFilter(section) {
+      ['all', 'technical', 'portfolio'].forEach(s => {
+        const btn = document.getElementById(`modal-tab-${s}`);
+        if (btn) {
+          btn.className = s === section
+            ? 'px-2.5 py-1 rounded font-semibold bg-indigo-600 text-white transition'
+            : 'px-2.5 py-1 rounded font-semibold text-slate-400 hover:text-white transition';
+        }
+      });
+
+      const secTech = document.getElementById('modal-section-technical');
+      const secPort = document.getElementById('modal-section-portfolio');
+      if (section === 'technical') {
+        secTech.classList.remove('hidden');
+        secPort.classList.add('hidden');
+      } else if (section === 'portfolio') {
+        secTech.classList.add('hidden');
+        secPort.classList.remove('hidden');
+      } else {
+        secTech.classList.remove('hidden');
+        secPort.classList.remove('hidden');
+      }
+    }
+
+    function quickRunModeFromAlert(mode) {
+      const sel = document.getElementById('dispatch-mode-select');
+      if (sel) sel.value = mode;
+      closeAlertsModal();
+      triggerWorkflowDispatch();
+    }
+
+    function renderAlertCard(a, sectionType) {
+      const isCrit = a.severity === 'CRITICAL';
+      const isInfo = a.severity === 'INFO';
+      const borderCls = isCrit
+        ? 'border-rose-500/40 bg-rose-950/20'
+        : (isInfo ? 'border-sky-500/30 bg-sky-950/15' : 'border-amber-500/40 bg-amber-950/20');
+      const badgeCls = isCrit
+        ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+        : (isInfo ? 'bg-sky-500/20 text-sky-300 border-sky-500/40' : 'bg-amber-500/20 text-amber-300 border-amber-500/40');
+
+      const fixStatus = a.fix_status || a.status || 'LOGGED';
+      const isFixed = fixStatus.includes('FIXED') || fixStatus.includes('RESOLVED') || fixStatus.includes('PROTECTED') || fixStatus.includes('GUARD');
+      const statusPillCls = isFixed
+        ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+        : 'bg-amber-500/15 text-amber-300 border-amber-500/30';
+
+      return `
+        <div class="rounded-xl border p-4 flex flex-col justify-between ${borderCls}">
+          <div>
+            <div class="flex items-center justify-between gap-2 mb-2">
+              <div class="flex items-center gap-1.5">
+                <span class="px-2 py-0.5 text-[10px] font-bold rounded border ${badgeCls}">${a.severity}</span>
+                <span class="px-2 py-0.5 text-[10px] font-semibold rounded border ${statusPillCls} mono">${a.status || fixStatus}</span>
+              </div>
+              <span class="text-[11px] text-slate-400 mono">${a.timestamp_ist || ''}</span>
+            </div>
+            <div class="text-xs font-bold text-white mb-1">${a.title}</div>
+            <p class="text-[11px] text-slate-300 leading-relaxed">${a.message}</p>
+            ${a.fix_hint ? `
+              <div class="mt-2.5 p-2.5 rounded-lg bg-slate-950/80 border border-slate-800 text-[11px] text-slate-300 leading-relaxed">
+                <span class="font-semibold ${sectionType === 'technical' ? 'text-emerald-400' : 'text-amber-300'}">
+                  ${sectionType === 'technical' ? '🔧 Technical Fix / Review:' : '🛡️ Risk Mitigation:'}
+                </span>
+                ${a.fix_hint}
+              </div>
+            ` : ''}
+          </div>
+          <div class="mt-3 pt-2 border-t border-slate-800/70 flex items-center justify-between text-[10px] mono">
+            <span class="text-slate-400">Category: <strong class="text-slate-200">${a.category || sectionType.toUpperCase()}</strong></span>
+            ${a.url ? `<a href="${a.url}" target="_blank" rel="noopener" class="text-indigo-400 hover:underline">Inspect Workflow Run ↗</a>` : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderCriticalAlerts() {
+      if (!dashboardState) return;
+      const refNowMs = getReferenceNowMs();
+      const cutoffDateStr = new Date(refNowMs - ONE_MONTH_MS).toISOString().slice(0, 10);
+      const nowDateStr = new Date(refNowMs).toISOString().slice(0, 10);
+
+      const rawTech = Array.isArray(dashboardState.technical_alerts)
+        ? dashboardState.technical_alerts
+        : (dashboardState.critical_alerts || []).filter(a => classifyAlertSection(a) === 'technical');
+      const rawPort = Array.isArray(dashboardState.portfolio_alerts)
+        ? dashboardState.portfolio_alerts
+        : (dashboardState.critical_alerts || []).filter(a => classifyAlertSection(a) === 'portfolio');
+
+      // Strictly enforce 1-month (30-day) cutoff in frontend as well
+      const techAlerts = rawTech.filter(a => isAlertWithinLastOneMonth(a, refNowMs));
+      const portAlerts = rawPort.filter(a => isAlertWithinLastOneMonth(a, refNowMs));
+      const totalAlerts30d = techAlerts.length + portAlerts.length;
+
+      const excludedCount = (dashboardState.alert_window && dashboardState.alert_window.excluded_historical_alerts_count) || 0;
+
+      // Update Header & Compact Bar Badges
+      document.getElementById('header-alerts-count').textContent = totalAlerts30d;
+      document.getElementById('strip-tech-count').textContent = techAlerts.length;
+      document.getElementById('strip-port-count').textContent = portAlerts.length;
+      document.getElementById('modal-count-tech').textContent = techAlerts.length;
+      document.getElementById('modal-count-port').textContent = portAlerts.length;
+      document.getElementById('badge-section-tech').textContent = `${techAlerts.length} in Last 30D`;
+      document.getElementById('badge-section-port').textContent = `${portAlerts.length} in Last 30D`;
+
+      document.getElementById('modal-alert-window-subtitle').textContent =
+        `Active 1-Month Window: ${cutoffDateStr} → ${nowDateStr} (30 Days) • ${excludedCount} older historical alerts (>1 month ago) excluded.`;
+      document.getElementById('excluded-older-alerts-note').textContent =
+        excludedCount > 0 ? `${excludedCount} older events (Jan/Feb 2026) filtered out` : 'Last 30 days only';
+
+      const summaryBadge = document.getElementById('alerts-summary-badge');
+      summaryBadge.innerHTML =
+        `<strong class="text-white">${totalAlerts30d} Alerts in Last 30 Days</strong> (${cutoffDateStr} → ${nowDateStr}): ` +
+        `<span class="text-indigo-300">${techAlerts.length} Technical (Fixed/Guarded)</span> • ` +
+        `<span class="text-amber-300">${portAlerts.length} Portfolio</span>`;
+
+      const techListEl = document.getElementById('modal-technical-alerts-list');
+      if (!techAlerts.length) {
+        techListEl.innerHTML = `
+          <div class="col-span-full py-6 px-4 rounded-xl bg-slate-900/50 border border-slate-800 text-center text-xs text-emerald-400">
+            ✅ No technical, CI/CD, or SL bracket anomalies in the last 30 days.
+          </div>`;
+      } else {
+        techListEl.innerHTML = techAlerts.map(a => renderAlertCard(a, 'technical')).join('');
+      }
+
+      const portListEl = document.getElementById('modal-portfolio-alerts-list');
+      if (!portAlerts.length) {
+        portListEl.innerHTML = `
+          <div class="col-span-full py-6 px-4 rounded-xl bg-slate-900/50 border border-slate-800 text-center text-xs text-emerald-400">
+            ✅ No Stop-Loss hits, manual SL cancellations, or large realized drawdowns in the last 30 days (${cutoffDateStr} → ${nowDateStr}).
+          </div>`;
+      } else {
+        portListEl.innerHTML = portAlerts.map(a => renderAlertCard(a, 'portfolio')).join('');
+      }
+    }
+
+    // ============================================================================
+    // LIVE OPEN POSITIONS & 2x STOP-LOSS BRACKETS
+    // ============================================================================
+    function renderLivePositions() {
+      if (!dashboardState) return;
+      const positions = dashboardState.open_positions || [];
+      const tbody = document.getElementById('open-positions-body');
+
+      if (!positions.length) {
+        tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-slate-500">No open option positions right now. Next entry at 10:30 PM IST.</td></tr>`;
+        currentLiveUpnlUsd = 0;
+        document.getElementById('kpi-upnl').textContent = '$0.00';
+        document.getElementById('kpi-premium').textContent = 'Active Premium Sold: $0.00 (0 legs)';
         return;
       }
 
-      const critCount = alerts.filter(a => a.severity === 'CRITICAL').length;
-      const warnCount = alerts.filter(a => a.severity !== 'CRITICAL').length;
-      badge.textContent = `Showing Last ${alerts.length} Events (${critCount} Critical, ${warnCount} Warning)`;
+      let totalUpnl = 0;
+      let totalPremium = 0;
 
-      container.innerHTML = alerts.map(a => {
-        const isCrit = a.severity === 'CRITICAL';
-        const borderCls = isCrit ? 'border-rose-500/40 bg-rose-950/25' : 'border-amber-500/40 bg-amber-950/20';
-        const badgeCls = isCrit ? 'bg-rose-500/20 text-rose-300 border-rose-500/40' : 'bg-amber-500/20 text-amber-300 border-amber-500/40';
+      tbody.innerHTML = positions.map(p => {
+        const liveTicker = liveTickersBySymbol[p.symbol];
+        const markPx = liveTicker && liveTicker.mark_price ? parseFloat(liveTicker.mark_price) : Number(p.mark_price);
+        const entryPx = Number(p.entry_price);
+        const slTrigger = Number(p.sl_trigger || entryPx * 2);
+        const btcQty = Math.abs(Number(p.lots)) * 0.001;
+
+        const legPremium = entryPx * btcQty;
+        totalPremium += legPremium;
+
+        const legUpnl = (entryPx - markPx) * btcQty;
+        totalUpnl += legUpnl;
+
+        const slRange = Math.max(0.01, slTrigger - entryPx);
+        const slUsedPct = Math.max(0, Math.min(100, ((markPx - entryPx) / slRange) * 100));
+        const slRemainingPct = Math.max(0, ((slTrigger - markPx) / slTrigger) * 100);
+
+        const isCall = p.symbol.startsWith('C-');
+        const typeBadge = isCall
+          ? 'bg-purple-500/15 text-purple-300 border-purple-500/30'
+          : 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30';
+
+        const pnlColor = legUpnl >= 0 ? 'text-emerald-400' : 'text-rose-400';
+        const barColor = slUsedPct > 70 ? 'bg-rose-500' : (slUsedPct > 35 ? 'bg-amber-400' : 'bg-emerald-500');
+
         return `
-          <div class="rounded-lg border p-3.5 flex flex-col justify-between ${borderCls}">
-            <div>
-              <div class="flex items-center justify-between gap-2 mb-1.5">
-                <span class="px-2 py-0.5 text-[10px] font-bold rounded border ${badgeCls}">${a.severity}</span>
-                <span class="text-[11px] text-slate-400 mono">${a.timestamp_ist || ''}</span>
+          <tr class="hover:bg-slate-800/40 transition">
+            <td class="py-3 px-4 font-bold text-white flex items-center gap-2">
+              <span class="px-1.5 py-0.5 text-[10px] rounded border ${typeBadge}">${isCall ? 'CALL' : 'PUT'}</span>
+              ${p.symbol}
+            </td>
+            <td class="py-3 px-4">
+              <span class="px-2 py-0.5 text-xs rounded bg-rose-500/15 text-rose-300 border border-rose-500/30 font-semibold">
+                ${p.lots} lots
+              </span>
+              <span class="text-xs text-slate-400 ml-1">(${btcQty.toFixed(3)} BTC)</span>
+            </td>
+            <td class="py-3 px-4 text-right text-slate-200">$${entryPx.toFixed(2)}</td>
+            <td class="py-3 px-4 text-right font-bold text-amber-300">$${markPx.toFixed(2)}</td>
+            <td class="py-3 px-4 text-right">
+              <span class="px-2 py-0.5 text-xs rounded bg-slate-800 text-slate-200 border border-slate-700">
+                $${slTrigger.toFixed(1)}
+              </span>
+              ${p.sl_order_id ? `<div class="text-[10px] text-emerald-400 mt-0.5">#${p.sl_order_id} (${p.sl_size}L)</div>` : ''}
+            </td>
+            <td class="py-3 px-4 w-48">
+              <div class="flex items-center justify-between text-[10px] text-slate-400 mb-1">
+                <span>${slUsedPct === 0 ? 'In Profit' : slUsedPct.toFixed(0) + '% to SL'}</span>
+                <span>$${(slTrigger - markPx).toFixed(1)} (${slRemainingPct.toFixed(0)}%)</span>
               </div>
-              <div class="text-xs font-bold text-white mb-1">${a.title}</div>
-              <p class="text-[11px] text-slate-300 leading-relaxed">${a.message}</p>
-            </div>
-            <div class="mt-2.5 pt-2 border-t border-slate-800/70 flex items-center justify-between text-[10px] mono">
-              <span class="text-slate-400">Status: <strong class="text-slate-200">${a.status || 'LOGGED'}</strong></span>
-              ${a.url ? `<a href="${a.url}" target="_blank" class="text-indigo-400 hover:underline">Inspect Run ↗</a>` : ''}
-            </div>
-          </div>
+              <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                <div class="h-full ${barColor} transition-all duration-300" style="width: ${Math.max(4, slUsedPct)}%"></div>
+              </div>
+            </td>
+            <td class="py-3 px-4 text-right font-bold ${pnlColor}">
+              ${formatUSD(legUpnl, true)}
+            </td>
+          </tr>
         `;
       }).join('');
+
+      currentLiveUpnlUsd = totalUpnl;
+      const upnlEl = document.getElementById('kpi-upnl');
+      upnlEl.textContent = formatUSD(totalUpnl, true);
+      upnlEl.className = `text-2xl font-bold mt-1.5 mono ${totalUpnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+      document.getElementById('kpi-premium').textContent = `Active Premium Sold: ${formatUSD(totalPremium)} (${positions.length} open legs)`;
     }
 
-    // SECTION 4: GitHub Actions Status & Actionable Controls
+    // ============================================================================
+    // PORTFOLIO PERFORMANCE CHART (INTERACTIVE SVG EQUITY CURVE & DRAWDOWN)
+    // ============================================================================
+    function renderPortfolioPerformanceChart(fromDate, toDate) {
+      const wrap = document.getElementById('portfolio-performance-svg-wrap');
+      if (!wrap || !dashboardState) return;
+
+      const allDaily = dashboardState.daily_pnl || [];
+      const includeLiveUpnl = document.getElementById('toggle-include-live-upnl')?.checked !== false;
+
+      const filteredDays = allDaily.filter(d => {
+        if (fromDate && d.date < fromDate) return false;
+        if (toDate && d.date > toDate) return false;
+        return true;
+      });
+
+      // Build period-relative cumulative performance series
+      const points = [];
+      let cumNet = 0;
+      let peakNet = 0;
+      let maxDrawdown = 0;
+      let winDays = 0;
+      let lossDays = 0;
+
+      if (filteredDays.length > 0) {
+        points.push({
+          date: 'Start',
+          label: 'Period Start',
+          daily_net: 0,
+          cum_net: 0,
+          drawdown: 0,
+          trades: 0,
+          isBaseline: true
+        });
+      }
+
+      for (const d of filteredDays) {
+        const net = Number(d.net_pnl_usd || 0);
+        cumNet += net;
+        if (cumNet > peakNet) peakNet = cumNet;
+        const dd = cumNet - peakNet;
+        if (dd < maxDrawdown) maxDrawdown = dd;
+        if (net > 0) winDays++;
+        else if (net < 0) lossDays++;
+
+        points.push({
+          date: d.date,
+          label: d.date,
+          daily_net: net,
+          cum_net: cumNet,
+          drawdown: dd,
+          trades: Number(d.closed_orders_count || 0),
+          isLive: false
+        });
+      }
+
+      // Append live open positions unrealized PnL point if within range
+      const latestSyncDate = (dashboardState.last_synced_utc || new Date().toISOString()).slice(0, 10);
+      const liveInRange = (!toDate || toDate >= latestSyncDate) && (dashboardState.open_positions || []).length > 0;
+      if (includeLiveUpnl && liveInRange) {
+        if (points.length === 0) {
+          points.push({
+            date: 'Start',
+            label: 'Start',
+            daily_net: 0,
+            cum_net: 0,
+            drawdown: 0,
+            trades: 0,
+            isBaseline: true
+          });
+        }
+        const liveCum = cumNet + currentLiveUpnlUsd;
+        if (liveCum > peakNet) peakNet = liveCum;
+        const liveDd = liveCum - peakNet;
+        if (liveDd < maxDrawdown) maxDrawdown = liveDd;
+        points.push({
+          date: latestSyncDate,
+          label: `${latestSyncDate} (Live Open uPnL)`,
+          daily_net: currentLiveUpnlUsd,
+          cum_net: liveCum,
+          drawdown: liveDd,
+          trades: (dashboardState.open_positions || []).length,
+          isLive: true
+        });
+      }
+
+      const finalReturn = points.length ? points[points.length - 1].cum_net : 0;
+
+      // Update 4 Mini Performance Stat Cards
+      const retEl = document.getElementById('perf-stat-return');
+      retEl.textContent = `${formatUSD(finalReturn, true)} (${formatINR(finalReturn, true)})`;
+      retEl.className = `text-xs font-bold ${finalReturn >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+
+      document.getElementById('perf-stat-peak').textContent = formatUSD(peakNet, true);
+      document.getElementById('perf-stat-dd').textContent = formatUSD(maxDrawdown, false);
+      document.getElementById('perf-stat-days').textContent = `${filteredDays.length}D (${winDays}W/${lossDays}L)`;
+
+      if (points.length < 2) {
+        wrap.innerHTML = `<div class="w-full h-full flex items-center justify-center text-xs text-slate-500">No portfolio performance data in selected date range.</div>`;
+        return;
+      }
+
+      // Render Responsive SVG Line + Area Curve
+      const width = 860;
+      const height = 240;
+      const padLeft = 64;
+      const padRight = 24;
+      const padTop = 20;
+      const padBottom = 32;
+      const plotW = width - padLeft - padRight;
+      const plotH = height - padTop - padBottom;
+
+      const vals = points.map(p => p.cum_net);
+      const minVal = Math.min(0, ...vals);
+      const maxVal = Math.max(0, ...vals);
+      const span = Math.max(10, maxVal - minVal);
+      const yMin = minVal - span * 0.08;
+      const yMax = maxVal + span * 0.08;
+
+      const xForIdx = (i) => padLeft + (i / Math.max(1, points.length - 1)) * plotW;
+      const yForVal = (v) => padTop + ((yMax - v) / Math.max(1e-6, yMax - yMin)) * plotH;
+      const zeroY = yForVal(0);
+
+      const coords = points.map((p, i) => ({
+        x: xForIdx(i),
+        y: yForVal(p.cum_net),
+        pt: p
+      }));
+
+      const linePath = coords.map((c, i) => `${i === 0 ? 'M' : 'L'} ${c.x.toFixed(1)} ${c.y.toFixed(1)}`).join(' ');
+      const areaPath = `${linePath} L ${coords[coords.length - 1].x.toFixed(1)} ${zeroY.toFixed(1)} L ${coords[0].x.toFixed(1)} ${zeroY.toFixed(1)} Z`;
+
+      const isPositiveEnd = finalReturn >= 0;
+      const strokeColor = isPositiveEnd ? '#10b981' : '#f43f5e';
+      const gradId = isPositiveEnd ? 'perfGradGreen' : 'perfGradRose';
+
+      // Horizontal Y-axis grid ticks (4 steps)
+      const yTicks = [yMax, (yMax + yMin) / 2, 0, yMin];
+      const gridLines = yTicks.map(tv => {
+        const y = yForVal(tv);
+        const isZero = Math.abs(tv) < 0.01;
+        return `
+          <line x1="${padLeft}" y1="${y.toFixed(1)}" x2="${width - padRight}" y2="${y.toFixed(1)}"
+            stroke="${isZero ? '#475569' : '#1e293b'}" stroke-dasharray="${isZero ? '4 4' : ''}" stroke-width="1" />
+          <text x="${padLeft - 8}" y="${(y + 3).toFixed(1)}" text-anchor="end" fill="#94a3b8" font-size="10" font-family="monospace">
+            ${formatUSD(tv, tv > 0)}
+          </text>
+        `;
+      }).join('');
+
+      // X-axis date labels (up to 7 evenly spaced labels)
+      const labelStep = Math.max(1, Math.ceil((coords.length - 1) / 6));
+      const xLabels = coords.filter((_, i) => i === 0 || i === coords.length - 1 || i % labelStep === 0).map(c => `
+        <text x="${c.x.toFixed(1)}" y="${height - 8}" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="monospace">
+          ${c.pt.isLive ? 'LIVE' : (c.pt.date === 'Start' ? 'Start' : c.pt.date.slice(5))}
+        </text>
+      `).join('');
+
+      const circles = coords.map((c, idx) => {
+        const dotColor = c.pt.isLive ? '#fbbf24' : (c.pt.cum_net >= 0 ? '#10b981' : '#f43f5e');
+        const radius = c.pt.isLive ? 5.5 : 3.8;
+        const clickHandler = (!c.pt.isBaseline && c.pt.date !== 'Start') ? `onclick="selectSingleDate('${c.pt.date}')"` : '';
+        return `
+          <circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="${radius}"
+            fill="${dotColor}" stroke="#0a0f1a" stroke-width="1.5"
+            class="cursor-pointer transition-transform hover:scale-150"
+            onmouseenter="showPerfTooltip(event, ${idx})"
+            onmouseleave="hidePerfTooltip()"
+            ${clickHandler} />
+        `;
+      }).join('');
+
+      window.__perfChartPoints = coords;
+
+      wrap.innerHTML = `
+        <svg viewBox="0 0 ${width} ${height}" class="w-full h-full overflow-visible">
+          <defs>
+            <linearGradient id="perfGradGreen" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#10b981" stop-opacity="0.32" />
+              <stop offset="100%" stop-color="#10b981" stop-opacity="0.02" />
+            </linearGradient>
+            <linearGradient id="perfGradRose" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#f43f5e" stop-opacity="0.04" />
+              <stop offset="100%" stop-color="#f43f5e" stop-opacity="0.28" />
+            </linearGradient>
+          </defs>
+          ${gridLines}
+          <path d="${areaPath}" fill="url(#${gradId})" />
+          <path d="${linePath}" fill="none" stroke="${strokeColor}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+          ${circles}
+          ${xLabels}
+        </svg>
+      `;
+    }
+
+    function showPerfTooltip(evt, idx) {
+      const coords = window.__perfChartPoints || [];
+      const item = coords[idx];
+      if (!item) return;
+      const p = item.pt;
+      const tip = document.getElementById('perf-chart-tooltip');
+      if (!tip) return;
+
+      tip.innerHTML = `
+        <div class="font-bold text-white mb-1">${p.label}</div>
+        <div>${p.isLive ? 'Live Open uPnL' : 'Daily Net PnL'}: <strong class="${p.daily_net >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${formatUSD(p.daily_net, true)}</strong></div>
+        <div>Cumulative Equity: <strong class="${p.cum_net >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${formatUSD(p.cum_net, true)} (${formatINR(p.cum_net, true)})</strong></div>
+        <div>Drawdown from Peak: <span class="text-rose-300">${formatUSD(p.drawdown, false)}</span> • ${p.isLive ? `${p.trades} open legs` : `${p.trades} closed orders`}</div>
+      `;
+      tip.classList.remove('hidden');
+      tip.style.left = `${Math.min(72, Math.max(5, (item.x / 860) * 100))}%`;
+      tip.style.top = '12px';
+    }
+
+    function hidePerfTooltip() {
+      const tip = document.getElementById('perf-chart-tooltip');
+      if (tip) tip.classList.add('hidden');
+    }
+
+    // ============================================================================
+    // GITHUB ACTIONS SCHEDULER & CONTROLS
+    // ============================================================================
     function renderGitHubActionsSection() {
       const gh = (dashboardState && dashboardState.github_actions) || {};
       const wfBadge = document.getElementById('gh-wf-state-badge');
@@ -735,7 +1448,7 @@
         tbody.innerHTML = `
           <tr>
             <td colspan="7" class="py-4 px-4 text-center text-slate-400">
-              No workflow runs cached in snapshot yet. Click <strong>🔑 Cloud Controls & Token</strong> (or <a href="https://github.com/${REPO_SLUG}/actions" target="_blank" class="text-indigo-400 underline">open GitHub Actions ↗</a>) to view live runs.
+              No workflow runs cached in snapshot yet. Click <strong>🔑 Cloud Setup</strong> to connect.
             </td>
           </tr>`;
         return;
@@ -815,7 +1528,7 @@
       const token = getSavedToken();
       if (!token) {
         openSettingsModal();
-        showToast('Please save a GitHub PAT (with Actions: Read & Write permission) to enable/disable workflows from the dashboard.', 'info');
+        showToast('Please save a GitHub PAT (with Actions: Read & Write permission) to enable/disable workflows.', 'info');
         return;
       }
       try {
@@ -832,7 +1545,7 @@
           refreshLiveGitHubStatusFromBrowser(token);
         } else {
           const errText = await resp.text();
-          showToast(`GitHub API returned ${resp.status}: Ensure your PAT has 'Actions: Read and write' permission. (${errText})`, 'error');
+          showToast(`GitHub API returned ${resp.status}: Ensure PAT has 'Actions: Read and write'. (${errText})`, 'error');
         }
       } catch (e) {
         showToast(`Failed to ${action} workflow: ${e.message}`, 'error');
@@ -864,7 +1577,7 @@
             renderGitHubActionsSection();
           }
         } else {
-          showToast(`GitHub API ${resp.status}: Ensure your PAT has 'Variables: Read and write' permission.`, 'error');
+          showToast(`GitHub API ${resp.status}: Ensure PAT has 'Variables: Read and write' permission.`, 'error');
         }
       } catch (e) {
         showToast(`Failed to update BOT_MODE: ${e.message}`, 'error');
@@ -879,7 +1592,7 @@
         showToast('Please save a GitHub PAT (with Actions: Read & Write permission) to trigger runs directly.', 'info');
         return;
       }
-      if (mode === 'live' && !confirm('Trigger a LIVE strangle execution right now? (Note: Idempotency guard will skip if target expiry already has an open strangle.)')) {
+      if (mode === 'live' && !confirm('Trigger a LIVE strangle execution right now? (Idempotency guard will skip if target expiry already has an open strangle.)')) {
         return;
       }
       try {
@@ -900,97 +1613,16 @@
           showToast(`Workflow dispatched in '${mode}' mode! Refreshing run list in 4s...`, 'success');
           setTimeout(() => refreshLiveGitHubStatusFromBrowser(token), 4000);
         } else {
-          showToast(`GitHub API ${resp.status}: Ensure your PAT has 'Actions: Read and write' permission.`, 'error');
+          showToast(`GitHub API ${resp.status}: Ensure PAT has 'Actions: Read and write' permission.`, 'error');
         }
       } catch (e) {
         showToast(`Failed to dispatch workflow: ${e.message}`, 'error');
       }
     }
 
-    // SECTION 1B: Live Open Positions
-    function renderLivePositions() {
-      if (!dashboardState) return;
-      const positions = dashboardState.open_positions || [];
-      const tbody = document.getElementById('open-positions-body');
-
-      if (!positions.length) {
-        tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-slate-500">No open option positions right now. Next entry at 10:30 PM IST.</td></tr>`;
-        document.getElementById('kpi-upnl').textContent = '$0.00';
-        document.getElementById('kpi-premium').textContent = 'Active Premium Sold: $0.00 (0 legs)';
-        return;
-      }
-
-      let totalUpnl = 0;
-      let totalPremium = 0;
-
-      tbody.innerHTML = positions.map(p => {
-        const liveTicker = liveTickersBySymbol[p.symbol];
-        const markPx = liveTicker && liveTicker.mark_price ? parseFloat(liveTicker.mark_price) : Number(p.mark_price);
-        const entryPx = Number(p.entry_price);
-        const slTrigger = Number(p.sl_trigger || entryPx * 2);
-        const btcQty = Math.abs(Number(p.lots)) * 0.001;
-
-        const legPremium = entryPx * btcQty;
-        totalPremium += legPremium;
-
-        const legUpnl = (entryPx - markPx) * btcQty;
-        totalUpnl += legUpnl;
-
-        const slRange = Math.max(0.01, slTrigger - entryPx);
-        const slUsedPct = Math.max(0, Math.min(100, ((markPx - entryPx) / slRange) * 100));
-        const slRemainingPct = Math.max(0, ((slTrigger - markPx) / slTrigger) * 100);
-
-        const isCall = p.symbol.startsWith('C-');
-        const typeBadge = isCall
-          ? 'bg-purple-500/15 text-purple-300 border-purple-500/30'
-          : 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30';
-
-        const pnlColor = legUpnl >= 0 ? 'text-emerald-400' : 'text-rose-400';
-        const barColor = slUsedPct > 70 ? 'bg-rose-500' : (slUsedPct > 35 ? 'bg-amber-400' : 'bg-emerald-500');
-
-        return `
-          <tr class="hover:bg-slate-800/40 transition">
-            <td class="py-3.5 px-4 font-bold text-white flex items-center gap-2">
-              <span class="px-1.5 py-0.5 text-[10px] rounded border ${typeBadge}">${isCall ? 'CALL' : 'PUT'}</span>
-              ${p.symbol}
-            </td>
-            <td class="py-3.5 px-4">
-              <span class="px-2 py-0.5 text-xs rounded bg-rose-500/15 text-rose-300 border border-rose-500/30 font-semibold">
-                ${p.lots} lots
-              </span>
-              <span class="text-xs text-slate-400 ml-1">(${btcQty.toFixed(3)} BTC)</span>
-            </td>
-            <td class="py-3.5 px-4 text-right text-slate-200">$${entryPx.toFixed(2)}</td>
-            <td class="py-3.5 px-4 text-right font-bold text-amber-300">$${markPx.toFixed(2)}</td>
-            <td class="py-3.5 px-4 text-right">
-              <span class="px-2 py-0.5 text-xs rounded bg-slate-800 text-slate-200 border border-slate-700">
-                $${slTrigger.toFixed(1)}
-              </span>
-              ${p.sl_order_id ? `<div class="text-[10px] text-emerald-400 mt-0.5">#${p.sl_order_id} (${p.sl_size}L)</div>` : ''}
-            </td>
-            <td class="py-3.5 px-4 w-52">
-              <div class="flex items-center justify-between text-[11px] text-slate-400 mb-1">
-                <span>${slUsedPct === 0 ? 'In Profit' : slUsedPct.toFixed(0) + '% to SL'}</span>
-                <span>$${(slTrigger - markPx).toFixed(1)} buffer (${slRemainingPct.toFixed(0)}%)</span>
-              </div>
-              <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                <div class="h-full ${barColor} transition-all duration-300" style="width: ${Math.max(4, slUsedPct)}%"></div>
-              </div>
-            </td>
-            <td class="py-3.5 px-4 text-right font-bold ${pnlColor}">
-              ${formatUSD(legUpnl, true)}
-            </td>
-          </tr>
-        `;
-      }).join('');
-
-      const upnlEl = document.getElementById('kpi-upnl');
-      upnlEl.textContent = formatUSD(totalUpnl, true);
-      upnlEl.className = `text-2xl font-bold mt-2 mono ${totalUpnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
-      document.getElementById('kpi-premium').textContent = `Active Premium Sold: ${formatUSD(totalPremium)} (${positions.length} open legs)`;
-    }
-
-    // SECTION 2 & 3: Date Filtering, Bar Chart & Monthly Calendar View
+    // ============================================================================
+    // DATE FILTERING, CHART SWITCHER, BAR CHART & CALENDAR HEATMAP
+    // ============================================================================
     function initCalendarMonths() {
       const daily = (dashboardState && dashboardState.daily_pnl) || [];
       const monthSet = new Set();
@@ -1032,36 +1664,56 @@
 
     function setChartMode(mode) {
       currentChartMode = mode;
+      const perfPanel = document.getElementById('panel-performance-chart');
       const barPanel = document.getElementById('panel-bar-chart');
       const calPanel = document.getElementById('panel-calendar-view');
       const grid = document.getElementById('charts-grid');
 
-      ['both', 'bar', 'calendar'].forEach(m => {
+      ['performance', 'bar', 'calendar', 'both'].forEach(m => {
         const btn = document.getElementById(`tab-chart-${m}`);
-        btn.className = m === mode
-          ? 'px-3 py-1 text-xs font-semibold rounded-md bg-indigo-600 text-white transition'
-          : 'px-3 py-1 text-xs font-semibold rounded-md text-slate-400 hover:text-white transition';
+        if (btn) {
+          btn.className = m === mode
+            ? 'px-3 py-1 text-xs font-semibold rounded-md bg-indigo-600 text-white transition'
+            : 'px-3 py-1 text-xs font-semibold rounded-md text-slate-400 hover:text-white transition';
+        }
       });
 
-      if (mode === 'both') {
-        grid.className = 'p-5 grid grid-cols-1 lg:grid-cols-2 gap-6';
-        barPanel.classList.remove('hidden');
-        calPanel.classList.remove('hidden');
+      if (mode === 'performance') {
+        perfPanel.classList.remove('hidden');
+        grid.classList.add('hidden');
       } else if (mode === 'bar') {
-        grid.className = 'p-5 grid grid-cols-1 gap-6';
+        perfPanel.classList.add('hidden');
+        grid.className = 'grid grid-cols-1 gap-6';
         barPanel.classList.remove('hidden');
         calPanel.classList.add('hidden');
-      } else {
-        grid.className = 'p-5 grid grid-cols-1 gap-6';
+      } else if (mode === 'calendar') {
+        perfPanel.classList.add('hidden');
+        grid.className = 'grid grid-cols-1 gap-6';
         barPanel.classList.add('hidden');
+        calPanel.classList.remove('hidden');
+      } else {
+        perfPanel.classList.remove('hidden');
+        grid.className = 'grid grid-cols-1 lg:grid-cols-2 gap-6';
+        barPanel.classList.remove('hidden');
         calPanel.classList.remove('hidden');
       }
     }
 
     function setDatePreset(preset) {
+      currentDatePreset = preset;
+      ['all', '30d', '7d', 'oct2026', 'today'].forEach(p => {
+        const btn = document.getElementById(`preset-btn-${p}`);
+        if (btn) {
+          btn.className = p === preset
+            ? 'px-2.5 py-1 text-xs font-medium rounded-lg bg-indigo-600 text-white border border-indigo-500'
+            : 'px-2.5 py-1 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700';
+        }
+      });
+
       const fromEl = document.getElementById('filter-from-date');
       const toEl = document.getElementById('filter-to-date');
-      const today = new Date().toISOString().slice(0, 10);
+      const refNow = new Date(getReferenceNowMs());
+      const today = refNow.toISOString().slice(0, 10);
 
       if (preset === 'all') {
         fromEl.value = '';
@@ -1070,7 +1722,11 @@
         fromEl.value = today;
         toEl.value = today;
       } else if (preset === '7d') {
-        const d = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+        const d = new Date(refNow.getTime() - 7 * 86400000).toISOString().slice(0, 10);
+        fromEl.value = d;
+        toEl.value = today;
+      } else if (preset === '30d') {
+        const d = new Date(refNow.getTime() - 30 * 86400000).toISOString().slice(0, 10);
         fromEl.value = d;
         toEl.value = today;
       } else if (preset === 'oct2026') {
@@ -1093,18 +1749,22 @@
     }
 
     function selectSingleDate(dateStr) {
+      if (!dateStr || dateStr === 'Start') return;
       document.getElementById('filter-from-date').value = dateStr;
       document.getElementById('filter-to-date').value = dateStr;
       applyAllFilters();
+      showToast(`Filtered trades & P&L for ${dateStr}`, 'info');
     }
 
     function setAuditTab(tab) {
       currentAuditTab = tab;
       ['ALL', 'SUCCESS', 'PENDING_SL', 'CANCELLED', 'FAILED'].forEach(t => {
         const btn = document.getElementById(`audit-tab-${t}`);
-        btn.className = t === tab
-          ? 'px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 text-white transition'
-          : 'px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 text-slate-300 hover:text-white transition';
+        if (btn) {
+          btn.className = t === tab
+            ? 'px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 text-white transition'
+            : 'px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 text-slate-300 hover:text-white transition';
+        }
       });
       applyAllFilters();
     }
@@ -1118,7 +1778,6 @@
 
       const allAudit = dashboardState.audit_orders || [];
 
-      // Filter by date, search, and instrument first (to compute tab badge counts)
       const baseFiltered = allAudit.filter(o => {
         const d = o.date_ist || (o.created_at || '').slice(0, 10);
         if (fromDate && d < fromDate) return false;
@@ -1137,7 +1796,6 @@
         return true;
       });
 
-      // Update Tab Counts
       const counts = { ALL: baseFiltered.length, SUCCESS: 0, PENDING_SL: 0, CANCELLED: 0, FAILED: 0 };
       let grossPnl = 0;
       let totalFees = 0;
@@ -1165,21 +1823,21 @@
       const netPnl = grossPnl - totalFees;
       const pnlEl = document.getElementById('kpi-period-net-pnl');
       pnlEl.textContent = formatUSD(netPnl, true);
-      pnlEl.className = `text-2xl font-bold mt-2 mono ${netPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+      pnlEl.className = `text-2xl font-bold mt-1.5 mono ${netPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
       document.getElementById('kpi-period-fees').textContent = `Gross: ${formatUSD(grossPnl, true)} • Fees: $${totalFees.toFixed(2)}`;
       const totalClosedWithPnl = winCount + lossCount;
       const winRate = totalClosedWithPnl > 0 ? ((winCount / totalClosedWithPnl) * 100).toFixed(0) : '--';
-      document.getElementById('kpi-winrate-badge').textContent = `Win Rate: ${winRate}% (${winCount}W / ${lossCount}L)`;
+      document.getElementById('kpi-winrate-badge').textContent = `Win: ${winRate}% (${winCount}W/${lossCount}L)`;
 
       document.getElementById('selected-range-summary').innerHTML =
-        `Range: <strong class="text-white">${fromDate || 'Start'} → ${toDate || 'Now'}</strong> • Orders: <strong class="text-white">${baseFiltered.length}</strong> • Net Realized: <strong class="${netPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${formatUSD(netPnl, true)}</strong>`;
+        `<strong class="text-white">${fromDate || 'Start'} → ${toDate || 'Now'}</strong> • <strong class="text-white">${baseFiltered.length}</strong> orders • Realized: <strong class="${netPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${formatUSD(netPnl, true)}</strong>`;
 
-      // Filter by selected Audit Status tab
       filteredAuditOrders = currentAuditTab === 'ALL'
         ? baseFiltered
         : baseFiltered.filter(o => o.audit_status === currentAuditTab);
 
       renderAuditTable(filteredAuditOrders);
+      renderPortfolioPerformanceChart(fromDate, toDate);
       renderDailyBarChart(fromDate, toDate);
       renderCalendarHeatmap();
     }
@@ -1238,7 +1896,6 @@
       const [year, month] = currentCalendarMonth.split('-').map(Number);
       const firstDay = new Date(year, month - 1, 1);
       const daysInMonth = new Date(year, month, 0).getDate();
-      // Monday-based weekday index (0 = Mon, 6 = Sun)
       const startOffset = (firstDay.getDay() + 6) % 7;
 
       const dailyMap = {};
@@ -1290,7 +1947,6 @@
       grid.innerHTML = cells.join('');
     }
 
-    // SECTION 5: Render Audit Table
     function renderAuditTable(orders) {
       const tbody = document.getElementById('audit-orders-body');
       if (!orders.length) {
