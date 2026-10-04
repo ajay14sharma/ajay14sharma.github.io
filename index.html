@@ -171,8 +171,8 @@
           <div id="kpi-sync-time" class="text-xs font-semibold text-white truncate">--</div>
           <button onclick="setMainViewTab('automation')" id="kpi-lots-guard-pill"
             class="px-2 py-0.5 text-[10px] font-semibold rounded bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 border border-indigo-500/30 mono shrink-0 transition"
-            title="Click to adjust manual lot size (BOT_LOTS) or view the 4 Pre-Flight Safety Guards">
-            500L • 🛡️ 4/4 Guards
+            title="Click to adjust manual lot size (BOT_LOTS) or view the 3 Pre-Flight Safety Guards">
+            500L • 🛡️ 3/3 Guards
           </button>
         </div>
         <div id="tick-counter" class="text-[11px] text-emerald-400 mt-1 mono truncate">Connecting live feed...</div>
@@ -634,24 +634,20 @@
             </div>
           </div>
 
-          <!-- Right: 4 Active Pre-Flight Safety Guards -->
+          <!-- Right: 3 Active Pre-Flight Safety Guards -->
           <div class="lg:col-span-7 flex flex-wrap items-center justify-start lg:justify-end gap-1.5 text-[11px]">
-            <span class="font-bold text-emerald-400 mr-1">🛡️ 4 Pre-Flight Safety Guards:</span>
+            <span class="font-bold text-emerald-400 mr-1">🛡️ 3 Pre-Flight Safety Guards:</span>
             <span id="guard-pill-balance" class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 mono"
               title="Check 1: Requires at least $1.40 free wallet balance per lot ($700 for 500 lots) before selling">
               ✅ 1. Free Bal ≥ $700
             </span>
             <span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 mono"
-              title="Check 2: Skips entry if 1DTE ATM Straddle Implied Daily Move exceeds 3.5% of BTC Spot">
-              ✅ 2. Stormy Market ≤ 3.5%
+              title="Check 2: Skips entry if combined Call+Put bid is below $60/BTC or either leg is below $15/BTC">
+              ✅ 2. Min Reward ≥ $60/BTC
             </span>
             <span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 mono"
-              title="Check 3: Skips entry if combined Call+Put bid is below $60/BTC or either leg is below $15/BTC">
-              ✅ 3. Min Reward ≥ $60/BTC
-            </span>
-            <span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 mono"
-              title="Check 4: Verifies buyer bid is within 20% of fair mark price (auto-retries 3x if orderbook is gapped)">
-              ✅ 4. Fair Bid ≥ 80% Mark
+              title="Check 3: Verifies buyer bid is within 20% of fair mark price (auto-retries 3x if orderbook is gapped)">
+              ✅ 3. Fair Bid ≥ 80% Mark
             </span>
           </div>
         </div>
@@ -1778,7 +1774,7 @@
 
       const kpiLotsPill = document.getElementById('kpi-lots-guard-pill');
       if (kpiLotsPill) {
-        kpiLotsPill.textContent = `${lots}L • 🛡️ 4/4 Guards`;
+        kpiLotsPill.textContent = `${lots}L • 🛡️ 3/3 Guards`;
       }
 
       const reqMargin = Math.round(lots * 1.40);
@@ -1980,7 +1976,7 @@
         showToast('Please save a GitHub PAT (with Actions: Read & Write permission) to trigger runs directly.', 'info');
         return;
       }
-      if (mode === 'live' && !confirm(`Trigger a LIVE strangle execution (${lotsStr} lots) right now? (Idempotency & 4 Pre-Flight Safety Guards will run before placing orders.)`)) {
+      if (mode === 'live' && !confirm(`Trigger a LIVE strangle execution (${lotsStr} lots) right now? (Idempotency & 3 Pre-Flight Safety Guards will run before placing orders.)`)) {
         return;
       }
       try {
