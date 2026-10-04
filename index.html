@@ -167,7 +167,14 @@
           <span class="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Next Entry</span>
           <span id="kpi-countdown" class="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 mono">--h --m</span>
         </div>
-        <div id="kpi-sync-time" class="text-xs font-semibold text-white mt-1.5 truncate">--</div>
+        <div class="flex items-center justify-between gap-2 mt-1.5">
+          <div id="kpi-sync-time" class="text-xs font-semibold text-white truncate">--</div>
+          <button onclick="setMainViewTab('automation')" id="kpi-lots-guard-pill"
+            class="px-2 py-0.5 text-[10px] font-semibold rounded bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 border border-indigo-500/30 mono shrink-0 transition"
+            title="Click to adjust manual lot size (BOT_LOTS) or view the 4 Pre-Flight Safety Guards">
+            500L • 🛡️ 4/4 Guards
+          </button>
+        </div>
         <div id="tick-counter" class="text-[11px] text-emerald-400 mt-1 mono truncate">Connecting live feed...</div>
       </div>
     </section>
@@ -606,8 +613,51 @@
           </div>
         </div>
 
-        <div class="px-5 py-2.5 bg-slate-900/40 flex items-center justify-between text-xs text-slate-400">
-          <span>Schedule: <strong class="text-slate-200">10:30 PM IST (`0 17 * * *`)</strong> Entry + <strong class="text-slate-200">5:35 PM IST (`5 12 * * *`)</strong> Post-Expiry Sync • Concurrency & Idempotency Guard Active</span>
+        <!-- Manual Lot Size (BOT_LOTS) 1-Click Editor & 4 Pre-Flight Safety Guards -->
+        <div class="px-5 py-3.5 bg-slate-950/60 border-b border-slate-800/80 grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+          <!-- Left: 1-Click Manual Lot Size Editor -->
+          <div class="lg:col-span-5 flex flex-wrap items-center gap-2.5">
+            <span class="text-xs font-semibold text-slate-200">📦 Manual Lot Size (`BOT_LOTS`):</span>
+            <div class="flex items-center gap-1.5">
+              <input type="number" id="bot-lots-input" min="1" max="5000" step="50" value="500"
+                class="w-24 bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1 text-xs font-bold text-white mono text-center" />
+              <button onclick="updateBotLotsFromDashboard()"
+                class="px-3 py-1 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition shadow">
+                💾 Save Lots
+              </button>
+            </div>
+            <div class="flex items-center gap-1 text-[11px] mono">
+              <button onclick="quickSetLotsInput(250)" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800">250</button>
+              <button onclick="quickSetLotsInput(500)" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-slate-800 text-indigo-300 border border-indigo-500/30 font-semibold">500</button>
+              <button onclick="quickSetLotsInput(750)" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800">750</button>
+              <button onclick="quickSetLotsInput(1000)" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800">1000</button>
+            </div>
+          </div>
+
+          <!-- Right: 4 Active Pre-Flight Safety Guards -->
+          <div class="lg:col-span-7 flex flex-wrap items-center justify-start lg:justify-end gap-1.5 text-[11px]">
+            <span class="font-bold text-emerald-400 mr-1">🛡️ 4 Pre-Flight Safety Guards:</span>
+            <span id="guard-pill-balance" class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 mono"
+              title="Check 1: Requires at least $1.40 free wallet balance per lot ($700 for 500 lots) before selling">
+              ✅ 1. Free Bal ≥ $700
+            </span>
+            <span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 mono"
+              title="Check 2: Skips entry if 1DTE ATM Straddle Implied Daily Move exceeds 3.5% of BTC Spot">
+              ✅ 2. Stormy Market ≤ 3.5%
+            </span>
+            <span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 mono"
+              title="Check 3: Skips entry if combined Call+Put bid is below $60/BTC or either leg is below $15/BTC">
+              ✅ 3. Min Reward ≥ $60/BTC
+            </span>
+            <span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 mono"
+              title="Check 4: Verifies buyer bid is within 20% of fair mark price (auto-retries 3x if orderbook is gapped)">
+              ✅ 4. Fair Bid ≥ 80% Mark
+            </span>
+          </div>
+        </div>
+
+        <div class="px-5 py-2.5 bg-slate-900/40 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
+          <span>Schedule: <strong class="text-slate-200">10:30:00 PM IST</strong> Exact Entry (Pre-Warm Crons `47,56 16 * * *`) + <strong class="text-slate-200">5:37 PM IST (`7 12 * * *`)</strong> Post-Expiry Sync • Idempotency &amp; Pre-Flight Guards Active</span>
           <a href="https://github.com/ajay14sharma/delta-strangle-bot/actions/workflows/daily_strangle.yml" target="_blank" rel="noopener"
             class="text-indigo-400 hover:text-indigo-300 font-medium">
             Open GitHub Actions ↗
@@ -1694,6 +1744,14 @@
     // ============================================================================
     // GITHUB ACTIONS SCHEDULER & CONTROLS
     // ============================================================================
+    function getActiveBotLots() {
+      const gh = (dashboardState && dashboardState.github_actions) || {};
+      const inputEl = document.getElementById('bot-lots-input');
+      const fromInput = inputEl ? parseInt(inputEl.value, 10) : NaN;
+      if (!isNaN(fromInput) && fromInput > 0) return fromInput;
+      return parseInt(gh.bot_lots || 500, 10) || 500;
+    }
+
     function renderGitHubActionsSection() {
       const gh = (dashboardState && dashboardState.github_actions) || {};
       const wfBadge = document.getElementById('gh-wf-state-badge');
@@ -1706,11 +1764,30 @@
       wfBadge.textContent = isActive ? '● WORKFLOW ACTIVE' : '● WORKFLOW DISABLED';
 
       const mode = (gh.bot_mode || 'live').toUpperCase();
-      const lots = gh.bot_lots || 500;
+      const lots = parseInt(gh.bot_lots || 500, 10) || 500;
+      const btcQty = (lots * 0.001).toFixed(3);
       modeBadge.className = mode === 'LIVE'
         ? 'px-2.5 py-0.5 text-xs font-bold rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 mono'
         : 'px-2.5 py-0.5 text-xs font-bold rounded-full bg-sky-500/15 text-sky-300 border border-sky-500/30 mono';
-      modeBadge.textContent = `BOT_MODE: ${mode} (${lots} LOTS)`;
+      modeBadge.textContent = `BOT_MODE: ${mode} (${lots} LOTS = ${btcQty} BTC)`;
+
+      const lotsInput = document.getElementById('bot-lots-input');
+      if (lotsInput && document.activeElement !== lotsInput) {
+        lotsInput.value = String(lots);
+      }
+
+      const kpiLotsPill = document.getElementById('kpi-lots-guard-pill');
+      if (kpiLotsPill) {
+        kpiLotsPill.textContent = `${lots}L • 🛡️ 4/4 Guards`;
+      }
+
+      const reqMargin = Math.round(lots * 1.40);
+      const guardBalEl = document.getElementById('guard-pill-balance');
+      if (guardBalEl) {
+        const availUsd = Number((dashboardState && dashboardState.wallet && dashboardState.wallet.available_usd) || 0);
+        const okBal = availUsd === 0 || availUsd >= reqMargin;
+        guardBalEl.textContent = `${okBal ? '✅' : '⚠️'} 1. Free Bal ≥ $${reqMargin.toLocaleString('en-US')}`;
+      }
 
       const runs = gh.runs || [];
       const tbody = document.getElementById('gh-runs-tbody');
@@ -1759,10 +1836,11 @@
           'Accept': 'application/vnd.github+json',
           'X-GitHub-Api-Version': '2022-11-28'
         };
-        const [wfResp, runsResp, varResp] = await Promise.all([
+        const [wfResp, runsResp, varResp, lotsResp] = await Promise.all([
           fetch(`https://api.github.com/repos/${REPO_SLUG}/actions/workflows/${WORKFLOW_FILE}`, { headers }),
           fetch(`https://api.github.com/repos/${REPO_SLUG}/actions/runs?per_page=10`, { headers }),
-          fetch(`https://api.github.com/repos/${REPO_SLUG}/actions/variables/BOT_MODE`, { headers })
+          fetch(`https://api.github.com/repos/${REPO_SLUG}/actions/variables/BOT_MODE`, { headers }),
+          fetch(`https://api.github.com/repos/${REPO_SLUG}/actions/variables/BOT_LOTS`, { headers })
         ]);
         if (!dashboardState.github_actions) dashboardState.github_actions = {};
         if (wfResp.ok) {
@@ -1772,6 +1850,10 @@
         if (varResp.ok) {
           const v = await varResp.json();
           if (v.value) dashboardState.github_actions.bot_mode = v.value;
+        }
+        if (lotsResp.ok) {
+          const lv = await lotsResp.json();
+          if (lv.value) dashboardState.github_actions.bot_lots = parseInt(lv.value, 10) || 500;
         }
         if (runsResp.ok) {
           const rd = await runsResp.json();
@@ -1791,6 +1873,41 @@
         renderGitHubActionsSection();
       } catch (err) {
         console.warn('Browser GitHub Actions status check skipped:', err);
+      }
+    }
+
+    function quickSetLotsInput(lotsVal) {
+      const el = document.getElementById('bot-lots-input');
+      if (el) el.value = String(lotsVal);
+      updateBotLotsFromDashboard();
+    }
+
+    async function updateBotLotsFromDashboard() {
+      const token = getSavedToken();
+      const el = document.getElementById('bot-lots-input');
+      const lotsNum = parseInt(el ? el.value : '500', 10);
+      if (isNaN(lotsNum) || lotsNum < 1 || lotsNum > 5000) {
+        showToast('Please enter a valid lot count between 1 and 5000.', 'error');
+        return;
+      }
+      if (!token) {
+        openSettingsModal();
+        showToast('Please save a GitHub PAT (with Variables: Read & Write permission) to update BOT_LOTS.', 'info');
+        return;
+      }
+      try {
+        const ok = await upsertGitHubVariable(token, 'BOT_LOTS', String(lotsNum));
+        if (ok) {
+          if (dashboardState && dashboardState.github_actions) {
+            dashboardState.github_actions.bot_lots = lotsNum;
+          }
+          renderGitHubActionsSection();
+          showToast(`Updated BOT_LOTS to ${lotsNum} lots (${(lotsNum * 0.001).toFixed(3)} BTC / leg) on GitHub Actions!`, 'success');
+        } else {
+          showToast(`Could not update BOT_LOTS: Ensure PAT has 'Variables: Read and write' permission.`, 'error');
+        }
+      } catch (e) {
+        showToast(`Failed to update BOT_LOTS: ${e.message}`, 'error');
       }
     }
 
@@ -1857,12 +1974,13 @@
     async function triggerWorkflowDispatch() {
       const token = getSavedToken();
       const mode = document.getElementById('dispatch-mode-select').value;
+      const lotsStr = String(getActiveBotLots());
       if (!token) {
         openSettingsModal();
         showToast('Please save a GitHub PAT (with Actions: Read & Write permission) to trigger runs directly.', 'info');
         return;
       }
-      if (mode === 'live' && !confirm('Trigger a LIVE strangle execution right now? (Idempotency guard will skip if target expiry already has an open strangle.)')) {
+      if (mode === 'live' && !confirm(`Trigger a LIVE strangle execution (${lotsStr} lots) right now? (Idempotency & 4 Pre-Flight Safety Guards will run before placing orders.)`)) {
         return;
       }
       try {
@@ -1876,11 +1994,11 @@
           },
           body: JSON.stringify({
             ref: 'main',
-            inputs: { mode: mode, lots: '500' }
+            inputs: { mode: mode, lots: lotsStr }
           })
         });
         if (resp.status === 204 || resp.ok) {
-          showToast(`Workflow dispatched in '${mode}' mode! Refreshing run list in 4s...`, 'success');
+          showToast(`Workflow dispatched in '${mode}' mode (${lotsStr} lots)! Refreshing run list in 4s...`, 'success');
           setTimeout(() => refreshLiveGitHubStatusFromBrowser(token), 4000);
         } else {
           showToast(`GitHub API ${resp.status}: Ensure PAT has 'Actions: Read and write' permission.`, 'error');
