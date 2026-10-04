@@ -188,15 +188,7 @@
         </button>
       </div>
 
-      <!-- Quick Date Range Presets (Shared across Performance Charts & Ledger) -->
-      <div class="flex items-center gap-1.5 flex-wrap">
-        <span class="text-[11px] text-slate-400 mr-1">Period:</span>
-        <button onclick="setDatePreset('all')" id="preset-btn-all" class="px-2.5 py-1 text-xs font-medium rounded-lg bg-indigo-600 text-white border border-indigo-500">All Time</button>
-        <button onclick="setDatePreset('30d')" id="preset-btn-30d" class="px-2.5 py-1 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">Last 30D</button>
-        <button onclick="setDatePreset('7d')" id="preset-btn-7d" class="px-2.5 py-1 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">Last 7D</button>
-        <button onclick="setDatePreset('oct2026')" id="preset-btn-oct2026" class="px-2.5 py-1 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">Oct 2026</button>
-        <button onclick="setDatePreset('today')" id="preset-btn-today" class="px-2.5 py-1 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">Today</button>
-      </div>
+      <div id="selected-range-summary" class="text-xs mono text-slate-300"></div>
     </nav>
 
     <!-- ========================================================================= -->
@@ -240,154 +232,238 @@
         </div>
       </section>
 
-      <!-- 1B: Portfolio Performance Chart + Daily PnL Bar Chart & Monthly Calendar -->
-      <section class="glass-card rounded-xl overflow-hidden">
-        <div class="px-5 py-3.5 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
+      <!-- 1B: Redesigned Portfolio Performance & P&L Analytics Section -->
+      <section class="glass-card rounded-2xl overflow-hidden shadow-lg">
+
+        <!-- Unified Single Header & Control Bar -->
+        <div class="px-5 py-4 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 class="text-sm sm:text-base font-semibold text-white flex items-center gap-2">
-              📈 Portfolio Performance & P&L Analytics
-            </h2>
-            <p class="text-[11px] text-slate-400">
-              Track cumulative portfolio equity, drawdown, daily realized bars, and monthly calendar heatmap.
+            <div class="flex items-center gap-2.5 flex-wrap">
+              <h2 class="text-base font-bold text-white">📈 Portfolio Performance &amp; P&amp;L Analytics</h2>
+              <span id="perf-era-pill" class="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 mono">
+                Last 30D (Bot Live)
+              </span>
+            </div>
+            <p class="text-xs text-slate-400 mt-0.5">
+              Cumulative net equity curve, daily realized + mark-to-market P&amp;L bars, and monthly calendar heatmap.
             </p>
           </div>
 
-          <!-- Chart Mode Switcher -->
-          <div class="flex items-center gap-1 bg-slate-900 p-1 rounded-lg border border-slate-800">
-            <button onclick="setChartMode('performance')" id="tab-chart-performance"
-              class="px-3 py-1 text-xs font-semibold rounded-md bg-indigo-600 text-white transition">
-              📈 Performance Curve
-            </button>
-            <button onclick="setChartMode('bar')" id="tab-chart-bar"
-              class="px-3 py-1 text-xs font-semibold rounded-md text-slate-400 hover:text-white transition">
-              📊 Daily Bars
-            </button>
-            <button onclick="setChartMode('calendar')" id="tab-chart-calendar"
-              class="px-3 py-1 text-xs font-semibold rounded-md text-slate-400 hover:text-white transition">
-              📅 Monthly Calendar
-            </button>
-            <button onclick="setChartMode('both')" id="tab-chart-both"
-              class="px-3 py-1 text-xs font-semibold rounded-md text-slate-400 hover:text-white transition">
-              🔀 All Charts
-            </button>
-          </div>
-        </div>
-
-        <!-- Custom Date Range & Chart Options Bar -->
-        <div class="px-5 py-2.5 bg-slate-900/60 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <!-- Unified Controls: Timeframe Presets + Custom Drawer + Currency Switch + Layout Mode -->
           <div class="flex items-center gap-2 flex-wrap">
-            <label class="text-slate-400">From:</label>
-            <input type="date" id="filter-from-date" onchange="applyAllFilters()"
-              class="bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-xs text-white mono" />
-            <label class="text-slate-400">To:</label>
-            <input type="date" id="filter-to-date" onchange="applyAllFilters()"
-              class="bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-xs text-white mono" />
-            <button onclick="setDatePreset('feb2026')" class="px-2 py-1 text-[11px] rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">Feb 2026</button>
-            <button onclick="setDatePreset('jan2026')" class="px-2 py-1 text-[11px] rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">Jan 2026</button>
-          </div>
+            <!-- Timeframe Presets (Default = Last 30D) -->
+            <div class="flex items-center bg-slate-950/90 p-1 rounded-xl border border-slate-800 text-xs">
+              <button onclick="setDatePreset('30d')" id="preset-btn-30d"
+                class="px-3 py-1 rounded-lg font-semibold bg-indigo-600 text-white transition">
+                Last 30D
+              </button>
+              <button onclick="setDatePreset('7d')" id="preset-btn-7d"
+                class="px-3 py-1 rounded-lg font-semibold text-slate-400 hover:text-white transition">
+                7D
+              </button>
+              <button onclick="setDatePreset('oct2026')" id="preset-btn-oct2026"
+                class="px-3 py-1 rounded-lg font-semibold text-slate-400 hover:text-white transition">
+                Oct 2026
+              </button>
+              <button onclick="setDatePreset('today')" id="preset-btn-today"
+                class="px-3 py-1 rounded-lg font-semibold text-slate-400 hover:text-white transition">
+                Today
+              </button>
+              <button onclick="setDatePreset('all')" id="preset-btn-all"
+                class="px-3 py-1 rounded-lg font-semibold text-slate-400 hover:text-white transition">
+                All Time
+              </button>
+              <button onclick="toggleCustomDatesDrawer()" id="preset-btn-custom"
+                class="px-2.5 py-1 rounded-lg font-semibold text-slate-400 hover:text-white transition">
+                📅 Custom
+              </button>
+            </div>
 
-          <div class="flex items-center gap-4 flex-wrap">
-            <label class="flex items-center gap-1.5 text-slate-300 cursor-pointer select-none">
+            <!-- Currency Switcher ($ USD / ₹ INR) -->
+            <div class="flex items-center bg-slate-950/90 p-1 rounded-xl border border-slate-800 text-xs mono">
+              <button onclick="setAnalyticsCurrency('USD')" id="curr-btn-USD"
+                class="px-2.5 py-1 rounded-lg font-bold bg-emerald-600 text-white transition">
+                $ USD
+              </button>
+              <button onclick="setAnalyticsCurrency('INR')" id="curr-btn-INR"
+                class="px-2.5 py-1 rounded-lg font-bold text-slate-400 hover:text-white transition">
+                ₹ INR
+              </button>
+            </div>
+
+            <!-- Include Live uPnL Toggle -->
+            <label class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-950/90 border border-slate-800 text-xs text-slate-200 cursor-pointer select-none">
               <input type="checkbox" id="toggle-include-live-upnl" checked onchange="applyAllFilters()"
-                class="rounded bg-slate-900 border-slate-700 text-indigo-500" />
-              <span>Include Live Open uPnL</span>
+                class="accent-indigo-500 rounded" />
+              <span class="font-medium">Include Live uPnL</span>
             </label>
-            <div id="selected-range-summary" class="mono text-slate-300"></div>
+
+            <!-- Layout Mode Switcher (Split Side-by-Side vs Full-Width Tabs) -->
+            <div class="flex items-center bg-slate-950/90 p-1 rounded-xl border border-slate-800 text-xs">
+              <button onclick="setAnalyticsLayout('split')" id="layout-btn-split"
+                class="px-2.5 py-1 rounded-lg font-semibold bg-indigo-600 text-white transition"
+                title="Show Combo Equity Chart and Monthly Calendar side-by-side">
+                ◫ Split
+              </button>
+              <button onclick="setAnalyticsLayout('tabbed')" id="layout-btn-tabbed"
+                class="px-2.5 py-1 rounded-lg font-semibold text-slate-400 hover:text-white transition"
+                title="Full-width tabbed view">
+                ▭ Full
+              </button>
+            </div>
           </div>
         </div>
 
-        <div class="p-5 space-y-6">
-          <!-- PANEL A: Interactive Portfolio Performance Chart (Cumulative Equity & Drawdown Curve) -->
-          <div id="panel-performance-chart" class="bg-slate-900/50 border border-slate-800/80 rounded-xl p-4 space-y-4">
-            <div class="flex flex-wrap items-center justify-between gap-3">
+        <!-- Collapsible Custom Date Range Drawer -->
+        <div id="custom-date-drawer" class="hidden px-5 py-3 bg-slate-950/80 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="text-slate-400 font-medium">Custom Date Range:</span>
+            <input type="date" id="filter-from-date" onchange="onCustomDateInputChange()"
+              class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-white mono" />
+            <span class="text-slate-400">to</span>
+            <input type="date" id="filter-to-date" onchange="onCustomDateInputChange()"
+              class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-white mono" />
+            <button onclick="setDatePreset('feb2026')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">Feb 2026</button>
+            <button onclick="setDatePreset('jan2026')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">Jan 2026</button>
+          </div>
+          <button onclick="toggleCustomDatesDrawer()" class="text-xs text-slate-400 hover:text-white">Hide ✕</button>
+        </div>
+
+        <!-- 5-Metric Performance Scorecard Strip -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 divide-y sm:divide-y-0 sm:divide-x divide-slate-800 border-b border-slate-800 bg-slate-900/40">
+          <div class="p-4">
+            <div class="text-xs text-slate-400 font-medium flex items-center justify-between">
+              <span>Net Portfolio P&amp;L</span>
+              <span id="perf-stat-roi-badge" class="px-1.5 py-0.5 text-xs rounded bg-emerald-500/15 text-emerald-400 mono">+0.0%</span>
+            </div>
+            <div id="perf-stat-return" class="text-lg font-bold mono mt-1 text-emerald-400">$0.00</div>
+            <div id="perf-stat-net-sub" class="text-xs text-slate-400 mt-0.5 mono truncate">Realized + Live uPnL</div>
+          </div>
+
+          <div class="p-4">
+            <div class="text-xs text-slate-400 font-medium">Premium Cashflow</div>
+            <div id="perf-stat-cashflow" class="text-lg font-bold mono mt-1 text-white">$0.00</div>
+            <div id="perf-stat-fees" class="text-xs text-slate-400 mt-0.5 mono">Fees Paid: $0.00</div>
+          </div>
+
+          <div class="p-4">
+            <div class="text-xs text-slate-400 font-medium">Win Rate &amp; Profit Factor</div>
+            <div id="perf-stat-days" class="text-lg font-bold mono mt-1 text-indigo-300">0% (0W/0L)</div>
+            <div id="perf-stat-pf" class="text-xs text-slate-400 mt-0.5 mono">Profit Factor: --</div>
+          </div>
+
+          <div class="p-4">
+            <div class="text-xs text-slate-400 font-medium">Max Drawdown / Peak</div>
+            <div id="perf-stat-dd" class="text-lg font-bold mono mt-1 text-rose-400">$0.00</div>
+            <div id="perf-stat-peak" class="text-xs text-slate-400 mt-0.5 mono">Peak HWM: $0.00</div>
+          </div>
+
+          <div class="p-4 col-span-2 sm:col-span-1">
+            <div class="text-xs text-slate-400 font-medium">Best / Worst Day</div>
+            <div id="perf-stat-best" class="text-sm font-bold mono mt-1 text-emerald-400 truncate">Best: --</div>
+            <div id="perf-stat-worst" class="text-xs text-rose-400 mt-0.5 mono truncate">Worst: --</div>
+          </div>
+        </div>
+
+        <!-- Optional Sub-Tab Bar when in 'Full-Width Tabs' layout mode -->
+        <div id="analytics-subtab-bar" class="hidden px-5 pt-3 border-b border-slate-800 flex items-center gap-2 bg-slate-900/50">
+          <button onclick="setAnalyticsSubTab('combo')" id="subtab-btn-combo"
+            class="px-3.5 py-2 text-xs font-semibold border-b-2 border-indigo-500 text-white">
+            📈 Equity Curve &amp; Daily P&amp;L Combo
+          </button>
+          <button onclick="setAnalyticsSubTab('calendar')" id="subtab-btn-calendar"
+            class="px-3.5 py-2 text-xs font-semibold border-b-2 border-transparent text-slate-400 hover:text-white">
+            📅 Monthly P&amp;L Calendar Heatmap
+          </button>
+        </div>
+
+        <!-- Main Analytics Grid: Left (7 cols Combo Chart) + Right (5 cols Monthly Calendar) -->
+        <div class="p-5 grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+
+          <!-- LEFT PANEL (7 cols): Combined Cumulative Equity Curve + Daily P&L Bars -->
+          <div id="panel-performance-chart" class="lg:col-span-7 bg-slate-900/55 border border-slate-800/80 rounded-xl p-4 flex flex-col justify-between space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <h3 class="text-sm font-semibold text-white flex items-center gap-2">
-                  Portfolio Performance Curve (Cumulative Net P&L)
-                  <span id="perf-curve-badge" class="px-2 py-0.5 text-[10px] rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 mono">Mark-to-Market</span>
+                <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                  <span>Cumulative Equity Curve &amp; Daily P&amp;L</span>
                 </h3>
-                <p class="text-[11px] text-slate-400">
-                  Cumulative net realized P&L after fees + live open position mark-to-market equity. Hover or click any point to inspect.
+                <p class="text-xs text-slate-400">
+                  Smooth area curve = Cumulative Net P&amp;L • Vertical bars = Daily Net P&amp;L
                 </p>
               </div>
 
-              <!-- 4 Mini Portfolio Performance Metrics -->
-              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-right mono">
-                <div class="px-3 py-1.5 rounded-lg bg-slate-950/70 border border-slate-800">
-                  <div class="text-[9px] uppercase text-slate-400">Period Net Return</div>
-                  <div id="perf-stat-return" class="text-xs font-bold text-emerald-400">$0.00</div>
-                </div>
-                <div class="px-3 py-1.5 rounded-lg bg-slate-950/70 border border-slate-800">
-                  <div class="text-[9px] uppercase text-slate-400">Peak Equity (HWM)</div>
-                  <div id="perf-stat-peak" class="text-xs font-bold text-slate-200">$0.00</div>
-                </div>
-                <div class="px-3 py-1.5 rounded-lg bg-slate-950/70 border border-slate-800">
-                  <div class="text-[9px] uppercase text-slate-400">Max Drawdown</div>
-                  <div id="perf-stat-dd" class="text-xs font-bold text-rose-400">$0.00</div>
-                </div>
-                <div class="px-3 py-1.5 rounded-lg bg-slate-950/70 border border-slate-800">
-                  <div class="text-[9px] uppercase text-slate-400">Active Days</div>
-                  <div id="perf-stat-days" class="text-xs font-bold text-indigo-300">0D</div>
-                </div>
+              <!-- Chart Layer Mode Switcher -->
+              <div class="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800 text-xs">
+                <button onclick="setChartMode('combo')" id="tab-chart-combo"
+                  class="px-2.5 py-1 rounded font-semibold bg-indigo-600 text-white transition">
+                  Combo
+                </button>
+                <button onclick="setChartMode('line')" id="tab-chart-line"
+                  class="px-2.5 py-1 rounded font-semibold text-slate-400 hover:text-white transition">
+                  Curve Only
+                </button>
+                <button onclick="setChartMode('bars')" id="tab-chart-bars"
+                  class="px-2.5 py-1 rounded font-semibold text-slate-400 hover:text-white transition">
+                  Bars Only
+                </button>
               </div>
             </div>
 
-            <!-- Interactive SVG Chart Container -->
-            <div class="relative w-full h-72 bg-slate-950/50 rounded-xl border border-slate-800/70 p-3">
-              <div id="perf-chart-tooltip" class="hidden absolute z-20 pointer-events-none px-3 py-2 rounded-lg bg-slate-900/95 border border-slate-700 shadow-xl text-[11px] mono text-slate-200 whitespace-nowrap"></div>
+            <!-- Interactive SVG Combo Chart Container -->
+            <div class="relative w-full h-64 bg-slate-950/60 rounded-xl border border-slate-800/80 p-3">
+              <div id="perf-chart-tooltip" class="hidden absolute z-20 pointer-events-none px-3 py-2 rounded-lg bg-slate-900/95 border border-slate-700 shadow-xl text-xs mono text-slate-200"></div>
               <div id="portfolio-performance-svg-wrap" class="w-full h-full">
                 <!-- Populated by renderPortfolioPerformanceChart() -->
               </div>
             </div>
 
-            <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400 mono">
-              <span>💡 Click any point on the equity curve to filter trades for that date</span>
-              <span id="perf-chart-footer-summary">USD / INR (1 USD ≈ ₹85)</span>
+            <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400 mono">
+              <div class="flex items-center gap-4 flex-wrap">
+                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-indigo-400 inline-block"></span> Cumulative Curve</span>
+                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-emerald-500/75 inline-block"></span> Profit Day</span>
+                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-rose-500/75 inline-block"></span> Loss / Fee Day</span>
+                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block"></span> Live Open uPnL</span>
+              </div>
+              <span id="perf-chart-footer-summary">Click any point/bar to filter that date</span>
             </div>
           </div>
 
-          <!-- PANEL B & C: Daily PnL Bar Chart & Monthly Calendar Heatmap -->
-          <div id="charts-grid" class="hidden grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- Daily PnL Bar Chart -->
-            <div id="panel-bar-chart" class="bg-slate-900/50 border border-slate-800/80 rounded-xl p-4 flex flex-col justify-between">
-              <div class="flex items-center justify-between mb-3">
-                <div>
-                  <h3 class="text-sm font-semibold text-white">Daily Net Realized P&L Bar Chart (USD)</h3>
-                  <p class="text-[11px] text-slate-400">Green = Net Profit Day • Red = Net Loss Day (After Commissions)</p>
-                </div>
-                <span id="bar-chart-days-count" class="text-xs mono text-slate-400">0 active days</span>
+          <!-- RIGHT PANEL (5 cols): Monthly P&L Calendar Heatmap -->
+          <div id="panel-calendar-view" class="lg:col-span-5 bg-slate-900/55 border border-slate-800/80 rounded-xl p-4 flex flex-col justify-between space-y-3">
+            <div class="flex items-center justify-between gap-2">
+              <div>
+                <h3 class="text-sm font-bold text-white">📅 Monthly P&amp;L Calendar</h3>
+                <p id="cal-month-summary" class="text-xs text-slate-400 mono">
+                  Click any date cell to inspect orders
+                </p>
               </div>
-              <div id="bar-chart-container" class="h-64 flex items-end gap-2 pt-6 pb-2 px-2 overflow-x-auto border-b border-slate-800 relative">
-                <!-- Populated by JS -->
-              </div>
-              <div id="bar-chart-legend" class="mt-3 flex items-center justify-between text-[11px] text-slate-400 mono">
-                <span>Click any bar to filter that date's orders</span>
-                <span id="bar-chart-best-worst">Best: -- | Worst: --</span>
+              <div class="flex items-center gap-1">
+                <button onclick="changeCalendarMonth(-1)" class="px-2.5 py-1 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">◀</button>
+                <select id="calendar-month-select" onchange="onCalendarMonthSelect()" class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-white mono">
+                </select>
+                <button onclick="changeCalendarMonth(1)" class="px-2.5 py-1 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">▶</button>
               </div>
             </div>
 
-            <!-- Monthly Calendar Heatmap View -->
-            <div id="panel-calendar-view" class="bg-slate-900/50 border border-slate-800/80 rounded-xl p-4">
-              <div class="flex items-center justify-between mb-3">
-                <div>
-                  <h3 class="text-sm font-semibold text-white">Monthly P&L Calendar Heatmap</h3>
-                  <p class="text-[11px] text-slate-400">Click any date cell to inspect that day's orders</p>
-                </div>
-                <div class="flex items-center gap-1.5">
-                  <button onclick="changeCalendarMonth(-1)" class="px-2 py-1 text-xs rounded bg-slate-800 hover:bg-slate-700 text-slate-200">◀</button>
-                  <select id="calendar-month-select" onchange="onCalendarMonthSelect()" class="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-white mono">
-                  </select>
-                  <button onclick="changeCalendarMonth(1)" class="px-2 py-1 text-xs rounded bg-slate-800 hover:bg-slate-700 text-slate-200">▶</button>
-                </div>
-              </div>
-
-              <div class="grid grid-cols-7 gap-1.5 text-center text-[10px] uppercase tracking-wider text-slate-400 mb-1.5 font-semibold">
+            <div>
+              <div class="grid grid-cols-7 gap-1.5 text-center text-xs font-semibold text-slate-400 mb-1.5">
                 <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
               </div>
               <div id="calendar-days-grid" class="grid grid-cols-7 gap-1.5">
-                <!-- Populated by JS -->
+                <!-- Populated by renderCalendarHeatmap() -->
               </div>
             </div>
+
+            <div class="pt-2 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400 mono">
+              <span>Click any date to filter ledger</span>
+              <span class="flex items-center gap-1.5">
+                <span class="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300">+PnL</span>
+                <span class="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300">Open/CF</span>
+                <span class="px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-300">-PnL</span>
+              </span>
+            </div>
           </div>
+
         </div>
       </section>
     </div>
@@ -714,8 +790,12 @@
     let liveTickersBySymbol = {};
     let currentMainTab = 'overview';
     let currentAuditTab = 'ALL';
-    let currentChartMode = 'performance';
-    let currentDatePreset = 'all';
+    let currentChartMode = 'combo';
+    let currentDatePreset = '30d';
+    let currentAnalyticsCurrency = 'USD';
+    let currentAnalyticsLayout = 'split';
+    let currentAnalyticsSubTab = 'combo';
+    let hasInitializedPreset = false;
     let availableMonths = [];
     let currentCalendarMonth = '';
     let filteredAuditOrders = [];
@@ -760,6 +840,12 @@
       const inr = Math.round(Number(usdVal || 0) * 85);
       const sign = showSign ? (inr >= 0 ? '+' : '-') : (inr < 0 ? '-' : '');
       return `${sign}₹${Math.abs(inr).toLocaleString('en-IN')}`;
+    }
+
+    function formatAnalyticsMoney(usdVal, showSign = false) {
+      return currentAnalyticsCurrency === 'INR'
+        ? formatINR(usdVal, showSign)
+        : formatUSD(usdVal, showSign);
     }
 
     function formatIST(isoStr) {
@@ -861,7 +947,12 @@
         renderLivePositions();
         renderCriticalAlerts();
         renderGitHubActionsSection();
-        applyAllFilters();
+        if (!hasInitializedPreset) {
+          hasInitializedPreset = true;
+          setDatePreset('30d');
+        } else {
+          applyAllFilters();
+        }
       } else {
         openSettingsModal();
         showToast('🔒 Private Cloud Dashboard: Paste your GitHub PAT (or use your #token=... bookmark) to load data.', 'info');
@@ -900,6 +991,7 @@
             document.getElementById('filter-from-date').value,
             document.getElementById('filter-to-date').value
           );
+          renderCalendarHeatmap();
         }
       } catch (err) {
         document.getElementById('tick-counter').textContent = 'Using Cloud Snapshot Prices';
@@ -1203,7 +1295,7 @@
     }
 
     // ============================================================================
-    // PORTFOLIO PERFORMANCE CHART (INTERACTIVE SVG EQUITY CURVE & DRAWDOWN)
+    // PORTFOLIO PERFORMANCE & P&L ANALYTICS (COMBO EQUITY CURVE + DAILY BARS)
     // ============================================================================
     function renderPortfolioPerformanceChart(fromDate, toDate) {
       const wrap = document.getElementById('portfolio-performance-svg-wrap');
@@ -1211,6 +1303,7 @@
 
       const allDaily = dashboardState.daily_pnl || [];
       const includeLiveUpnl = document.getElementById('toggle-include-live-upnl')?.checked !== false;
+      const walletUsd = Number((dashboardState.wallet && dashboardState.wallet.balance_usd) || 6140.40);
 
       const filteredDays = allDaily.filter(d => {
         if (fromDate && d.date < fromDate) return false;
@@ -1218,34 +1311,46 @@
         return true;
       });
 
-      // Build period-relative cumulative performance series
       const points = [];
       let cumNet = 0;
       let peakNet = 0;
       let maxDrawdown = 0;
+      let totalCashflow = 0;
+      let totalFees = 0;
       let winDays = 0;
       let lossDays = 0;
+      let grossProfit = 0;
+      let grossLoss = 0;
 
-      if (filteredDays.length > 0) {
-        points.push({
-          date: 'Start',
-          label: 'Period Start',
-          daily_net: 0,
-          cum_net: 0,
-          drawdown: 0,
-          trades: 0,
-          isBaseline: true
-        });
-      }
+      points.push({
+        date: 'Start',
+        label: 'Period Baseline',
+        daily_net: 0,
+        cum_net: 0,
+        drawdown: 0,
+        cashflow: 0,
+        fees: 0,
+        trades: 0,
+        isBaseline: true
+      });
 
       for (const d of filteredDays) {
         const net = Number(d.net_pnl_usd || 0);
+        const cf = Number(d.cashflow_usd || 0);
+        const fee = Number(d.commissions_usd || 0);
         cumNet += net;
+        totalCashflow += cf;
+        totalFees += fee;
         if (cumNet > peakNet) peakNet = cumNet;
         const dd = cumNet - peakNet;
         if (dd < maxDrawdown) maxDrawdown = dd;
-        if (net > 0) winDays++;
-        else if (net < 0) lossDays++;
+        if (net > 0) {
+          winDays++;
+          grossProfit += net;
+        } else if (net < 0) {
+          lossDays++;
+          grossLoss += Math.abs(net);
+        }
 
         points.push({
           date: d.date,
@@ -1253,73 +1358,120 @@
           daily_net: net,
           cum_net: cumNet,
           drawdown: dd,
+          cashflow: cf,
+          fees: fee,
           trades: Number(d.closed_orders_count || 0),
           isLive: false
         });
       }
 
-      // Append live open positions unrealized PnL point if within range
+      const realizedOnlyNet = cumNet;
       const latestSyncDate = (dashboardState.last_synced_utc || new Date().toISOString()).slice(0, 10);
       const liveInRange = (!toDate || toDate >= latestSyncDate) && (dashboardState.open_positions || []).length > 0;
       if (includeLiveUpnl && liveInRange) {
-        if (points.length === 0) {
-          points.push({
-            date: 'Start',
-            label: 'Start',
-            daily_net: 0,
-            cum_net: 0,
-            drawdown: 0,
-            trades: 0,
-            isBaseline: true
-          });
-        }
         const liveCum = cumNet + currentLiveUpnlUsd;
         if (liveCum > peakNet) peakNet = liveCum;
         const liveDd = liveCum - peakNet;
         if (liveDd < maxDrawdown) maxDrawdown = liveDd;
+        if (currentLiveUpnlUsd > 0) {
+          winDays++;
+          grossProfit += currentLiveUpnlUsd;
+        } else if (currentLiveUpnlUsd < 0) {
+          lossDays++;
+          grossLoss += Math.abs(currentLiveUpnlUsd);
+        }
         points.push({
           date: latestSyncDate,
           label: `${latestSyncDate} (Live Open uPnL)`,
           daily_net: currentLiveUpnlUsd,
           cum_net: liveCum,
           drawdown: liveDd,
+          cashflow: 0,
+          fees: 0,
           trades: (dashboardState.open_positions || []).length,
           isLive: true
         });
       }
 
       const finalReturn = points.length ? points[points.length - 1].cum_net : 0;
+      const roiPct = walletUsd > 0 ? ((finalReturn / walletUsd) * 100).toFixed(2) : '0.00';
 
-      // Update 4 Mini Performance Stat Cards
+      // Update 5-Metric Performance Scorecard Strip
       const retEl = document.getElementById('perf-stat-return');
-      retEl.textContent = `${formatUSD(finalReturn, true)} (${formatINR(finalReturn, true)})`;
-      retEl.className = `text-xs font-bold ${finalReturn >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+      if (retEl) {
+        retEl.textContent = formatAnalyticsMoney(finalReturn, true);
+        retEl.className = `text-lg font-bold mono mt-1 ${finalReturn >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+      }
 
-      document.getElementById('perf-stat-peak').textContent = formatUSD(peakNet, true);
-      document.getElementById('perf-stat-dd').textContent = formatUSD(maxDrawdown, false);
-      document.getElementById('perf-stat-days').textContent = `${filteredDays.length}D (${winDays}W/${lossDays}L)`;
+      const roiBadge = document.getElementById('perf-stat-roi-badge');
+      if (roiBadge) {
+        roiBadge.textContent = `${finalReturn >= 0 ? '+' : ''}${roiPct}%`;
+        roiBadge.className = `px-1.5 py-0.5 text-xs rounded mono ${finalReturn >= 0 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-rose-500/15 text-rose-400'}`;
+      }
+
+      const subEl = document.getElementById('perf-stat-net-sub');
+      if (subEl) {
+        subEl.textContent = (includeLiveUpnl && liveInRange)
+          ? `Realized ${formatAnalyticsMoney(realizedOnlyNet, true)} • Live ${formatAnalyticsMoney(currentLiveUpnlUsd, true)}`
+          : `Realized Only (${filteredDays.length} active days)`;
+      }
+
+      const cfEl = document.getElementById('perf-stat-cashflow');
+      if (cfEl) cfEl.textContent = formatAnalyticsMoney(totalCashflow, true);
+      const feesEl = document.getElementById('perf-stat-fees');
+      if (feesEl) feesEl.textContent = `Fees Paid: ${formatAnalyticsMoney(totalFees, false)}`;
+
+      const totalActive = winDays + lossDays;
+      const winPct = totalActive > 0 ? Math.round((winDays / totalActive) * 100) : 0;
+      const pf = grossLoss > 0 ? (grossProfit / grossLoss).toFixed(2) + 'x' : (grossProfit > 0 ? '∞' : '--');
+      const daysEl = document.getElementById('perf-stat-days');
+      if (daysEl) daysEl.textContent = `${winPct}% (${winDays}W / ${lossDays}L)`;
+      const pfEl = document.getElementById('perf-stat-pf');
+      if (pfEl) pfEl.textContent = `Profit Factor: ${pf}`;
+
+      const ddEl = document.getElementById('perf-stat-dd');
+      if (ddEl) ddEl.textContent = formatAnalyticsMoney(maxDrawdown, false);
+      const peakEl = document.getElementById('perf-stat-peak');
+      if (peakEl) peakEl.textContent = `Peak HWM: ${formatAnalyticsMoney(peakNet, true)}`;
+
+      const dataPts = points.filter(p => !p.isBaseline);
+      const bestEl = document.getElementById('perf-stat-best');
+      const worstEl = document.getElementById('perf-stat-worst');
+      if (dataPts.length) {
+        const bestPt = dataPts.reduce((a, b) => (b.daily_net > a.daily_net ? b : a), dataPts[0]);
+        const worstPt = dataPts.reduce((a, b) => (b.daily_net < a.daily_net ? b : a), dataPts[0]);
+        if (bestEl) bestEl.textContent = `Best: ${formatAnalyticsMoney(bestPt.daily_net, true)} (${bestPt.isLive ? 'Live' : bestPt.date.slice(5)})`;
+        if (worstEl) worstEl.textContent = `Worst: ${formatAnalyticsMoney(worstPt.daily_net, true)} (${worstPt.isLive ? 'Live' : worstPt.date.slice(5)})`;
+      } else {
+        if (bestEl) bestEl.textContent = 'Best: --';
+        if (worstEl) worstEl.textContent = 'Worst: --';
+      }
 
       if (points.length < 2) {
         wrap.innerHTML = `<div class="w-full h-full flex items-center justify-center text-xs text-slate-500">No portfolio performance data in selected date range.</div>`;
         return;
       }
 
-      // Render Responsive SVG Line + Area Curve
-      const width = 860;
-      const height = 240;
+      // Render Responsive SVG Combo Chart (Cumulative Line/Area + Daily Bars)
+      const width = 680;
+      const height = 220;
       const padLeft = 64;
-      const padRight = 24;
-      const padTop = 20;
-      const padBottom = 32;
+      const padRight = 20;
+      const padTop = 18;
+      const padBottom = 28;
       const plotW = width - padLeft - padRight;
       const plotH = height - padTop - padBottom;
 
-      const vals = points.map(p => p.cum_net);
+      const vals = [];
+      points.forEach(p => {
+        if (currentChartMode !== 'bars') vals.push(p.cum_net);
+        if (currentChartMode !== 'line') vals.push(p.daily_net);
+      });
       const minVal = Math.min(0, ...vals);
       const maxVal = Math.max(0, ...vals);
       const span = Math.max(10, maxVal - minVal);
-      const yMin = minVal - span * 0.08;
-      const yMax = maxVal + span * 0.08;
+      const yMin = minVal - span * 0.12;
+      const yMax = maxVal + span * 0.12;
 
       const xForIdx = (i) => padLeft + (i / Math.max(1, points.length - 1)) * plotW;
       const yForVal = (v) => padTop + ((yMax - v) / Math.max(1e-6, yMax - yMin)) * plotH;
@@ -1331,13 +1483,6 @@
         pt: p
       }));
 
-      const linePath = coords.map((c, i) => `${i === 0 ? 'M' : 'L'} ${c.x.toFixed(1)} ${c.y.toFixed(1)}`).join(' ');
-      const areaPath = `${linePath} L ${coords[coords.length - 1].x.toFixed(1)} ${zeroY.toFixed(1)} L ${coords[0].x.toFixed(1)} ${zeroY.toFixed(1)} Z`;
-
-      const isPositiveEnd = finalReturn >= 0;
-      const strokeColor = isPositiveEnd ? '#10b981' : '#f43f5e';
-      const gradId = isPositiveEnd ? 'perfGradGreen' : 'perfGradRose';
-
       // Horizontal Y-axis grid ticks (4 steps)
       const yTicks = [yMax, (yMax + yMin) / 2, 0, yMin];
       const gridLines = yTicks.map(tv => {
@@ -1345,24 +1490,44 @@
         const isZero = Math.abs(tv) < 0.01;
         return `
           <line x1="${padLeft}" y1="${y.toFixed(1)}" x2="${width - padRight}" y2="${y.toFixed(1)}"
-            stroke="${isZero ? '#475569' : '#1e293b'}" stroke-dasharray="${isZero ? '4 4' : ''}" stroke-width="1" />
-          <text x="${padLeft - 8}" y="${(y + 3).toFixed(1)}" text-anchor="end" fill="#94a3b8" font-size="10" font-family="monospace">
-            ${formatUSD(tv, tv > 0)}
+            stroke="${isZero ? '#64748b' : '#334155'}" stroke-opacity="${isZero ? '0.6' : '0.35'}"
+            stroke-dasharray="${isZero ? '4 4' : ''}" stroke-width="1" />
+          <text x="${padLeft - 8}" y="${(y + 4).toFixed(1)}" text-anchor="end" fill="#94a3b8" font-size="11" font-family="monospace">
+            ${formatAnalyticsMoney(tv, tv > 0)}
           </text>
         `;
       }).join('');
 
-      // X-axis date labels (up to 7 evenly spaced labels)
-      const labelStep = Math.max(1, Math.ceil((coords.length - 1) / 6));
-      const xLabels = coords.filter((_, i) => i === 0 || i === coords.length - 1 || i % labelStep === 0).map(c => `
-        <text x="${c.x.toFixed(1)}" y="${height - 8}" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="monospace">
-          ${c.pt.isLive ? 'LIVE' : (c.pt.date === 'Start' ? 'Start' : c.pt.date.slice(5))}
-        </text>
-      `).join('');
+      // Daily P&L Bars Layer
+      const barWidth = Math.min(28, Math.max(8, Math.floor(plotW / (points.length * 1.8))));
+      const barsSvg = currentChartMode === 'line' ? '' : points.map((p, idx) => {
+        if (p.isBaseline) return '';
+        const x = xForIdx(idx) - barWidth / 2;
+        const yVal = yForVal(p.daily_net);
+        const topY = Math.min(zeroY, yVal);
+        const barH = Math.max(3, Math.abs(zeroY - yVal));
+        const fill = p.isLive ? '#fbbf24' : (p.daily_net >= 0 ? '#10b981' : '#f43f5e');
+        const clickAttr = (!p.isBaseline && p.date !== 'Start') ? `onclick="selectSingleDate('${p.date}')"` : '';
+        return `
+          <rect x="${x.toFixed(1)}" y="${topY.toFixed(1)}" width="${barWidth}" height="${barH.toFixed(1)}"
+            rx="3" fill="${fill}" fill-opacity="0.55"
+            class="cursor-pointer hover:fill-opacity-90 transition"
+            onmouseenter="showPerfTooltip(event, ${idx})"
+            onmouseleave="hidePerfTooltip()"
+            ${clickAttr} />
+        `;
+      }).join('');
+
+      // Cumulative Equity Line + Area Layer
+      const linePath = coords.map((c, i) => `${i === 0 ? 'M' : 'L'} ${c.x.toFixed(1)} ${c.y.toFixed(1)}`).join(' ');
+      const areaPath = `${linePath} L ${coords[coords.length - 1].x.toFixed(1)} ${zeroY.toFixed(1)} L ${coords[0].x.toFixed(1)} ${zeroY.toFixed(1)} Z`;
+
+      const isPositiveEnd = finalReturn >= 0;
+      const strokeColor = isPositiveEnd ? '#818cf8' : '#f43f5e';
 
       const circles = coords.map((c, idx) => {
-        const dotColor = c.pt.isLive ? '#fbbf24' : (c.pt.cum_net >= 0 ? '#10b981' : '#f43f5e');
-        const radius = c.pt.isLive ? 5.5 : 3.8;
+        const dotColor = c.pt.isLive ? '#fbbf24' : (c.pt.cum_net >= 0 ? '#34d399' : '#fb7185');
+        const radius = c.pt.isLive ? 5.8 : 4.2;
         const clickHandler = (!c.pt.isBaseline && c.pt.date !== 'Start') ? `onclick="selectSingleDate('${c.pt.date}')"` : '';
         return `
           <circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="${radius}"
@@ -1374,24 +1539,33 @@
         `;
       }).join('');
 
+      const lineSvg = currentChartMode === 'bars' ? '' : `
+        <path d="${areaPath}" fill="url(#comboPerfGrad)" />
+        <path d="${linePath}" fill="none" stroke="${strokeColor}" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" />
+        ${circles}
+      `;
+
+      // X-axis date labels
+      const labelStep = Math.max(1, Math.ceil((coords.length - 1) / 5));
+      const xLabels = coords.filter((_, i) => i === 0 || i === coords.length - 1 || i % labelStep === 0).map(c => `
+        <text x="${c.x.toFixed(1)}" y="${height - 6}" text-anchor="middle" fill="#94a3b8" font-size="11" font-family="monospace">
+          ${c.pt.isLive ? 'LIVE' : (c.pt.isBaseline ? 'Start' : c.pt.date.slice(5))}
+        </text>
+      `).join('');
+
       window.__perfChartPoints = coords;
 
       wrap.innerHTML = `
         <svg viewBox="0 0 ${width} ${height}" class="w-full h-full overflow-visible">
           <defs>
-            <linearGradient id="perfGradGreen" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#10b981" stop-opacity="0.32" />
-              <stop offset="100%" stop-color="#10b981" stop-opacity="0.02" />
-            </linearGradient>
-            <linearGradient id="perfGradRose" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#f43f5e" stop-opacity="0.04" />
-              <stop offset="100%" stop-color="#f43f5e" stop-opacity="0.28" />
+            <linearGradient id="comboPerfGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="${strokeColor}" stop-opacity="0.28" />
+              <stop offset="100%" stop-color="${strokeColor}" stop-opacity="0.02" />
             </linearGradient>
           </defs>
           ${gridLines}
-          <path d="${areaPath}" fill="url(#${gradId})" />
-          <path d="${linePath}" fill="none" stroke="${strokeColor}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
-          ${circles}
+          ${barsSvg}
+          ${lineSvg}
           ${xLabels}
         </svg>
       `;
@@ -1407,13 +1581,14 @@
 
       tip.innerHTML = `
         <div class="font-bold text-white mb-1">${p.label}</div>
-        <div>${p.isLive ? 'Live Open uPnL' : 'Daily Net PnL'}: <strong class="${p.daily_net >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${formatUSD(p.daily_net, true)}</strong></div>
-        <div>Cumulative Equity: <strong class="${p.cum_net >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${formatUSD(p.cum_net, true)} (${formatINR(p.cum_net, true)})</strong></div>
-        <div>Drawdown from Peak: <span class="text-rose-300">${formatUSD(p.drawdown, false)}</span> • ${p.isLive ? `${p.trades} open legs` : `${p.trades} closed orders`}</div>
+        <div>${p.isLive ? 'Live Open uPnL' : 'Daily Net P&L'}: <strong class="${p.daily_net >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${formatAnalyticsMoney(p.daily_net, true)}</strong></div>
+        <div>Cumulative Net: <strong class="${p.cum_net >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${formatAnalyticsMoney(p.cum_net, true)}</strong></div>
+        ${p.cashflow ? `<div>Premium Cashflow: <span class="text-amber-300">${formatAnalyticsMoney(p.cashflow, true)}</span></div>` : ''}
+        <div>Drawdown: <span class="text-rose-300">${formatAnalyticsMoney(p.drawdown, false)}</span> • ${p.isLive ? `${p.trades} open legs` : `${p.trades} closed orders`}</div>
       `;
       tip.classList.remove('hidden');
-      tip.style.left = `${Math.min(72, Math.max(5, (item.x / 860) * 100))}%`;
-      tip.style.top = '12px';
+      tip.style.left = `${Math.min(62, Math.max(4, (item.x / 680) * 100))}%`;
+      tip.style.top = '10px';
     }
 
     function hidePerfTooltip() {
@@ -1664,86 +1839,162 @@
 
     function setChartMode(mode) {
       currentChartMode = mode;
-      const perfPanel = document.getElementById('panel-performance-chart');
-      const barPanel = document.getElementById('panel-bar-chart');
-      const calPanel = document.getElementById('panel-calendar-view');
-      const grid = document.getElementById('charts-grid');
-
-      ['performance', 'bar', 'calendar', 'both'].forEach(m => {
+      ['combo', 'line', 'bars'].forEach(m => {
         const btn = document.getElementById(`tab-chart-${m}`);
         if (btn) {
           btn.className = m === mode
-            ? 'px-3 py-1 text-xs font-semibold rounded-md bg-indigo-600 text-white transition'
-            : 'px-3 py-1 text-xs font-semibold rounded-md text-slate-400 hover:text-white transition';
+            ? 'px-2.5 py-1 rounded font-semibold bg-indigo-600 text-white transition'
+            : 'px-2.5 py-1 rounded font-semibold text-slate-400 hover:text-white transition';
         }
       });
+      renderPortfolioPerformanceChart(
+        document.getElementById('filter-from-date').value,
+        document.getElementById('filter-to-date').value
+      );
+    }
 
-      if (mode === 'performance') {
-        perfPanel.classList.remove('hidden');
-        grid.classList.add('hidden');
-      } else if (mode === 'bar') {
-        perfPanel.classList.add('hidden');
-        grid.className = 'grid grid-cols-1 gap-6';
-        barPanel.classList.remove('hidden');
-        calPanel.classList.add('hidden');
-      } else if (mode === 'calendar') {
-        perfPanel.classList.add('hidden');
-        grid.className = 'grid grid-cols-1 gap-6';
-        barPanel.classList.add('hidden');
-        calPanel.classList.remove('hidden');
-      } else {
-        perfPanel.classList.remove('hidden');
-        grid.className = 'grid grid-cols-1 lg:grid-cols-2 gap-6';
-        barPanel.classList.remove('hidden');
-        calPanel.classList.remove('hidden');
+    function setAnalyticsCurrency(curr) {
+      currentAnalyticsCurrency = curr;
+      const usdBtn = document.getElementById('curr-btn-USD');
+      const inrBtn = document.getElementById('curr-btn-INR');
+      if (usdBtn) {
+        usdBtn.className = curr === 'USD'
+          ? 'px-2.5 py-1 rounded-lg font-bold bg-emerald-600 text-white transition'
+          : 'px-2.5 py-1 rounded-lg font-bold text-slate-400 hover:text-white transition';
       }
+      if (inrBtn) {
+        inrBtn.className = curr === 'INR'
+          ? 'px-2.5 py-1 rounded-lg font-bold bg-emerald-600 text-white transition'
+          : 'px-2.5 py-1 rounded-lg font-bold text-slate-400 hover:text-white transition';
+      }
+      applyAllFilters();
+    }
+
+    function setAnalyticsLayout(layout) {
+      currentAnalyticsLayout = layout;
+      const splitBtn = document.getElementById('layout-btn-split');
+      const tabBtn = document.getElementById('layout-btn-tabbed');
+      if (splitBtn) {
+        splitBtn.className = layout === 'split'
+          ? 'px-2.5 py-1 rounded-lg font-semibold bg-indigo-600 text-white transition'
+          : 'px-2.5 py-1 rounded-lg font-semibold text-slate-400 hover:text-white transition';
+      }
+      if (tabBtn) {
+        tabBtn.className = layout === 'tabbed'
+          ? 'px-2.5 py-1 rounded-lg font-semibold bg-indigo-600 text-white transition'
+          : 'px-2.5 py-1 rounded-lg font-semibold text-slate-400 hover:text-white transition';
+      }
+
+      const subtabBar = document.getElementById('analytics-subtab-bar');
+      const perfPanel = document.getElementById('panel-performance-chart');
+      const calPanel = document.getElementById('panel-calendar-view');
+
+      if (layout === 'split') {
+        if (subtabBar) subtabBar.classList.add('hidden');
+        perfPanel.className = 'lg:col-span-7 bg-slate-900/55 border border-slate-800/80 rounded-xl p-4 flex flex-col justify-between space-y-3';
+        calPanel.className = 'lg:col-span-5 bg-slate-900/55 border border-slate-800/80 rounded-xl p-4 flex flex-col justify-between space-y-3';
+      } else {
+        if (subtabBar) subtabBar.classList.remove('hidden');
+        setAnalyticsSubTab(currentAnalyticsSubTab);
+      }
+    }
+
+    function setAnalyticsSubTab(subtab) {
+      currentAnalyticsSubTab = subtab;
+      const comboBtn = document.getElementById('subtab-btn-combo');
+      const calBtn = document.getElementById('subtab-btn-calendar');
+      if (comboBtn) {
+        comboBtn.className = subtab === 'combo'
+          ? 'px-3.5 py-2 text-xs font-semibold border-b-2 border-indigo-500 text-white'
+          : 'px-3.5 py-2 text-xs font-semibold border-b-2 border-transparent text-slate-400 hover:text-white';
+      }
+      if (calBtn) {
+        calBtn.className = subtab === 'calendar'
+          ? 'px-3.5 py-2 text-xs font-semibold border-b-2 border-indigo-500 text-white'
+          : 'px-3.5 py-2 text-xs font-semibold border-b-2 border-transparent text-slate-400 hover:text-white';
+      }
+
+      const perfPanel = document.getElementById('panel-performance-chart');
+      const calPanel = document.getElementById('panel-calendar-view');
+      if (subtab === 'combo') {
+        perfPanel.className = 'lg:col-span-12 bg-slate-900/55 border border-slate-800/80 rounded-xl p-4 flex flex-col justify-between space-y-3';
+        calPanel.classList.add('hidden');
+      } else {
+        perfPanel.classList.add('hidden');
+        calPanel.className = 'lg:col-span-12 bg-slate-900/55 border border-slate-800/80 rounded-xl p-4 flex flex-col justify-between space-y-3';
+      }
+    }
+
+    function toggleCustomDatesDrawer() {
+      const drawer = document.getElementById('custom-date-drawer');
+      if (drawer) drawer.classList.toggle('hidden');
+    }
+
+    function onCustomDateInputChange() {
+      const pill = document.getElementById('perf-era-pill');
+      if (pill) pill.textContent = 'Custom Range';
+      applyAllFilters();
     }
 
     function setDatePreset(preset) {
       currentDatePreset = preset;
-      ['all', '30d', '7d', 'oct2026', 'today'].forEach(p => {
+      ['30d', '7d', 'oct2026', 'today', 'all'].forEach(p => {
         const btn = document.getElementById(`preset-btn-${p}`);
         if (btn) {
           btn.className = p === preset
-            ? 'px-2.5 py-1 text-xs font-medium rounded-lg bg-indigo-600 text-white border border-indigo-500'
-            : 'px-2.5 py-1 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700';
+            ? 'px-3 py-1 rounded-lg font-semibold bg-indigo-600 text-white transition'
+            : 'px-3 py-1 rounded-lg font-semibold text-slate-400 hover:text-white transition';
         }
       });
 
       const fromEl = document.getElementById('filter-from-date');
       const toEl = document.getElementById('filter-to-date');
+      const pill = document.getElementById('perf-era-pill');
       const refNow = new Date(getReferenceNowMs());
       const today = refNow.toISOString().slice(0, 10);
 
       if (preset === 'all') {
         fromEl.value = '';
         toEl.value = '';
+        if (pill) pill.textContent = 'All Time (Sep 2025 → Oct 2026)';
       } else if (preset === 'today') {
         fromEl.value = today;
         toEl.value = today;
+        if (pill) pill.textContent = `Today (${today})`;
       } else if (preset === '7d') {
         const d = new Date(refNow.getTime() - 7 * 86400000).toISOString().slice(0, 10);
         fromEl.value = d;
         toEl.value = today;
+        if (pill) pill.textContent = 'Last 7 Days';
       } else if (preset === '30d') {
         const d = new Date(refNow.getTime() - 30 * 86400000).toISOString().slice(0, 10);
         fromEl.value = d;
         toEl.value = today;
+        currentCalendarMonth = today.slice(0, 7);
+        const sel = document.getElementById('calendar-month-select');
+        if (sel) sel.value = currentCalendarMonth;
+        if (pill) pill.textContent = 'Last 30D (Bot Live)';
       } else if (preset === 'oct2026') {
         fromEl.value = '2026-10-01';
         toEl.value = '2026-10-31';
         currentCalendarMonth = '2026-10';
-        document.getElementById('calendar-month-select').value = '2026-10';
+        const sel = document.getElementById('calendar-month-select');
+        if (sel) sel.value = '2026-10';
+        if (pill) pill.textContent = 'Oct 2026';
       } else if (preset === 'feb2026') {
         fromEl.value = '2026-02-01';
         toEl.value = '2026-02-28';
         currentCalendarMonth = '2026-02';
-        document.getElementById('calendar-month-select').value = '2026-02';
+        const sel = document.getElementById('calendar-month-select');
+        if (sel) sel.value = '2026-02';
+        if (pill) pill.textContent = 'Feb 2026';
       } else if (preset === 'jan2026') {
         fromEl.value = '2026-01-01';
         toEl.value = '2026-01-31';
         currentCalendarMonth = '2026-01';
-        document.getElementById('calendar-month-select').value = '2026-01';
+        const sel = document.getElementById('calendar-month-select');
+        if (sel) sel.value = '2026-01';
+        if (pill) pill.textContent = 'Jan 2026';
       }
       applyAllFilters();
     }
@@ -1752,6 +2003,8 @@
       if (!dateStr || dateStr === 'Start') return;
       document.getElementById('filter-from-date').value = dateStr;
       document.getElementById('filter-to-date').value = dateStr;
+      const pill = document.getElementById('perf-era-pill');
+      if (pill) pill.textContent = `Date: ${dateStr}`;
       applyAllFilters();
       showToast(`Filtered trades & P&L for ${dateStr}`, 'info');
     }
@@ -1830,7 +2083,7 @@
       document.getElementById('kpi-winrate-badge').textContent = `Win: ${winRate}% (${winCount}W/${lossCount}L)`;
 
       document.getElementById('selected-range-summary').innerHTML =
-        `<strong class="text-white">${fromDate || 'Start'} → ${toDate || 'Now'}</strong> • <strong class="text-white">${baseFiltered.length}</strong> orders • Realized: <strong class="${netPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${formatUSD(netPnl, true)}</strong>`;
+        `<strong class="text-white">${fromDate || 'Start'} → ${toDate || 'Now'}</strong> • <strong class="text-white">${baseFiltered.length}</strong> orders • Realized: <strong class="${netPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${formatAnalyticsMoney(netPnl, true)}</strong>`;
 
       filteredAuditOrders = currentAuditTab === 'ALL'
         ? baseFiltered
@@ -1838,65 +2091,19 @@
 
       renderAuditTable(filteredAuditOrders);
       renderPortfolioPerformanceChart(fromDate, toDate);
-      renderDailyBarChart(fromDate, toDate);
       renderCalendarHeatmap();
-    }
-
-    function renderDailyBarChart(fromDate, toDate) {
-      const allDaily = (dashboardState && dashboardState.daily_pnl) || [];
-      const days = allDaily.filter(d => {
-        if (fromDate && d.date < fromDate) return false;
-        if (toDate && d.date > toDate) return false;
-        return true;
-      });
-
-      const container = document.getElementById('bar-chart-container');
-      document.getElementById('bar-chart-days-count').textContent = `${days.length} active day(s)`;
-
-      if (!days.length) {
-        container.innerHTML = `<div class="w-full h-full flex items-center justify-center text-xs text-slate-500">No closed trades in selected date range.</div>`;
-        document.getElementById('bar-chart-best-worst').textContent = 'Best: -- | Worst: --';
-        return;
-      }
-
-      const maxAbs = Math.max(10, ...days.map(d => Math.abs(Number(d.net_pnl_usd || 0))));
-      let bestDay = days[0];
-      let worstDay = days[0];
-
-      container.innerHTML = days.map(d => {
-        const net = Number(d.net_pnl_usd || 0);
-        if (net > bestDay.net_pnl_usd) bestDay = d;
-        if (net < worstDay.net_pnl_usd) worstDay = d;
-
-        const heightPct = Math.max(8, Math.round((Math.abs(net) / maxAbs) * 85));
-        const barColor = net >= 0
-          ? 'bg-emerald-500/80 hover:bg-emerald-400 border-emerald-400'
-          : 'bg-rose-500/80 hover:bg-rose-400 border-rose-400';
-        const textColor = net >= 0 ? 'text-emerald-400' : 'text-rose-400';
-
-        return `
-          <div onclick="selectSingleDate('${d.date}')"
-            class="flex-1 min-w-[48px] flex flex-col items-center justify-end h-full cursor-pointer group"
-            title="${d.date}: Net ${formatUSD(net, true)} (Gross ${formatUSD(d.realized_pnl_usd, true)}, Fees $${d.commissions_usd}, ${d.closed_orders_count} closed orders)">
-            <div class="text-[10px] mono ${textColor} mb-1 opacity-90 group-hover:font-bold">${formatUSD(net, true)}</div>
-            <div class="w-full max-w-[36px] rounded-t border-t ${barColor} transition-all" style="height: ${heightPct}%"></div>
-            <div class="text-[10px] mono text-slate-400 mt-1.5">${d.date.slice(5)}</div>
-          </div>
-        `;
-      }).join('');
-
-      document.getElementById('bar-chart-best-worst').textContent =
-        `Best: ${bestDay.date} (${formatUSD(bestDay.net_pnl_usd, true)}) | Worst: ${worstDay.date} (${formatUSD(worstDay.net_pnl_usd, true)})`;
     }
 
     function renderCalendarHeatmap() {
       const grid = document.getElementById('calendar-days-grid');
-      if (!currentCalendarMonth) return;
+      if (!grid || !currentCalendarMonth) return;
 
       const [year, month] = currentCalendarMonth.split('-').map(Number);
       const firstDay = new Date(year, month - 1, 1);
       const daysInMonth = new Date(year, month, 0).getDate();
       const startOffset = (firstDay.getDay() + 6) % 7;
+      const includeLiveUpnl = document.getElementById('toggle-include-live-upnl')?.checked !== false;
+      const latestSyncDate = (dashboardState.last_synced_utc || new Date().toISOString()).slice(0, 10);
 
       const dailyMap = {};
       for (const d of (dashboardState.daily_pnl || [])) {
@@ -1905,39 +2112,50 @@
 
       const cells = [];
       for (let i = 0; i < startOffset; i++) {
-        cells.push(`<div class="h-16 rounded-lg bg-slate-950/30 border border-slate-900/40"></div>`);
+        cells.push(`<div class="h-12 rounded-lg bg-slate-950/30 border border-slate-900/40"></div>`);
       }
+
+      let monthNet = 0;
+      let monthCf = 0;
 
       for (let day = 1; day <= daysInMonth; day++) {
         const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         const info = dailyMap[dateStr];
+        const isLiveDate = dateStr === latestSyncDate && includeLiveUpnl && (dashboardState.open_positions || []).length > 0;
 
-        if (!info) {
+        if (!info && !isLiveDate) {
           cells.push(`
             <div onclick="selectSingleDate('${dateStr}')"
-              class="h-16 rounded-lg bg-slate-900/40 hover:bg-slate-800/50 border border-slate-800/60 p-1.5 flex flex-col justify-between cursor-pointer transition">
-              <span class="text-[10px] text-slate-500 mono">${day}</span>
-              <span class="text-[10px] text-slate-600 text-right mono">—</span>
+              class="h-12 rounded-lg bg-slate-900/40 hover:bg-slate-800/50 border border-slate-800/60 p-1.5 flex flex-col justify-between cursor-pointer transition opacity-70">
+              <span class="text-xs text-slate-500 mono">${day}</span>
+              <span class="text-xs text-slate-600 text-right mono">–</span>
             </div>
           `);
         } else {
-          const net = Number(info.net_pnl_usd || 0);
-          const isPos = net > 0;
-          const isZero = Math.abs(net) < 0.01;
-          const bgCls = isZero
-            ? 'bg-amber-500/10 border-amber-500/40 text-amber-300'
-            : (isPos ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300' : 'bg-rose-500/15 border-rose-500/40 text-rose-300');
+          const baseNet = info ? Number(info.net_pnl_usd || 0) : 0;
+          const cf = info ? Number(info.cashflow_usd || 0) : 0;
+          const closedCnt = info ? Number(info.closed_orders_count || 0) : 0;
+          const effectiveNet = isLiveDate ? (baseNet + currentLiveUpnlUsd) : baseNet;
+          monthNet += effectiveNet;
+          monthCf += cf;
+
+          const isEntryFeeOnly = info && Math.abs(Number(info.realized_pnl_usd || 0)) < 0.01 && cf > 0 && !isLiveDate;
+          const bgCls = isEntryFeeOnly
+            ? 'bg-amber-500/15 border-amber-500/40 text-amber-300'
+            : (effectiveNet >= 0 ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300' : 'bg-rose-500/15 border-rose-500/40 text-rose-300');
 
           cells.push(`
             <div onclick="selectSingleDate('${dateStr}')"
-              class="h-16 rounded-lg border ${bgCls} hover:scale-[1.02] p-1.5 flex flex-col justify-between cursor-pointer transition shadow-sm"
-              title="${dateStr}: Net PnL ${formatUSD(net, true)} | Cashflow ${formatUSD(info.cashflow_usd, true)} | Fees $${info.commissions_usd} | ${info.closed_orders_count} closed, ${info.cancelled_orders_count} cancelled">
+              class="h-12 rounded-lg border ${bgCls} hover:scale-[1.03] p-1.5 flex flex-col justify-between cursor-pointer transition shadow-sm"
+              title="${dateStr}: Net P&L ${formatAnalyticsMoney(effectiveNet, true)} | Premium Cashflow ${formatAnalyticsMoney(cf, true)} | ${closedCnt} closed orders">
               <div class="flex items-center justify-between">
-                <span class="text-[10px] font-bold text-white mono">${day}</span>
-                <span class="text-[9px] px-1 rounded bg-black/30 text-slate-300 mono">${info.closed_orders_count}T</span>
+                <span class="text-xs font-bold text-white mono">${day}</span>
+                ${isLiveDate
+                  ? `<span class="text-[10px] font-bold text-amber-300 mono">LIVE</span>`
+                  : `<span class="text-[10px] px-1 rounded bg-black/30 text-slate-300 mono">${closedCnt}T</span>`}
               </div>
-              <div class="text-[11px] font-bold text-right mono truncate">
-                ${isZero ? formatUSD(info.cashflow_usd, true) + ' CF' : formatUSD(net, true)}
+              <div class="text-xs font-bold text-right mono truncate">
+                ${isEntryFeeOnly ? formatAnalyticsMoney(cf, true) + ' CF' : formatAnalyticsMoney(effectiveNet, true)}
               </div>
             </div>
           `);
@@ -1945,6 +2163,10 @@
       }
 
       grid.innerHTML = cells.join('');
+      const calSummary = document.getElementById('cal-month-summary');
+      if (calSummary) {
+        calSummary.textContent = `${currentCalendarMonth}: Net ${formatAnalyticsMoney(monthNet, true)} • Cashflow ${formatAnalyticsMoney(monthCf, true)}`;
+      }
     }
 
     function renderAuditTable(orders) {
