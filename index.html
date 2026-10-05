@@ -932,8 +932,12 @@
         <!-- Section A: GitHub PAT -->
         <div class="space-y-2">
           <label class="block text-xs font-semibold text-slate-200">1. GitHub Personal Access Token (`github_pat_...`):</label>
-          <input type="password" id="gh-pat-input" placeholder="github_pat_..."
-            class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white mono" />
+          <div class="relative flex items-center">
+            <input type="password" id="gh-pat-input" placeholder="github_pat_..."
+              class="w-full bg-slate-950 border border-slate-700 rounded-lg pl-3 pr-9 py-2 text-xs text-white mono" />
+            <button type="button" onclick="togglePasswordVisibility('gh-pat-input', this)"
+              class="absolute right-2 px-1.5 py-0.5 text-xs text-slate-400 hover:text-white rounded" title="Show/Hide Token">👁️</button>
+          </div>
           <p class="text-[11px] text-slate-400">
             Used to load live private snapshot data, toggle `BOT_MODE`, trigger workflows, and sync your WhatsApp settings to GitHub Actions.
           </p>
@@ -955,28 +959,47 @@
 
           <!-- Provider A: Official Meta WhatsApp Cloud API -->
           <div class="p-3 rounded-lg bg-slate-950/90 border border-indigo-500/30 space-y-2.5">
-            <div class="flex items-center justify-between">
+            <div class="flex flex-wrap items-center justify-between gap-1.5">
               <span class="text-[11px] font-bold text-indigo-300">Option A (Recommended): Official Meta WhatsApp Cloud API</span>
-              <a href="https://developers.facebook.com/apps/" target="_blank" rel="noopener"
-                class="px-2 py-0.5 rounded bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 text-[10px] font-semibold">
-                Open Meta Developer Portal ↗
-              </a>
+              <div class="flex items-center gap-1.5">
+                <a href="https://developers.facebook.com/apps/1823083652439716/whatsapp-business/wa-dev-console/" target="_blank" rel="noopener"
+                  class="px-2 py-0.5 rounded bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 text-[10px] font-semibold">
+                  Open Meta API Console ↗
+                </a>
+                <a href="https://business.facebook.com/settings/system-users" target="_blank" rel="noopener"
+                  class="px-2 py-0.5 rounded bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 text-[10px] font-semibold">
+                  System Users (Permanent Token) ↗
+                </a>
+              </div>
             </div>
             <ol class="list-decimal pl-4 space-y-0.5 text-[11px] text-slate-300">
-              <li>On <strong>developers.facebook.com/apps</strong> → Create App → <strong>Other</strong> → <strong>Business</strong> → Add <strong>WhatsApp</strong> product.</li>
-              <li>In <strong>WhatsApp → API Setup</strong>, select the free <strong>Test Number</strong>, add your WhatsApp number under the <strong>"To"</strong> recipient dropdown (verify the 6-digit OTP on WhatsApp), and copy <strong>Phone number ID</strong> &amp; <strong>Temporary/System Access Token</strong> below:</li>
+              <li>On <strong>Meta API Console</strong> → <strong>WhatsApp → API Setup</strong>, select the free <strong>Test Number</strong>, add your WhatsApp number under the <strong>"To"</strong> recipient dropdown, and copy <strong>Phone number ID</strong> &amp; <strong>Access Token</strong> below:</li>
             </ol>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
               <div>
                 <label class="block text-[10px] font-semibold text-slate-300 mb-1">Meta Phone Number ID (`META_WA_PHONE_ID`):</label>
-                <input type="text" id="meta-phone-id-input" placeholder="e.g. 105928374651234"
+                <input type="text" id="meta-phone-id-input" placeholder="e.g. 1350028608195193"
                   class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white mono" />
               </div>
               <div>
                 <label class="block text-[10px] font-semibold text-slate-300 mb-1">Meta Access Token (`META_WA_TOKEN`):</label>
-                <input type="password" id="meta-wa-token-input" placeholder="EAAG..."
-                  class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white mono" />
+                <div class="relative flex items-center">
+                  <input type="password" id="meta-wa-token-input" placeholder="EAAG..."
+                    class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-2.5 pr-8 py-1.5 text-xs text-white mono" />
+                  <button type="button" onclick="togglePasswordVisibility('meta-wa-token-input', this)"
+                    class="absolute right-1.5 px-1 py-0.5 text-xs text-slate-400 hover:text-white rounded" title="Show/Hide Token">👁️</button>
+                </div>
               </div>
+            </div>
+            <!-- 4-step Permanent Meta Token Guide -->
+            <div class="p-2.5 rounded-lg bg-slate-900/80 border border-amber-500/25 space-y-1 text-[10px] text-slate-300">
+              <div class="font-bold text-amber-300">🔒 How to Generate a Permanent (Never-Expiring) Meta Token (Avoid 24h Expiry):</div>
+              <ol class="list-decimal pl-4 space-y-0.5 text-slate-300">
+                <li>Open <a href="https://business.facebook.com/settings/system-users" target="_blank" rel="noopener" class="text-indigo-300 underline hover:text-indigo-200">Meta Business Settings → System Users ↗</a> and click <strong>Add</strong> (Role: <strong>Admin</strong>).</li>
+                <li>Click <strong>Add Assets</strong> → <strong>Apps</strong> → select your WhatsApp App → toggle <strong>Full Control (Manage App)</strong> &amp; Save.</li>
+                <li>Under <strong>Accounts → WhatsApp Accounts</strong>, assign the System User to your WhatsApp Business Account with <strong>Full Control</strong>.</li>
+                <li>Click <strong>Generate New Token</strong> → select App → Token Expiration: <strong>Never</strong> → check <code class="text-emerald-300">whatsapp_business_messaging</code> &amp; <code class="text-emerald-300">whatsapp_business_management</code> → paste above &amp; click <strong>Save &amp; Sync to GitHub</strong>.</li>
+              </ol>
             </div>
           </div>
 
@@ -1056,6 +1079,35 @@
     let currentLiveUpnlUsd = 0;
     let currentPeriodNetPnlUsd = 0;
 
+    function sanitizeMetaToken(raw) {
+      return String(raw || '')
+        .trim()
+        .replace(/^["']+|["']+$/g, '')
+        .replace(/^Bearer\s+/i, '')
+        .replace(/[\s"']+/g, '');
+    }
+
+    function sanitizeMetaPhoneId(raw) {
+      return String(raw || '').replace(/\D+/g, '');
+    }
+
+    function togglePasswordVisibility(inputId, btnEl) {
+      const el = document.getElementById(inputId);
+      if (!el) return;
+      if (el.type === 'password') {
+        el.type = 'text';
+        if (btnEl) btnEl.textContent = '🙈';
+      } else {
+        el.type = 'password';
+        if (btnEl) btnEl.textContent = '👁️';
+      }
+    }
+
+    function isUserEditingSettingInput(inputEl) {
+      if (!inputEl) return false;
+      return document.activeElement === inputEl || inputEl.dataset.userEdited === '1';
+    }
+
     // Check URL hash for #token=...&waphone=...&wakey=...&metapid=...&metatok=...
     (function checkHashToken() {
       if (window.location.hash && (window.location.hash.includes('token=') || window.location.hash.includes('waphone='))) {
@@ -1068,8 +1120,8 @@
         if (tok) localStorage.setItem(STORAGE_TOKEN_KEY, tok.trim());
         if (waPhone) localStorage.setItem(STORAGE_WA_PHONE_KEY, waPhone.trim());
         if (waKey) localStorage.setItem(STORAGE_WA_APIKEY_KEY, waKey.trim());
-        if (metaPid) localStorage.setItem(STORAGE_META_PHONE_ID_KEY, metaPid.trim());
-        if (metaTok) localStorage.setItem(STORAGE_META_TOKEN_KEY, metaTok.trim());
+        if (metaPid) localStorage.setItem(STORAGE_META_PHONE_ID_KEY, sanitizeMetaPhoneId(metaPid));
+        if (metaTok) localStorage.setItem(STORAGE_META_TOKEN_KEY, sanitizeMetaToken(metaTok));
         history.replaceState(null, '', window.location.pathname + window.location.search);
       }
     })();
@@ -1087,11 +1139,11 @@
     }
 
     function getSavedMetaPhoneId() {
-      return localStorage.getItem(STORAGE_META_PHONE_ID_KEY) || '';
+      return sanitizeMetaPhoneId(localStorage.getItem(STORAGE_META_PHONE_ID_KEY) || '');
     }
 
     function getSavedMetaToken() {
-      return localStorage.getItem(STORAGE_META_TOKEN_KEY) || '';
+      return sanitizeMetaToken(localStorage.getItem(STORAGE_META_TOKEN_KEY) || '');
     }
 
     function showToast(msg, type = 'info') {
@@ -2800,6 +2852,40 @@
       }).join('');
     }
 
+    async function syncWhatsAppVariablesFromGitHub(token) {
+      if (!token) return;
+      try {
+        const headers = {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28'
+        };
+        const waPhoneEl = document.getElementById('wa-phone-input');
+        const waKeyEl = document.getElementById('wa-apikey-input');
+        const metaPidEl = document.getElementById('meta-phone-id-input');
+        const metaTokEl = document.getElementById('meta-wa-token-input');
+        const varSpecs = [
+          ['WHATSAPP_PHONE', STORAGE_WA_PHONE_KEY, waPhoneEl, v => String(v || '').trim()],
+          ['WHATSAPP_API_KEY', STORAGE_WA_APIKEY_KEY, waKeyEl, v => String(v || '').trim()],
+          ['META_WA_PHONE_ID', STORAGE_META_PHONE_ID_KEY, metaPidEl, sanitizeMetaPhoneId],
+          ['META_WA_TOKEN', STORAGE_META_TOKEN_KEY, metaTokEl, sanitizeMetaToken]
+        ];
+        await Promise.all(varSpecs.map(async ([varName, storageKey, inputEl, cleanFn]) => {
+          const res = await fetch(`https://api.github.com/repos/${REPO_SLUG}/actions/variables/${varName}`, { headers });
+          if (res.ok) {
+            const j = await res.json();
+            const cleanedVal = cleanFn(j.value || '');
+            if (cleanedVal && !isUserEditingSettingInput(inputEl)) {
+              localStorage.setItem(storageKey, cleanedVal);
+              if (inputEl) {
+                inputEl.value = cleanedVal;
+              }
+            }
+          }
+        }));
+      } catch (e) {}
+    }
+
     async function refreshLiveGitHubStatusFromBrowser(token) {
       try {
         const headers = {
@@ -2811,7 +2897,8 @@
           fetch(`https://api.github.com/repos/${REPO_SLUG}/actions/workflows/${WORKFLOW_FILE}`, { headers }),
           fetch(`https://api.github.com/repos/${REPO_SLUG}/actions/runs?per_page=10`, { headers }),
           fetch(`https://api.github.com/repos/${REPO_SLUG}/actions/variables/BOT_MODE`, { headers }),
-          fetch(`https://api.github.com/repos/${REPO_SLUG}/actions/variables/BOT_LOTS`, { headers })
+          fetch(`https://api.github.com/repos/${REPO_SLUG}/actions/variables/BOT_LOTS`, { headers }),
+          syncWhatsAppVariablesFromGitHub(token)
         ]);
         if (!dashboardState.github_actions) dashboardState.github_actions = {};
         if (wfResp.ok) {
@@ -3460,43 +3547,30 @@
 
     // Settings & WhatsApp Modal Functions
     async function openSettingsModal() {
-      document.getElementById('gh-pat-input').value = getSavedToken();
+      const patEl = document.getElementById('gh-pat-input');
       const waPhoneEl = document.getElementById('wa-phone-input');
       const waKeyEl = document.getElementById('wa-apikey-input');
       const metaPidEl = document.getElementById('meta-phone-id-input');
       const metaTokEl = document.getElementById('meta-wa-token-input');
+      [patEl, waPhoneEl, waKeyEl, metaPidEl, metaTokEl].forEach(el => {
+        if (!el) return;
+        el.dataset.userEdited = '0';
+        if (!el.dataset.editListenerAttached) {
+          el.dataset.editListenerAttached = '1';
+          el.addEventListener('input', () => { el.dataset.userEdited = '1'; });
+        }
+      });
+      if (patEl) patEl.value = getSavedToken();
       if (waPhoneEl) waPhoneEl.value = getSavedWaPhone();
       if (waKeyEl) waKeyEl.value = getSavedWaApiKey();
       if (metaPidEl) metaPidEl.value = getSavedMetaPhoneId();
       if (metaTokEl) metaTokEl.value = getSavedMetaToken();
       document.getElementById('settings-modal').classList.remove('hidden');
 
-      // If PAT is saved, try fetching any existing GitHub Actions variables
+      // If PAT is saved, fetch latest GitHub Actions variables and refresh localStorage if non-empty
       const token = getSavedToken();
       if (token) {
-        try {
-          const headers = {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/vnd.github+json'
-          };
-          const varSpecs = [
-            ['WHATSAPP_PHONE', STORAGE_WA_PHONE_KEY, waPhoneEl],
-            ['WHATSAPP_API_KEY', STORAGE_WA_APIKEY_KEY, waKeyEl],
-            ['META_WA_PHONE_ID', STORAGE_META_PHONE_ID_KEY, metaPidEl],
-            ['META_WA_TOKEN', STORAGE_META_TOKEN_KEY, metaTokEl]
-          ];
-          await Promise.all(varSpecs.map(async ([varName, storageKey, inputEl]) => {
-            if (localStorage.getItem(storageKey)) return;
-            const res = await fetch(`https://api.github.com/repos/${REPO_SLUG}/actions/variables/${varName}`, { headers });
-            if (res.ok) {
-              const j = await res.json();
-              if (j.value) {
-                localStorage.setItem(storageKey, j.value);
-                if (inputEl && !inputEl.value) inputEl.value = j.value;
-              }
-            }
-          }));
-        } catch (e) {}
+        await syncWhatsAppVariablesFromGitHub(token);
       }
     }
 
@@ -3532,14 +3606,24 @@
       const val = document.getElementById('gh-pat-input').value.trim();
       const waPhone = (document.getElementById('wa-phone-input')?.value || '').trim();
       const waKey = (document.getElementById('wa-apikey-input')?.value || '').trim();
-      const metaPid = (document.getElementById('meta-phone-id-input')?.value || '').trim();
-      const metaTok = (document.getElementById('meta-wa-token-input')?.value || '').trim();
+      const metaPid = sanitizeMetaPhoneId(document.getElementById('meta-phone-id-input')?.value || '');
+      const metaTok = sanitizeMetaToken(document.getElementById('meta-wa-token-input')?.value || '');
+
+      const metaPidEl = document.getElementById('meta-phone-id-input');
+      const metaTokEl = document.getElementById('meta-wa-token-input');
+      if (metaPidEl) metaPidEl.value = metaPid;
+      if (metaTokEl) metaTokEl.value = metaTok;
 
       if (val) localStorage.setItem(STORAGE_TOKEN_KEY, val);
       if (waPhone) localStorage.setItem(STORAGE_WA_PHONE_KEY, waPhone);
       if (waKey) localStorage.setItem(STORAGE_WA_APIKEY_KEY, waKey);
       if (metaPid) localStorage.setItem(STORAGE_META_PHONE_ID_KEY, metaPid);
       if (metaTok) localStorage.setItem(STORAGE_META_TOKEN_KEY, metaTok);
+
+      ['gh-pat-input', 'wa-phone-input', 'wa-apikey-input', 'meta-phone-id-input', 'meta-wa-token-input'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.dataset.userEdited = '0';
+      });
 
       const activeToken = val || getSavedToken();
       if (activeToken && (waPhone || waKey || metaPid || metaTok)) {
@@ -3572,7 +3656,10 @@
       document.getElementById('gh-pat-input').value = '';
       ['wa-phone-input', 'wa-apikey-input', 'meta-phone-id-input', 'meta-wa-token-input'].forEach(id => {
         const el = document.getElementById(id);
-        if (el) el.value = '';
+        if (el) {
+          el.value = '';
+          el.dataset.userEdited = '0';
+        }
       });
       showToast('Saved token & WhatsApp credentials cleared from browser.', 'info');
     }
@@ -3581,8 +3668,8 @@
       const val = document.getElementById('gh-pat-input').value.trim() || getSavedToken();
       const waPhone = (document.getElementById('wa-phone-input')?.value || getSavedWaPhone()).trim();
       const waKey = (document.getElementById('wa-apikey-input')?.value || getSavedWaApiKey()).trim();
-      const metaPid = (document.getElementById('meta-phone-id-input')?.value || getSavedMetaPhoneId()).trim();
-      const metaTok = (document.getElementById('meta-wa-token-input')?.value || getSavedMetaToken()).trim();
+      const metaPid = sanitizeMetaPhoneId(document.getElementById('meta-phone-id-input')?.value || getSavedMetaPhoneId());
+      const metaTok = sanitizeMetaToken(document.getElementById('meta-wa-token-input')?.value || getSavedMetaToken());
       if (!val) {
         showToast('Enter a GitHub PAT first to generate a bookmarkable URL.', 'error');
         return;
@@ -3598,11 +3685,19 @@
     }
 
     async function sendTestWhatsAppFromDashboard() {
-      const waPhone = (document.getElementById('wa-phone-input')?.value || getSavedWaPhone()).trim().replace(/\s+/g, '');
-      const waKey = (document.getElementById('wa-apikey-input')?.value || getSavedWaApiKey()).trim();
-      const metaPid = (document.getElementById('meta-phone-id-input')?.value || getSavedMetaPhoneId()).trim();
-      const metaTok = (document.getElementById('meta-wa-token-input')?.value || getSavedMetaToken()).trim();
-      const token = getSavedToken();
+      const token = (document.getElementById('gh-pat-input')?.value || getSavedToken()).trim();
+      let waPhone = (document.getElementById('wa-phone-input')?.value || getSavedWaPhone()).trim().replace(/\s+/g, '');
+      let waKey = (document.getElementById('wa-apikey-input')?.value || getSavedWaApiKey()).trim();
+      let metaPid = sanitizeMetaPhoneId(document.getElementById('meta-phone-id-input')?.value || getSavedMetaPhoneId());
+      let metaTok = sanitizeMetaToken(document.getElementById('meta-wa-token-input')?.value || getSavedMetaToken());
+
+      if (!(waPhone && metaPid && metaTok) && !(waPhone && waKey) && token) {
+        await syncWhatsAppVariablesFromGitHub(token);
+        waPhone = (document.getElementById('wa-phone-input')?.value || getSavedWaPhone()).trim().replace(/\s+/g, '');
+        waKey = (document.getElementById('wa-apikey-input')?.value || getSavedWaApiKey()).trim();
+        metaPid = sanitizeMetaPhoneId(document.getElementById('meta-phone-id-input')?.value || getSavedMetaPhoneId());
+        metaTok = sanitizeMetaToken(document.getElementById('meta-wa-token-input')?.value || getSavedMetaToken());
+      }
 
       const hasMeta = Boolean(waPhone && metaPid && metaTok);
       const hasCallMeBot = Boolean(waPhone && waKey);
@@ -3619,13 +3714,12 @@
       if (metaPid) localStorage.setItem(STORAGE_META_PHONE_ID_KEY, metaPid);
       if (metaTok) localStorage.setItem(STORAGE_META_TOKEN_KEY, metaTok);
 
-      // Sync to GitHub Actions variables if token exists
+      // Sync non-expiring variables to GitHub Actions; META_WA_TOKEN is only synced after Meta API validation succeeds
       if (token) {
         Promise.all([
           waPhone ? upsertGitHubVariable(token, 'WHATSAPP_PHONE', waPhone) : Promise.resolve(true),
           waKey ? upsertGitHubVariable(token, 'WHATSAPP_API_KEY', waKey) : Promise.resolve(true),
-          metaPid ? upsertGitHubVariable(token, 'META_WA_PHONE_ID', metaPid) : Promise.resolve(true),
-          metaTok ? upsertGitHubVariable(token, 'META_WA_TOKEN', metaTok) : Promise.resolve(true)
+          metaPid ? upsertGitHubVariable(token, 'META_WA_PHONE_ID', metaPid) : Promise.resolve(true)
         ]).catch(() => {});
       }
 
@@ -3662,57 +3756,142 @@
       ].join('\n');
 
       showToast('Sending test WhatsApp notification...', 'info');
-      try {
-        if (hasMeta) {
-          const toDigits = waPhone.replace(/\D/g, '');
-          const metaUrl = `https://graph.facebook.com/v20.0/${encodeURIComponent(metaPid)}/messages`;
-          const metaHeaders = {
-            'Authorization': `Bearer ${metaTok}`,
-            'Content-Type': 'application/json'
-          };
-          const textRes = await fetch(metaUrl, {
-            method: 'POST',
-            headers: metaHeaders,
-            body: JSON.stringify({
-              messaging_product: 'whatsapp',
-              recipient_type: 'individual',
-              to: toDigits,
-              type: 'text',
-              text: { preview_url: false, body: msg }
-            })
-          });
-          if (textRes.ok) {
-            showToast(`Meta WhatsApp rich status sent to +${toDigits}!`, 'success');
-          } else {
-            // Fallback to hello_world starter template if 24h window isn't open yet
-            const tplRes = await fetch(metaUrl, {
-              method: 'POST',
-              headers: metaHeaders,
-              body: JSON.stringify({
-                messaging_product: 'whatsapp',
-                to: toDigits,
-                type: 'template',
-                template: { name: 'hello_world', language: { code: 'en_US' } }
-              })
-            });
-            if (tplRes.ok) {
-              showToast(`Sent Meta starter template to +${toDigits}! Reply "Hi" on WhatsApp to unlock rich text alerts.`, 'success');
-            } else {
-              const errJson = await tplRes.json().catch(() => ({}));
-              throw new Error(errJson?.error?.message || `Meta HTTP ${tplRes.status}`);
-            }
-          }
-        }
 
-        if (hasCallMeBot) {
+      const isMetaAuthError = (status, errCode, errMsg) =>
+        status === 401 ||
+        errCode === 190 ||
+        /Authentication Error|validating access token|Session has expired/i.test(errMsg || '');
+
+      const attemptMetaSend = async (bearerTok) => {
+        const toDigits = waPhone.replace(/\D/g, '');
+        const metaUrl = `https://graph.facebook.com/v20.0/${encodeURIComponent(metaPid)}/messages`;
+        const metaHeaders = {
+          'Authorization': `Bearer ${bearerTok}`,
+          'Content-Type': 'application/json'
+        };
+        const textRes = await fetch(metaUrl, {
+          method: 'POST',
+          headers: metaHeaders,
+          body: JSON.stringify({
+            messaging_product: 'whatsapp',
+            recipient_type: 'individual',
+            to: toDigits,
+            type: 'text',
+            text: { preview_url: false, body: msg }
+          })
+        });
+        if (textRes.ok) {
+          return { ok: true, mode: 'text', toDigits, textRes, tplRes: null };
+        }
+        const textErrJson = await textRes.json().catch(() => ({}));
+        const errCode = textErrJson?.error?.code;
+        const errMsg = textErrJson?.error?.message || '';
+        if (isMetaAuthError(textRes.status, errCode, errMsg)) {
+          return {
+            ok: false,
+            isAuthErr: true,
+            error: errMsg || `Meta HTTP ${textRes.status}`,
+            toDigits
+          };
+        }
+        // Non-auth error (e.g., 24h customer window not open yet): fallback to hello_world template
+        const tplRes = await fetch(metaUrl, {
+          method: 'POST',
+          headers: metaHeaders,
+          body: JSON.stringify({
+            messaging_product: 'whatsapp',
+            to: toDigits,
+            type: 'template',
+            template: { name: 'hello_world', language: { code: 'en_US' } }
+          })
+        });
+        if (tplRes.ok) {
+          return { ok: true, mode: 'template', toDigits, textRes, tplRes };
+        }
+        const tplErrJson = await tplRes.json().catch(() => ({}));
+        const tplErrCode = tplErrJson?.error?.code;
+        const tplErrMsg = tplErrJson?.error?.message || errMsg || `Meta HTTP ${tplRes.status}`;
+        return {
+          ok: false,
+          isAuthErr: isMetaAuthError(tplRes.status, tplErrCode, tplErrMsg),
+          error: tplErrMsg,
+          toDigits
+        };
+      };
+
+      let metaSucceeded = false;
+      if (hasMeta) {
+        try {
+          let metaOutcome = await attemptMetaSend(metaTok);
+          if (!metaOutcome.ok && metaOutcome.isAuthErr && token) {
+            // Check if GitHub Actions variable META_WA_TOKEN has a newer/different token than local metaTok
+            try {
+              const ghVarRes = await fetch(`https://api.github.com/repos/${REPO_SLUG}/actions/variables/META_WA_TOKEN`, {
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Accept': 'application/vnd.github+json',
+                  'X-GitHub-Api-Version': '2022-11-28'
+                }
+              });
+              if (ghVarRes.ok) {
+                const ghVarJson = await ghVarRes.json();
+                const ghTok = sanitizeMetaToken(ghVarJson.value || '');
+                if (ghTok && ghTok !== metaTok) {
+                  const retryOutcome = await attemptMetaSend(ghTok);
+                  metaOutcome = retryOutcome;
+                  if (retryOutcome.ok || !retryOutcome.isAuthErr) {
+                    metaTok = ghTok;
+                    localStorage.setItem(STORAGE_META_TOKEN_KEY, metaTok);
+                    const metaTokInput = document.getElementById('meta-wa-token-input');
+                    if (metaTokInput) metaTokInput.value = metaTok;
+                  }
+                }
+              }
+            } catch (ghErr) {}
+          }
+
+          if (metaOutcome.ok) {
+            metaSucceeded = true;
+            if (token && metaTok) {
+              upsertGitHubVariable(token, 'META_WA_TOKEN', metaTok).catch(() => {});
+            }
+            if (metaOutcome.mode === 'template') {
+              showToast(`Sent Meta starter template to +${metaOutcome.toDigits}! Reply "Hi" on WhatsApp to unlock rich text alerts.`, 'success');
+            } else {
+              showToast(`Meta WhatsApp rich status sent to +${metaOutcome.toDigits}!`, 'success');
+            }
+          } else if (metaOutcome.isAuthErr) {
+            openSettingsModal();
+            const focusMetaInput = () => {
+              const metaTokInput = document.getElementById('meta-wa-token-input');
+              if (metaTokInput) {
+                metaTokInput.focus();
+                if (typeof metaTokInput.select === 'function') metaTokInput.select();
+              }
+            };
+            focusMetaInput();
+            setTimeout(focusMetaInput, 50);
+            showToast("Meta Access Token expired! Click 'Open Meta API Console ↗' in the modal to copy a fresh or Permanent System User token.", 'error');
+          } else {
+            showToast(`WhatsApp test error: ${metaOutcome.error}`, 'error');
+          }
+        } catch (err) {
+          showToast(`WhatsApp test error: ${err.message}`, 'error');
+        }
+      }
+
+      if (hasCallMeBot) {
+        try {
           const callUrl = `https://api.callmebot.com/whatsapp.php?phone=${encodeURIComponent(waPhone)}&text=${encodeURIComponent(msg)}&apikey=${encodeURIComponent(waKey)}`;
           await fetch(callUrl, { mode: 'no-cors' });
           if (!hasMeta) {
             showToast(`CallMeBot WhatsApp test dispatched to ${waPhone}!`, 'success');
           }
+        } catch (cmbErr) {
+          if (!hasMeta) {
+            showToast(`WhatsApp test error: ${cmbErr.message}`, 'error');
+          }
         }
-      } catch (err) {
-        showToast(`WhatsApp test error: ${err.message}`, 'error');
       }
     }
 
