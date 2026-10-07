@@ -76,6 +76,20 @@
           <div id="live-btc-spot" class="text-sm font-bold text-amber-400 mono">$--,--</div>
         </div>
 
+        <!-- Active Branch Indicator & Quick Toggle (Blue/Green Dual-Main) -->
+        <div id="header-branch-control" class="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-800/80 border border-slate-700/60 shadow-sm">
+          <span class="text-[9px] uppercase tracking-wider text-slate-400 font-semibold hidden md:inline">Live Branch:</span>
+          <span id="header-active-branch-badge" class="px-2 py-0.5 text-xs font-bold rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/40 flex items-center gap-1.5 mono shadow-sm">
+            <span class="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span>
+            🔵 Blue (Active)
+          </span>
+          <button onclick="toggleActiveBranch()" id="btn-header-toggle-branch"
+            class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-emerald-600/20 hover:bg-emerald-600/35 text-emerald-300 border border-emerald-500/40 transition active:scale-95 mono flex items-center gap-1"
+            title="1-Click Flip live execution branch between Blue and Green via GitHub API">
+            ⇄ Flip to Green
+          </button>
+        </div>
+
         <!-- Button to Open Critical Alert Monitor Dialog (Last 1 Month) -->
         <button onclick="openAlertsModal()" id="btn-open-alerts-modal"
           class="px-3 py-2 text-xs font-semibold rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-200 border border-rose-500/40 transition flex items-center gap-2 shadow-sm">
@@ -706,6 +720,10 @@
             <span id="gh-bot-mode-badge" class="px-2.5 py-0.5 text-xs font-bold rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 mono">
               BOT_MODE: LIVE (500 LOTS)
             </span>
+            <span id="gh-active-branch-badge" class="px-2.5 py-0.5 text-xs font-bold rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/40 mono shadow-sm flex items-center gap-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span>
+              🔵 Blue (Active)
+            </span>
           </div>
 
           <div class="flex items-center gap-2 flex-wrap">
@@ -737,6 +755,41 @@
               class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
               🟢 Enable
             </button>
+          </div>
+        </div>
+
+        <!-- Dual-Main Blue/Green Branching Governance Strip -->
+        <div id="automation-branch-strip" class="px-5 py-3 bg-slate-950/70 border-b border-slate-800/80 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div class="flex items-center gap-3 flex-wrap">
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-white flex items-center gap-1.5">
+                🌿 Active Release Branch:
+              </span>
+              <span id="automation-branch-pill" class="px-2.5 py-0.5 font-bold rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/40 mono">
+                🔵 blue
+              </span>
+            </div>
+            <span class="text-slate-500 hidden sm:inline">•</span>
+            <div class="text-slate-400">
+              Inactive (PR Merge Target): <strong id="automation-inactive-branch-label" class="text-emerald-400 mono font-semibold">green</strong>
+            </div>
+            <span class="text-slate-500 hidden sm:inline">•</span>
+            <span class="text-slate-400 text-[11px]">
+              Live crons (10:30 PM &amp; 5:37 PM IST) target <code id="automation-cron-target-code" class="text-slate-200 mono">ACTIVE_LIVE_BRANCH</code>
+            </span>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button onclick="toggleActiveBranch()" id="btn-automation-toggle-branch"
+              class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600/20 hover:bg-emerald-600/35 text-emerald-300 border border-emerald-500/40 transition active:scale-95 mono flex items-center gap-1.5 shadow"
+              title="1-Click Flip live execution branch between Blue and Green via GitHub API">
+              <span>⇄ Flip Active to Green</span>
+            </button>
+            <a href="https://github.com/ajay14sharma/delta-strangle-bot/compare" target="_blank" rel="noopener" id="link-branch-pr-compare"
+              class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition"
+              title="Open GitHub compare to review differences and open Pull Requests">
+              Compare / PR ↗
+            </a>
           </div>
         </div>
 
@@ -1054,6 +1107,7 @@
     const REPO_SLUG = 'ajay14sharma/delta-strangle-bot';
     const WORKFLOW_FILE = 'daily_strangle.yml';
     const STORAGE_TOKEN_KEY = 'delta_strangle_gh_pat';
+    const STORAGE_ACTIVE_BRANCH_KEY = 'delta_strangle_active_branch';
     const STORAGE_WA_PHONE_KEY = 'delta_strangle_wa_phone';
     const STORAGE_WA_APIKEY_KEY = 'delta_strangle_wa_apikey';
     const STORAGE_META_PHONE_ID_KEY = 'delta_strangle_meta_phone_id';
@@ -1281,13 +1335,23 @@
 
       if (token) {
         try {
-          const ghResp = await fetch(`https://api.github.com/repos/${REPO_SLUG}/contents/docs/dashboard_data.json?ref=main&t=${Date.now()}`, {
+          const activeRef = getActiveBranch();
+          let ghResp = await fetch(`https://api.github.com/repos/${REPO_SLUG}/contents/docs/dashboard_data.json?ref=${activeRef}&t=${Date.now()}`, {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Accept': 'application/vnd.github.raw+json',
               'X-GitHub-Api-Version': '2022-11-28'
             }
           });
+          if (!ghResp.ok && activeRef !== 'main') {
+            ghResp = await fetch(`https://api.github.com/repos/${REPO_SLUG}/contents/docs/dashboard_data.json?ref=main&t=${Date.now()}`, {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/vnd.github.raw+json',
+                'X-GitHub-Api-Version': '2022-11-28'
+              }
+            });
+          }
           if (ghResp.ok) {
             dashboardState = await ghResp.json();
           }
@@ -1365,6 +1429,7 @@
     }
 
     function renderHeaderAndKPIs() {
+      renderActiveBranchBadges();
       if (!dashboardState) return;
       const w = dashboardState.wallet || {};
       const balUsd = Number(w.balance_usd || 0);
@@ -2776,6 +2841,138 @@
     }
 
     // ============================================================================
+    // BLUE/GREEN DUAL-MAIN ACTIVE BRANCH GOVERNANCE & 1-CLICK TOGGLE
+    // ============================================================================
+    function getActiveBranch() {
+      const gh = (dashboardState && dashboardState.github_actions) || {};
+      const branch = (gh.active_branch || localStorage.getItem(STORAGE_ACTIVE_BRANCH_KEY) || 'blue').toLowerCase().trim();
+      return (branch === 'green') ? 'green' : 'blue';
+    }
+
+    function renderActiveBranchBadges() {
+      const branch = getActiveBranch();
+      const isBlue = branch === 'blue';
+      const targetBranch = isBlue ? 'green' : 'blue';
+      const targetLabel = isBlue ? 'Green' : 'Blue';
+
+      // 1. Sticky Header Active Badge
+      const headerBadge = document.getElementById('header-active-branch-badge');
+      if (headerBadge) {
+        headerBadge.className = isBlue
+          ? 'px-2 py-0.5 text-xs font-bold rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/40 flex items-center gap-1.5 mono shadow-[0_0_10px_rgba(59,130,246,0.25)]'
+          : 'px-2 py-0.5 text-xs font-bold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1.5 mono shadow-[0_0_10px_rgba(16,185,129,0.25)]';
+        headerBadge.innerHTML = isBlue
+          ? '<span class="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span>🔵 Blue (Active)'
+          : '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>🟢 Green (Active)';
+      }
+
+      // 2. Sticky Header Quick Toggle Button
+      const headerBtn = document.getElementById('btn-header-toggle-branch');
+      if (headerBtn) {
+        headerBtn.className = isBlue
+          ? 'px-2.5 py-1 text-xs font-semibold rounded-lg bg-emerald-600/20 hover:bg-emerald-600/35 text-emerald-300 border border-emerald-500/40 transition active:scale-95 mono flex items-center gap-1'
+          : 'px-2.5 py-1 text-xs font-semibold rounded-lg bg-blue-600/20 hover:bg-blue-600/35 text-blue-300 border border-blue-500/40 transition active:scale-95 mono flex items-center gap-1';
+        headerBtn.textContent = `⇄ Flip to ${targetLabel}`;
+        headerBtn.disabled = false;
+      }
+
+      // 3. Automation Panel Header Badge
+      const ghBadge = document.getElementById('gh-active-branch-badge');
+      if (ghBadge) {
+        ghBadge.className = isBlue
+          ? 'px-2.5 py-0.5 text-xs font-bold rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/40 mono shadow-sm flex items-center gap-1.5'
+          : 'px-2.5 py-0.5 text-xs font-bold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 mono shadow-sm flex items-center gap-1.5';
+        ghBadge.innerHTML = isBlue
+          ? '<span class="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span>🔵 Blue (Active)'
+          : '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>🟢 Green (Active)';
+      }
+
+      // 4. Automation Governance Strip Pill
+      const pill = document.getElementById('automation-branch-pill');
+      if (pill) {
+        pill.className = isBlue
+          ? 'px-2.5 py-0.5 font-bold rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/40 mono'
+          : 'px-2.5 py-0.5 font-bold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 mono';
+        pill.textContent = isBlue ? '🔵 blue' : '🟢 green';
+      }
+
+      // 5. Automation Inactive Branch Label
+      const inactiveLabel = document.getElementById('automation-inactive-branch-label');
+      if (inactiveLabel) {
+        inactiveLabel.className = isBlue ? 'text-emerald-400 mono font-semibold' : 'text-blue-400 mono font-semibold';
+        inactiveLabel.textContent = isBlue ? 'green' : 'blue';
+      }
+
+      // 6. Automation Toggle Button
+      const autoBtn = document.getElementById('btn-automation-toggle-branch');
+      if (autoBtn) {
+        autoBtn.className = isBlue
+          ? 'px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600/20 hover:bg-emerald-600/35 text-emerald-300 border border-emerald-500/40 transition active:scale-95 mono flex items-center gap-1.5 shadow'
+          : 'px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600/20 hover:bg-blue-600/35 text-blue-300 border border-blue-500/40 transition active:scale-95 mono flex items-center gap-1.5 shadow';
+        autoBtn.innerHTML = `<span>⇄ Flip Active to ${targetLabel}</span>`;
+        autoBtn.disabled = false;
+      }
+
+      // 7. Dynamic Compare / PR Link
+      const compareLink = document.getElementById('link-branch-pr-compare');
+      if (compareLink) {
+        compareLink.href = `https://github.com/${REPO_SLUG}/compare/${branch}...${targetBranch}`;
+      }
+    }
+
+    async function toggleActiveBranch() {
+      const token = getSavedToken();
+      if (!token) {
+        openSettingsModal();
+        showToast('🔑 GitHub PAT required to flip active branch. Please save a token with "Variables: Read and write" permission.', 'info');
+        return;
+      }
+
+      const current = getActiveBranch();
+      const nextBranch = current === 'blue' ? 'green' : 'blue';
+      const nextLabel = nextBranch === 'blue' ? 'BLUE' : 'GREEN';
+
+      const confirmed = confirm(
+        `Flip active live trading branch from ${current.toUpperCase()} to ${nextLabel}?\n\n` +
+        `• ACTIVE_LIVE_BRANCH repository variable will be updated on GitHub.\n` +
+        `• Next scheduled 10:30 PM entry & 5:37 PM sync will execute against '${nextBranch}'.\n` +
+        `• Inflight development continues on feature branches merged to the inactive branch.`
+      );
+      if (!confirmed) return;
+
+      const headerBtn = document.getElementById('btn-header-toggle-branch');
+      const autoBtn = document.getElementById('btn-automation-toggle-branch');
+      if (headerBtn) {
+        headerBtn.disabled = true;
+        headerBtn.textContent = `⏳ Flipping to ${nextBranch}...`;
+      }
+      if (autoBtn) {
+        autoBtn.disabled = true;
+        autoBtn.innerHTML = `<span>⏳ Flipping to ${nextBranch}...</span>`;
+      }
+
+      try {
+        showToast(`Updating ACTIVE_LIVE_BRANCH to '${nextBranch}' via GitHub API...`, 'info');
+        const ok = await upsertGitHubVariable(token, 'ACTIVE_LIVE_BRANCH', nextBranch);
+        if (ok) {
+          if (!dashboardState) dashboardState = {};
+          if (!dashboardState.github_actions) dashboardState.github_actions = {};
+          dashboardState.github_actions.active_branch = nextBranch;
+          localStorage.setItem(STORAGE_ACTIVE_BRANCH_KEY, nextBranch);
+          renderActiveBranchBadges();
+          showToast(`🎉 Active release branch flipped to ${nextLabel}! GitHub Actions variable ACTIVE_LIVE_BRANCH updated.`, 'success');
+          setTimeout(() => refreshLiveGitHubStatusFromBrowser(token), 2500);
+        } else {
+          renderActiveBranchBadges();
+          showToast(`GitHub API update failed: Ensure your PAT has 'Variables: Read and write' permission.`, 'error');
+        }
+      } catch (err) {
+        renderActiveBranchBadges();
+        showToast(`Failed to flip active branch: ${err.message}`, 'error');
+      }
+    }
+
+    // ============================================================================
     // GITHUB ACTIONS SCHEDULER & CONTROLS
     // ============================================================================
     function getActiveBotLots() {
@@ -2787,6 +2984,7 @@
     }
 
     function renderGitHubActionsSection() {
+      renderActiveBranchBadges();
       const gh = (dashboardState && dashboardState.github_actions) || {};
       const wfBadge = document.getElementById('gh-wf-state-badge');
       const modeBadge = document.getElementById('gh-bot-mode-badge');
@@ -2893,27 +3091,37 @@
           'Accept': 'application/vnd.github+json',
           'X-GitHub-Api-Version': '2022-11-28'
         };
-        const [wfResp, runsResp, varResp, lotsResp] = await Promise.all([
+        const [wfResp, runsResp, varResp, lotsResp, branchResp] = await Promise.all([
           fetch(`https://api.github.com/repos/${REPO_SLUG}/actions/workflows/${WORKFLOW_FILE}`, { headers }),
           fetch(`https://api.github.com/repos/${REPO_SLUG}/actions/runs?per_page=10`, { headers }),
           fetch(`https://api.github.com/repos/${REPO_SLUG}/actions/variables/BOT_MODE`, { headers }),
           fetch(`https://api.github.com/repos/${REPO_SLUG}/actions/variables/BOT_LOTS`, { headers }),
+          fetch(`https://api.github.com/repos/${REPO_SLUG}/actions/variables/ACTIVE_LIVE_BRANCH`, { headers }),
           syncWhatsAppVariablesFromGitHub(token)
         ]);
+        if (!dashboardState) dashboardState = {};
         if (!dashboardState.github_actions) dashboardState.github_actions = {};
-        if (wfResp.ok) {
+        if (wfResp && wfResp.ok) {
           const wf = await wfResp.json();
           dashboardState.github_actions.state = wf.state;
         }
-        if (varResp.ok) {
+        if (varResp && varResp.ok) {
           const v = await varResp.json();
           if (v.value) dashboardState.github_actions.bot_mode = v.value;
         }
-        if (lotsResp.ok) {
+        if (lotsResp && lotsResp.ok) {
           const lv = await lotsResp.json();
           if (lv.value) dashboardState.github_actions.bot_lots = parseInt(lv.value, 10) || 500;
         }
-        if (runsResp.ok) {
+        if (branchResp && branchResp.ok) {
+          const bv = await branchResp.json();
+          if (bv && bv.value) {
+            const resolvedBranch = bv.value.toLowerCase().trim();
+            dashboardState.github_actions.active_branch = resolvedBranch;
+            localStorage.setItem(STORAGE_ACTIVE_BRANCH_KEY, resolvedBranch);
+          }
+        }
+        if (runsResp && runsResp.ok) {
           const rd = await runsResp.json();
           dashboardState.github_actions.runs = (rd.workflow_runs || []).map(r => ({
             id: r.id,
@@ -3051,12 +3259,12 @@
             'X-GitHub-Api-Version': '2022-11-28'
           },
           body: JSON.stringify({
-            ref: 'main',
+            ref: getActiveBranch(),
             inputs: { mode: mode, lots: lotsStr }
           })
         });
         if (resp.status === 204 || resp.ok) {
-          showToast(`Workflow dispatched in '${mode}' mode (${lotsStr} lots)! Refreshing run list in 4s...`, 'success');
+          showToast(`Workflow dispatched to '${getActiveBranch()}' in '${mode}' mode (${lotsStr} lots)! Refreshing run list in 4s...`, 'success');
           setTimeout(() => refreshLiveGitHubStatusFromBrowser(token), 4000);
         } else {
           showToast(`GitHub API ${resp.status}: Ensure PAT has 'Actions: Read and write' permission.`, 'error');
@@ -3583,7 +3791,8 @@
       const headers = {
         'Authorization': `Bearer ${token}`,
         'Accept': 'application/vnd.github+json',
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'X-GitHub-Api-Version': '2022-11-28'
       };
       const patchRes = await fetch(`https://api.github.com/repos/${REPO_SLUG}/actions/variables/${name}`, {
         method: 'PATCH',
@@ -3896,6 +4105,7 @@
     }
 
     // Boot Dashboard
+    renderActiveBranchBadges();
     loadDashboardSnapshot().then(() => {
       fetchLiveDeltaTickers();
       setInterval(fetchLiveDeltaTickers, 3000);
