@@ -339,6 +339,7 @@
 
       <!-- SVG Corridors & P&L Curve Canvas -->
       <div id="corridor-chart-container" class="relative w-full h-72 rounded-lg bg-gray-950/80 border border-gray-900 overflow-hidden">
+        <div id="safezone-chart-tooltip" class="hidden absolute pointer-events-none z-30 p-2.5 rounded-lg bg-gray-900/95 border border-gray-700 shadow-xl text-xs font-mono space-y-1"></div>
         <!-- SVG Generated via renderSafeZoneCorridor() -->
       </div>
     </div>
@@ -1244,17 +1245,23 @@
       currentCorridorPutBe = putBreakeven;
       currentCorridorCallBe = callBreakeven;
 
-      document.getElementById('corridor-put-strike').textContent = `$${nearestPutStrike.toLocaleString('en-US')}`;
-      document.getElementById('corridor-put-otm').textContent = `${putDiff >= 0 ? '-' : '+'}$${Math.abs(putDiff).toFixed(0)} (${((putDiff/evalSpot)*100).toFixed(2)}% OTM)`;
-      document.getElementById('corridor-put-be').textContent = `Breakeven: $${Math.round(putBreakeven).toLocaleString('en-US')}`;
-
-      document.getElementById('corridor-call-strike').textContent = `$${nearestCallStrike.toLocaleString('en-US')}`;
-      document.getElementById('corridor-call-otm').textContent = `${callDiff >= 0 ? '+' : '-'}$${Math.abs(callDiff).toFixed(0)} (${((callDiff/evalSpot)*100).toFixed(2)}% OTM)`;
-      document.getElementById('corridor-call-be').textContent = `Breakeven: $${Math.round(callBreakeven).toLocaleString('en-US')}`;
-
-      document.getElementById('corridor-spot-display').textContent = whatIfSpotOverride !== null
+      const setSafeText = (id, txt) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = txt;
+      };
+      setSafeText('corridor-put-strike', `$${nearestPutStrike.toLocaleString('en-US')}`);
+      setSafeText('corridor-put-otm', `${putDiff >= 0 ? '-' : '+'}$${Math.abs(putDiff).toFixed(0)} (${((putDiff/evalSpot)*100).toFixed(2)}% OTM)`);
+      setSafeText('corridor-put-be', `Breakeven: $${Math.round(putBreakeven).toLocaleString('en-US')}`);
+      setSafeText('corridor-call-strike', `$${nearestCallStrike.toLocaleString('en-US')}`);
+      setSafeText('corridor-call-otm', `${callDiff >= 0 ? '+' : '-'}$${Math.abs(callDiff).toFixed(0)} (${((callDiff/evalSpot)*100).toFixed(2)}% OTM)`);
+      setSafeText('corridor-call-be', `Breakeven: $${Math.round(callBreakeven).toLocaleString('en-US')}`);
+      setSafeText('corridor-spot-display', whatIfSpotOverride !== null
         ? `Sim Spot: $${Math.round(evalSpot).toLocaleString('en-US')}`
-        : `Live Spot: $${Math.round(spotPx).toLocaleString('en-US')}`;
+        : `Live Spot: $${Math.round(spotPx).toLocaleString('en-US')}`);
+      setSafeText('label-put-strike', `PUT: $${nearestPutStrike.toLocaleString('en-US')}`);
+      setSafeText('label-call-strike', `CALL: $${nearestCallStrike.toLocaleString('en-US')}`);
+      setSafeText('label-live-spot', `SPOT: $${Math.round(spotPx).toLocaleString('en-US')}`);
+      setSafeText('corridor-summary-text', `$${putBreakeven.toFixed(2)} → $${callBreakeven.toFixed(2)} (${Math.round(callBreakeven - putBreakeven).toLocaleString('en-US')} pts / ${(((callBreakeven - putBreakeven)/spotPx)*100).toFixed(1)}%)`);
 
       // Expiry payoff calculator (matches Delta Exchange: pure options slope on both wings)
       const calcExpiryPayoff = (S) => {
@@ -1321,7 +1328,7 @@
       }
 
       // Render SVG Dual-Curve Payoff Canvas
-      const container = document.getElementById('safezone-svg-container');
+      const container = document.getElementById('corridor-chart-container') || document.getElementById('safezone-svg-container');
       const tooltip = document.getElementById('safezone-chart-tooltip');
       if (!container) return;
 
