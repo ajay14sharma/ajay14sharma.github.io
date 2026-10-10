@@ -68,14 +68,14 @@
 <body class="min-h-screen pb-16 antialiased text-sm">
 
   <!-- ========================================================================= -->
-  <!-- 1. STREAMLINED UNIFIED HEADER (Zero Clutter, 1 Dropdown Hub, v1/v2 Toggle) -->
+  <!-- 1. STREAMLINED UNIFIED HEADER -->
   <!-- ========================================================================= -->
   <header class="border-b border-[#1F2937] bg-[#111827]/90 sticky top-0 z-40 backdrop-blur-md">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
       
       <!-- Brand & Strategy Info -->
       <div class="flex items-center gap-3">
-        <div class="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-base">
+        <div class="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-base shadow-sm">
           Δ
         </div>
         <div>
@@ -84,9 +84,11 @@
             <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
               <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Live
             </span>
-            <span id="header-branch-pill" class="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-800 text-gray-300 border border-gray-700 mono">
-              🟢 Green (Active)
-            </span>
+            <button id="header-branch-pill" onclick="toggleActiveBranch()" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 mono transition flex items-center gap-1 cursor-pointer shadow-sm" title="Click to flip active live branch">
+              <span id="header-branch-dot" class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span id="header-branch-text">🟢 Green (Active)</span>
+              <span class="text-[10px] text-gray-400 ml-0.5">⇄</span>
+            </button>
           </div>
           <p class="text-xs text-gray-400 hidden sm:block">
             Delta Exchange India • Daily 10:30 PM IST • 2x Mark SL
@@ -115,24 +117,34 @@
             <span>⚙️ Controls</span>
             <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
           </button>
-          <div id="actionMenu" class="hidden absolute right-0 mt-2 w-56 rounded-xl bg-gray-900 border border-gray-700 shadow-xl py-1.5 z-50 fade-in text-xs">
-            <button onclick="toggleActiveBranch(); toggleActionMenu();" class="w-full text-left px-3 py-2 hover:bg-gray-800 text-gray-200 flex items-center justify-between">
-              <span id="menu-branch-action-text">⇄ Flip Active Branch</span>
-              <span class="text-[10px] text-gray-500">Dual-Main</span>
-            </button>
-            <button onclick="testWhatsApp(); toggleActionMenu();" class="w-full text-left px-3 py-2 hover:bg-gray-800 text-gray-200 flex items-center justify-between">
-              <span>📲 Test WhatsApp Alert</span>
-              <span class="text-[10px] text-emerald-400">Meta API</span>
-            </button>
-            <button onclick="openSettingsModal(); toggleActionMenu();" class="w-full text-left px-3 py-2 hover:bg-gray-800 text-gray-200 flex items-center justify-between">
-              <span>🔑 Cloudflare Edge Setup</span>
-              <span class="text-[10px] text-gray-500">KV</span>
-            </button>
-            <div class="border-t border-gray-800 my-1"></div>
-            <button onclick="syncNow(); toggleActionMenu();" class="w-full text-left px-3 py-2 hover:bg-gray-800 text-blue-400 flex items-center justify-between">
-              <span>🔄 Force Sync Now</span>
-              <span class="text-[10px] text-gray-400">Edge KV</span>
-            </button>
+          <div id="actionMenu" class="hidden absolute right-0 mt-2 w-64 rounded-xl bg-gray-900 border border-gray-700 shadow-2xl py-2 z-50 fade-in text-xs divide-y divide-gray-800">
+            <div class="px-3 py-1.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+              Quick Orchestrator
+            </div>
+            <div class="py-1">
+              <button onclick="toggleActiveBranch(); toggleActionMenu();" class="w-full text-left px-3 py-2 hover:bg-gray-800 text-gray-200 flex items-center justify-between">
+                <span id="menu-branch-action-text">⇄ Flip Active Branch</span>
+                <span class="text-[10px] text-gray-400 mono">Dual-Main</span>
+              </button>
+              <button onclick="testWhatsApp(); toggleActionMenu();" class="w-full text-left px-3 py-2 hover:bg-gray-800 text-gray-200 flex items-center justify-between">
+                <span>📲 Test WhatsApp Alert</span>
+                <span class="text-[10px] text-emerald-400 font-medium">Meta API</span>
+              </button>
+              <button onclick="pingCloudflareWorkerHealth(); toggleActionMenu();" class="w-full text-left px-3 py-2 hover:bg-gray-800 text-gray-200 flex items-center justify-between">
+                <span>📡 Ping Worker Health</span>
+                <span class="text-[10px] text-blue-400" id="cf-menu-status">Edge KV</span>
+              </button>
+              <button onclick="openSettingsModal(); toggleActionMenu();" class="w-full text-left px-3 py-2 hover:bg-gray-800 text-gray-200 flex items-center justify-between">
+                <span>🔑 Cloud & Edge Setup</span>
+                <span class="text-[10px] text-gray-500">Tokens</span>
+              </button>
+            </div>
+            <div class="py-1">
+              <button onclick="syncNow(); toggleActionMenu();" class="w-full text-left px-3 py-2 hover:bg-gray-800 text-blue-400 font-semibold flex items-center justify-between">
+                <span>🔄 Force Sync Snapshot</span>
+                <span class="text-[10px] text-gray-400">Read KV</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -163,7 +175,7 @@
           Scanning recent Technical & Portfolio events...
         </span>
       </div>
-      <button onclick="openAlertsModal()" class="px-2.5 py-1 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 transition">
+      <button onclick="openAlertsModal()" class="px-2.5 py-1 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 transition font-medium">
         View All Alerts ↗
       </button>
     </div>
@@ -189,7 +201,7 @@
         </div>
       </div>
 
-      <!-- Card 2: Live Unrealized P&L (Soft Emerald for Eye Comfort) -->
+      <!-- Card 2: Live Unrealized P&L -->
       <div class="p-4 rounded-xl bg-[#111827] border border-[#1F2937] space-y-2">
         <div class="flex items-center justify-between text-xs text-gray-400">
           <span>Live Open P&L</span>
@@ -202,11 +214,11 @@
         <p id="kpi-open-details" class="text-[11px] text-gray-400">Sold: $178.00 • Net Δ: +0.03 BTC</p>
       </div>
 
-      <!-- Card 3: Realized Period P&L (Soft Coral Rose instead of harsh neons) -->
+      <!-- Card 3: Realized Period P&L -->
       <div class="p-4 rounded-xl bg-[#111827] border border-[#1F2937] space-y-2">
         <div class="flex items-center justify-between text-xs text-gray-400">
           <span>Period Realized P&L</span>
-          <span id="kpi-win-rate" class="text-gray-400 text-xs font-mono">Win: 43% (6W/8L)</span>
+          <span id="kpi-win-rate" class="text-gray-400 text-xs font-mono">Win: 43%</span>
         </div>
         <div class="flex items-baseline gap-2">
           <div id="kpi-realized-pnl" class="text-xl font-bold font-mono text-rose-400">-$208.89</div>
@@ -223,7 +235,7 @@
         </div>
         <div id="kpi-countdown-timer" class="text-xl font-bold font-mono text-gray-100">0h 28m</div>
         <div class="flex justify-between items-center text-[11px] text-gray-400">
-          <span>🏁 5:30 PM Settle</span>
+          <span id="kpi-settle-sub">🏁 5:30 PM Settle</span>
           <span>⚡ 10:30 PM Entry</span>
         </div>
       </div>
@@ -279,129 +291,115 @@
           </div>
 
           <button id="btn-toggle-sl-cap" onclick="toggleSlCap()" class="px-2 py-0.5 rounded bg-gray-800 text-gray-300 border border-gray-700 text-[11px] font-medium" title="Toggle 2.0x SL bracket cutoff in simulation">
-            🛡️ 2x SL Capped (Off)
+            2x SL Capped: OFF
           </button>
         </div>
       </div>
 
-      <!-- Corridor Strips & Gauge -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-center p-3.5 rounded-lg bg-gray-900/60 border border-gray-800">
-        <!-- Put Floor -->
-        <div class="text-left">
-          <div class="text-xs font-medium text-purple-400 flex items-center gap-1.5">
-            <span class="w-2 h-2 rounded-full bg-purple-400"></span> Nearest Put Strike
+      <!-- Spot Slider & What-If Input -->
+      <div class="space-y-1.5 bg-gray-900/40 p-3 rounded-lg border border-gray-850">
+        <div class="flex justify-between items-center text-xs">
+          <span class="text-gray-400 flex items-center gap-1.5">
+            <span>Simulate Spot Shift:</span>
+            <input type="number" id="whatif-spot-input" onchange="onWhatIfSpotInput(this.value)" class="w-24 px-1.5 py-0.5 rounded bg-gray-950 border border-gray-800 text-gray-100 mono text-xs font-bold" />
+          </span>
+          <div class="flex items-center gap-3 text-[11px] mono">
+            <span class="text-purple-400 font-semibold" id="label-put-strike">PUT: $81,400</span>
+            <span class="text-blue-400 font-bold" id="label-live-spot">SPOT: $82,810</span>
+            <span class="text-rose-400 font-semibold" id="label-call-strike">CALL: $84,200</span>
           </div>
-          <div id="corridor-put-strike" class="text-lg font-bold font-mono text-gray-200 mt-0.5">$81,400</div>
-          <div id="corridor-put-otm" class="text-xs text-purple-300/80 font-mono mt-0.5">-$1,584 (-1.91% OTM)</div>
-          <div id="corridor-put-be" class="text-[11px] text-gray-500 font-mono mt-0.5">Breakeven: $81,282</div>
         </div>
-
-        <!-- Center Interactive Slider -->
-        <div class="text-center space-y-1.5">
-          <div class="text-xs text-gray-400 flex justify-between px-1 font-mono">
-            <span id="slider-min-label">$78,000</span>
-            <span id="corridor-spot-display" class="text-blue-400 font-semibold">Spot: $82,984</span>
-            <span id="slider-max-label">$87,000</span>
-          </div>
-          <input type="range" min="78000" max="87000" value="82984" step="50" id="spotSlider" oninput="onWhatIfSpotInput(this.value)" class="custom-range w-full">
-          <div class="text-[11px] text-gray-500">Double click slider to snap to live spot</div>
-        </div>
-
-        <!-- Call Ceiling -->
-        <div class="text-right">
-          <div class="text-xs font-medium text-rose-400 flex items-center justify-end gap-1.5">
-            Nearest Call Strike <span class="w-2 h-2 rounded-full bg-rose-400"></span>
-          </div>
-          <div id="corridor-call-strike" class="text-lg font-bold font-mono text-gray-200 mt-0.5">$84,200</div>
-          <div id="corridor-call-otm" class="text-xs text-rose-300/80 font-mono mt-0.5">+$1,216 (+1.47% OTM)</div>
-          <div id="corridor-call-be" class="text-[11px] text-gray-500 font-mono mt-0.5">Breakeven: $84,318</div>
+        <input type="range" id="spotSlider" min="78000" max="87000" step="50" value="82810" class="w-full custom-range cursor-pointer" oninput="onWhatIfSpotInput(this.value)" />
+        <div class="flex justify-between text-[10px] text-gray-500 mono">
+          <span id="slider-min-label">-5% ($78,600)</span>
+          <span class="text-gray-400">Current Breakeven Safe Corridor: <strong class="text-gray-200" id="corridor-summary-text">$81,282.10 → $84,317.90 (3,035 pts / 3.7%)</strong></span>
+          <span id="slider-max-label">+5% ($87,000)</span>
         </div>
       </div>
 
-      <!-- Chart Legend Bar -->
-      <div class="flex flex-wrap items-center justify-between text-[11px] text-gray-400 px-1 gap-2 border-b border-gray-800 pb-2">
-        <div class="flex items-center gap-3 flex-wrap">
-          <span class="flex items-center gap-1.5"><span class="w-3.5 h-1 rounded bg-[#10B981] inline-block"></span> <strong>Expected at Expiry (5:30 PM)</strong></span>
-          <span class="flex items-center gap-1.5"><span class="w-3.5 h-1 rounded bg-[#38BDF8] inline-block"></span> <strong>Live Theoretical (T+0)</strong></span>
-          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-[#F59E0B] inline-block ring-2 ring-[#F59E0B]/40"></span> <strong>Live Spot Position</strong></span>
-          <span class="flex items-center gap-1.5"><span class="w-3 h-0.5 border-t border-dashed border-[#F43F5E] inline-block"></span> <strong>2.0x SL Trigger</strong></span>
+      <!-- Live Theoretical Greeks Ribbon -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
+        <div class="p-2 rounded-lg bg-gray-950/60 border border-gray-900">
+          <div class="text-[10px] text-gray-500">Portfolio Delta (Δ)</div>
+          <div id="greek-delta" class="text-sm font-bold text-gray-200 mt-0.5">+0.002 BTC</div>
         </div>
-        <span class="text-gray-500 italic">💡 Hover curve to inspect Spot price, P&L delta, and Theta cushion</span>
+        <div class="p-2 rounded-lg bg-gray-950/60 border border-gray-900">
+          <div class="text-[10px] text-gray-500">Gamma (Γ)</div>
+          <div id="greek-gamma" class="text-sm font-bold text-gray-200 mt-0.5">-0.0001 / $</div>
+        </div>
+        <div class="p-2 rounded-lg bg-gray-950/60 border border-gray-900">
+          <div class="text-[10px] text-gray-500">Theta (Θ Decay / Day)</div>
+          <div id="greek-theta" class="text-sm font-bold text-emerald-400 mt-0.5">+$42.50 / day</div>
+        </div>
+        <div class="p-2 rounded-lg bg-gray-950/60 border border-gray-900">
+          <div class="text-[10px] text-gray-500">Vega (ν Risk / 1% IV)</div>
+          <div id="greek-vega" class="text-sm font-bold text-rose-400 mt-0.5">-$3.80 / %</div>
+        </div>
       </div>
 
-      <!-- Real-Time SVG Payoff Tent Canvas Container -->
-      <div class="relative w-full rounded-xl bg-gray-950/80 border border-gray-800 overflow-hidden shadow-inner p-3">
-        <!-- Floating Hover Tooltip -->
-        <div id="safezone-chart-tooltip"
-          class="hidden absolute z-30 pointer-events-none px-3.5 py-2.5 rounded-xl bg-gray-950/95 border border-gray-700 shadow-2xl text-xs mono text-gray-200 backdrop-blur-md">
-        </div>
-
-        <div id="safezone-svg-container" class="w-full h-64 sm:h-72">
-          <!-- Injected via renderSafeZoneCorridor() -->
-        </div>
+      <!-- SVG Corridors & P&L Curve Canvas -->
+      <div id="corridor-chart-container" class="relative w-full h-72 rounded-lg bg-gray-950/80 border border-gray-900 overflow-hidden">
+        <!-- SVG Generated via renderSafeZoneCorridor() -->
       </div>
     </div>
 
-    <!-- 4. STREAMLINED POSITIONS TABLE (2.0x SL Protection, Progressive Greeks) -->
+    <!-- 4. ACTIVE STRANGLE POSITION CARDS & STRIKE RADAR -->
     <div class="p-5 rounded-xl bg-[#111827] border border-[#1F2937] space-y-4">
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div class="flex items-center justify-between">
         <div>
-          <h2 class="font-semibold text-gray-100 text-sm">Active Positions & 2.0x SL Protection</h2>
-          <p id="pos-summary-caption" class="text-xs text-gray-400 mt-0.5">3 active legs • 0.500 BTC total size</p>
+          <h2 class="font-semibold text-gray-100 text-sm">⚡ Active Strangle Cohort Positions</h2>
+          <p class="text-xs text-gray-400 mt-0.5">Live Option legs margined on Delta Exchange with 2x Stop Loss bracket orders</p>
         </div>
-        <!-- Expiry Cohort Filter Buttons -->
-        <div id="cohort-filter-container" class="flex items-center gap-1.5 bg-gray-900 p-1 rounded-lg border border-gray-800 text-xs">
-          <!-- Populated dynamically -->
-        </div>
+        <span class="text-xs font-mono px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
+          1DTE Options
+        </span>
       </div>
 
-      <!-- Positions Table -->
       <div class="overflow-x-auto">
         <table class="w-full text-left text-xs">
-          <thead>
-            <tr class="border-b border-gray-800 text-gray-400 font-medium pb-2">
-              <th class="py-2.5 px-3">Contract / Expiry</th>
-              <th class="py-2.5 px-3">Strike & OTM Buffer</th>
-              <th class="py-2.5 px-3">Entry Credit</th>
-              <th class="py-2.5 px-3">Live Mark</th>
-              <th class="py-2.5 px-3">2.0x SL Trigger</th>
-              <th class="py-2.5 px-3">Decay Progress</th>
-              <th class="py-2.5 px-3 text-right">Unrealized P&L</th>
+          <thead class="bg-gray-900/60 text-gray-400 border-b border-gray-800">
+            <tr>
+              <th class="py-2.5 px-3 font-medium">Contract Leg</th>
+              <th class="py-2.5 px-3 font-medium">Entry Price</th>
+              <th class="py-2.5 px-3 font-medium">Mark Price</th>
+              <th class="py-2.5 px-3 font-medium">2.0x SL Trigger</th>
+              <th class="py-2.5 px-3 font-medium">Theta Decay</th>
+              <th class="py-2.5 px-3 font-medium text-right">Live Unrealized P&L</th>
             </tr>
           </thead>
-          <tbody id="positions-tbody" class="divide-y divide-gray-800/60 font-mono">
-            <!-- Populated dynamically -->
+          <tbody id="positions-tbody" class="divide-y divide-gray-850 font-mono">
+            <!-- Injected dynamically via renderLivePositions() -->
           </tbody>
         </table>
       </div>
 
       <!-- Next Entry Strike Radar Banner -->
-      <div id="radar-container" class="p-3 rounded-lg bg-gray-900/60 border border-gray-800 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-400">
+      <div class="p-3 rounded-lg bg-blue-950/20 border border-blue-900/40 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
         <div class="flex items-center gap-2">
-          <span class="text-amber-400 font-semibold">🔭 10:30 PM Next Entry Radar:</span>
-          <span id="radar-text" class="text-gray-300">Calculating target strikes & estimated credit...</span>
+          <span class="text-blue-400 font-bold text-sm">🎯 Next Entry Radar (22:30 IST):</span>
+          <span id="radar-text" class="text-gray-300 font-mono">Loading dynamic strikes...</span>
         </div>
-        <span class="px-2 py-0.5 rounded text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-sans">
-          🛡️ 3/3 Pre-Flight Guards Active
-        </span>
+        <div class="text-[11px] text-gray-400">
+          Target ~0.10 Delta • 1.8x Straddle Offset
+        </div>
       </div>
     </div>
 
-    <!-- 5. PORTFOLIO PERFORMANCE & HEATMAP (Clean, Non-Straining Curves) -->
+    <!-- 5. PORTFOLIO PERFORMANCE & MONTHLY CALENDAR -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
       
-      <!-- Equity Curve & Daily Bars (2 Cols) -->
+      <!-- Portfolio Performance Curve (2 Cols) -->
       <div class="lg:col-span-2 p-5 rounded-xl bg-[#111827] border border-[#1F2937] space-y-4">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <h2 class="font-semibold text-gray-100 text-sm">Cumulative Equity Curve & Daily P&L</h2>
-            <p class="text-xs text-gray-400 mt-0.5">Smooth area curve = Cumulative Net P&L • Vertical bars = Daily Net P&L</p>
+            <h2 class="font-semibold text-gray-100 text-sm">📈 Cumulative Performance & Drawdown</h2>
+            <p class="text-xs text-gray-400 mt-0.5">Realized Equity Curve and Daily Returns</p>
           </div>
           <!-- Date Range Pills -->
           <div class="flex items-center gap-1 bg-gray-900 p-0.5 rounded-lg border border-gray-800 text-xs">
-            <button onclick="setPerformancePeriod('7D')" class="px-2 py-1 rounded text-gray-400 hover:text-white" id="perf7d">7D</button>
-            <button onclick="setPerformancePeriod('30D')" class="px-2 py-1 rounded bg-gray-800 text-gray-100 font-medium" id="perf30d">30D</button>
-            <button onclick="setPerformancePeriod('ALL')" class="px-2 py-1 rounded text-gray-400 hover:text-white" id="perfAll">All</button>
+            <button onclick="setPerformancePeriod('7D')" class="px-2.5 py-1 rounded text-gray-400 hover:text-white transition" id="perf7d">7D</button>
+            <button onclick="setPerformancePeriod('30D')" class="px-2.5 py-1 rounded bg-gray-800 text-gray-100 font-semibold shadow-sm" id="perf30d">30D</button>
+            <button onclick="setPerformancePeriod('ALL')" class="px-2.5 py-1 rounded text-gray-400 hover:text-white transition" id="perfAll">All</button>
           </div>
         </div>
 
@@ -409,13 +407,43 @@
         <div id="equity-chart-container" class="relative w-full h-56 rounded-lg bg-gray-950/60 border border-gray-900 overflow-hidden flex items-center justify-center">
           <!-- Injected via renderPortfolioPerformanceChart() -->
         </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-xs font-mono">
+          <div class="p-2 rounded-lg bg-gray-950/40 border border-gray-900 text-center">
+            <div class="text-[10px] text-gray-500">Period P&L</div>
+            <div id="perf-kpi-net" class="font-bold text-gray-200 mt-0.5">$--.--</div>
+          </div>
+          <div class="p-2 rounded-lg bg-gray-950/40 border border-gray-900 text-center">
+            <div class="text-[10px] text-gray-500">Win Rate</div>
+            <div id="perf-kpi-winrate" class="font-bold text-emerald-400 mt-0.5">--%</div>
+          </div>
+          <div class="p-2 rounded-lg bg-gray-950/40 border border-gray-900 text-center">
+            <div class="text-[10px] text-gray-500">Profit Factor</div>
+            <div id="perf-kpi-pf" class="font-bold text-gray-200 mt-0.5">--</div>
+          </div>
+          <div class="p-2 rounded-lg bg-gray-950/40 border border-gray-900 text-center">
+            <div class="text-[10px] text-gray-500">Max Drawdown</div>
+            <div id="perf-kpi-dd" class="font-bold text-rose-400 mt-0.5">$--.--</div>
+          </div>
+        </div>
       </div>
 
       <!-- Monthly Calendar Heatmap (1 Col) -->
       <div class="p-5 rounded-xl bg-[#111827] border border-[#1F2937] space-y-4">
         <div class="flex items-center justify-between">
-          <h2 class="font-semibold text-gray-100 text-sm">📅 Monthly P&L Calendar</h2>
-          <span id="calendar-month-label" class="text-xs font-medium text-gray-400">Oct 2026</span>
+          <div>
+            <h2 class="font-semibold text-gray-100 text-sm">📅 Monthly P&L Calendar</h2>
+            <p class="text-xs text-gray-400 mt-0.5">Daily realized gains & theta decay</p>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="changeCalendarMonth(-1)" class="w-6 h-6 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 flex items-center justify-center text-xs">◀</button>
+            <select id="calendar-month-select" onchange="onCalendarMonthSelect()" class="bg-gray-900 border border-gray-800 text-gray-200 text-xs rounded px-1.5 py-0.5 font-mono"></select>
+            <button onclick="changeCalendarMonth(1)" class="w-6 h-6 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 flex items-center justify-center text-xs">▶</button>
+          </div>
+        </div>
+        <div class="flex justify-between items-center text-xs">
+          <span class="text-gray-400">Month Net Realized:</span>
+          <span id="calendar-month-label" class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">+$0.00</span>
         </div>
         <div id="calendar-heatmap-container" class="space-y-2">
           <!-- Injected via renderCalendarHeatmap() -->
@@ -424,25 +452,167 @@
 
     </div>
 
-    <!-- 6. AUDIT LEDGER (Expandable & Clean) -->
-    <div class="p-5 rounded-xl bg-[#111827] border border-[#1F2937] space-y-3">
-      <div class="flex items-center justify-between">
+    <!-- ========================================================================= -->
+    <!-- 6. CLOUD AUTOMATION & STRATEGY ORCHESTRATOR PANEL -->
+    <!-- ========================================================================= -->
+    <div class="p-5 rounded-xl bg-[#111827] border border-[#1F2937] space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-800 pb-3">
+        <div>
+          <h2 class="font-semibold text-gray-100 text-sm flex items-center gap-2">
+            <span>⚡ Strategy Orchestrator & Cloud Automation Hub</span>
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 uppercase tracking-wider">Zero-Commit Edge</span>
+          </h2>
+          <p class="text-xs text-gray-400 mt-0.5">Dispatch workflows, manage dual-main release branches, toggle live execution, and inspect edge scheduler health.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <span id="orchestrator-bot-mode-badge" class="px-2.5 py-1 rounded-md text-xs font-bold mono bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+            BOT_MODE: LIVE
+          </span>
+          <span id="orchestrator-branch-badge" class="px-2.5 py-1 rounded-md text-xs font-bold mono bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+            🟢 Green
+          </span>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+        
+        <!-- Column 1: Workflow Dispatcher -->
+        <div class="p-3.5 rounded-lg bg-gray-900/60 border border-gray-800 space-y-3">
+          <div class="font-semibold text-gray-200 flex items-center justify-between">
+            <span>⚡ Workflow Dispatcher</span>
+            <span class="text-[10px] text-gray-500 mono">daily_strangle.yml</span>
+          </div>
+          <div class="space-y-2">
+            <div>
+              <label class="block text-[11px] text-gray-400 mb-1">Execution Mode</label>
+              <select id="dispatch-mode-select" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-2.5 py-1.5 text-xs text-gray-200 mono">
+                <option value="sync-dashboard">sync-dashboard (Safe Cloud P&L Sync)</option>
+                <option value="test-whatsapp">test-whatsapp (Send WhatsApp Status)</option>
+                <option value="check-sl">check-sl (Intraday 2.0x SL Check)</option>
+                <option value="dry-run">dry-run (Preview Strikes Without Orders)</option>
+                <option value="verify-auth">verify-auth (Test Delta API & Proxy)</option>
+                <option value="attach-sl-only">attach-sl-only (Ensure 2x Bracket SL)</option>
+                <option value="live">live (Execute Real-Money Strangle)</option>
+              </select>
+            </div>
+            <button onclick="triggerWorkflowDispatch()" class="w-full py-2 px-3 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold transition flex items-center justify-center gap-1.5 shadow-sm">
+              <span>⚡ Dispatch Workflow</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Column 2: Bot Execution Mode & Sizing -->
+        <div class="p-3.5 rounded-lg bg-gray-900/60 border border-gray-800 space-y-3">
+          <div class="font-semibold text-gray-200 flex items-center justify-between">
+            <span>🛡️ Execution State & Lots</span>
+            <span class="text-[10px] text-gray-500">Repository Variables</span>
+          </div>
+          <div class="space-y-2">
+            <div>
+              <label class="block text-[11px] text-gray-400 mb-1">Pause / Resume Bot (BOT_MODE)</label>
+              <div class="grid grid-cols-2 gap-2">
+                <button onclick="updateBotMode('dry-run')" class="py-1.5 px-2 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 font-medium transition text-center">
+                  ⏸ Pause: Dry-Run
+                </button>
+                <button onclick="updateBotMode('live')" class="py-1.5 px-2 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 font-medium transition text-center">
+                  ▶ Resume: Live
+                </button>
+              </div>
+            </div>
+            <div>
+              <label class="block text-[11px] text-gray-400 mb-1">Lot Sizing (BOT_LOTS)</label>
+              <div class="flex items-center gap-1.5">
+                <input type="number" id="bot-lots-input" value="500" step="50" class="w-20 bg-gray-950 border border-gray-800 rounded-lg px-2 py-1 text-gray-100 mono text-xs font-bold" />
+                <button onclick="quickSetLots(250)" class="px-2 py-1 rounded bg-gray-800 text-gray-300 hover:text-white border border-gray-700 text-[10px]">250</button>
+                <button onclick="quickSetLots(500)" class="px-2 py-1 rounded bg-blue-600/20 text-blue-300 border border-blue-500/40 text-[10px] font-bold">500</button>
+                <button onclick="quickSetLots(750)" class="px-2 py-1 rounded bg-gray-800 text-gray-300 hover:text-white border border-gray-700 text-[10px]">750</button>
+                <button onclick="quickSetLots(1000)" class="px-2 py-1 rounded bg-gray-800 text-gray-300 hover:text-white border border-gray-700 text-[10px]">1k</button>
+                <button onclick="updateBotLotsFromDashboard()" class="px-2 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white font-semibold text-[10px]">Save</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Column 3: Dual-Main Release Branch & Diagnostics -->
+        <div class="p-3.5 rounded-lg bg-gray-900/60 border border-gray-800 space-y-3">
+          <div class="font-semibold text-gray-200 flex items-center justify-between">
+            <span>🌿 Dual-Main Branch & Health</span>
+            <span class="text-[10px] text-gray-500">Governance</span>
+          </div>
+          <div class="space-y-2">
+            <div>
+              <label class="block text-[11px] text-gray-400 mb-1">Active Automated Branch</label>
+              <button onclick="toggleActiveBranch()" class="w-full py-1.5 px-3 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 font-medium transition flex items-center justify-between">
+                <span id="orchestrator-flip-label">⇄ Flip to Inactive Branch</span>
+                <span class="text-[10px] text-blue-400 mono">Zero-Downtime</span>
+              </button>
+            </div>
+            <div class="pt-1 flex items-center gap-2">
+              <button onclick="pingCloudflareWorkerHealth()" id="btn-ping-cf-worker" class="flex-1 py-1.5 px-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 transition font-medium text-center">
+                📡 Ping Worker
+              </button>
+              <button onclick="testWhatsApp()" class="flex-1 py-1.5 px-2 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 transition font-medium text-center">
+                📲 Test WA
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- 7. AUDIT LEDGER (Expandable, Filterable & Clean) -->
+    <div class="p-5 rounded-xl bg-[#111827] border border-[#1F2937] space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 class="font-semibold text-gray-100 text-sm">📜 Execution & Audit Ledger</h2>
-          <p class="text-xs text-gray-400 mt-0.5">Recent fills, orders, and 2.0x SL bracket history</p>
+          <p class="text-xs text-gray-400 mt-0.5">Comprehensive audit trail of fills, orders, and 2.0x SL bracket status</p>
         </div>
-        <span id="ledger-count-label" class="text-xs font-mono text-gray-400">44 records</span>
+        <div class="flex items-center gap-2 flex-wrap">
+          <span id="ledger-count-label" class="text-xs font-mono text-gray-400 bg-gray-900 px-2 py-1 rounded border border-gray-800">0 records</span>
+          <button onclick="exportAuditCSV()" class="px-2.5 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 text-xs font-medium transition flex items-center gap-1 shadow-sm">
+            <span>⬇ Export CSV</span>
+          </button>
+        </div>
       </div>
-      <div class="overflow-x-auto max-h-72">
+
+      <!-- Filters Toolbar -->
+      <div class="flex flex-wrap items-center justify-between gap-2.5 p-2.5 rounded-lg bg-gray-900/60 border border-gray-800 text-xs">
+        <!-- Status Tabs -->
+        <div class="inline-flex rounded-lg bg-gray-950 p-0.5 border border-gray-800">
+          <button id="audit-tab-ALL" onclick="setAuditStatusTab('ALL')" class="px-2.5 py-1 rounded-md text-xs font-semibold bg-blue-600 text-white shadow-sm">ALL</button>
+          <button id="audit-tab-SUCCESS" onclick="setAuditStatusTab('SUCCESS')" class="px-2.5 py-1 rounded-md text-xs font-medium text-gray-400 hover:text-gray-200 transition">SUCCESS</button>
+          <button id="audit-tab-PENDING_SL" onclick="setAuditStatusTab('PENDING_SL')" class="px-2.5 py-1 rounded-md text-xs font-medium text-gray-400 hover:text-gray-200 transition">PENDING SL</button>
+          <button id="audit-tab-CANCELLED" onclick="setAuditStatusTab('CANCELLED')" class="px-2.5 py-1 rounded-md text-xs font-medium text-gray-400 hover:text-gray-200 transition">CANCELLED</button>
+          <button id="audit-tab-FAILED" onclick="setAuditStatusTab('FAILED')" class="px-2.5 py-1 rounded-md text-xs font-medium text-gray-400 hover:text-gray-200 transition">FAILED</button>
+        </div>
+
+        <!-- Cohort Pills -->
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <span class="text-gray-500 text-[11px] font-medium">Cohort:</span>
+          <div id="audit-cohort-pills" class="flex items-center gap-1 flex-wrap">
+            <button onclick="setAuditCohortFilter('ALL')" class="px-2 py-0.5 rounded text-[11px] font-mono bg-blue-600 text-white font-semibold">ALL</button>
+          </div>
+        </div>
+
+        <!-- Search Box -->
+        <div class="w-full sm:w-56">
+          <input type="text" id="audit-search-input" oninput="onAuditSearch(this.value)" placeholder="Search symbol, side, status..." class="w-full bg-gray-950 border border-gray-800 rounded-lg px-2.5 py-1 text-xs text-gray-200 focus:outline-none focus:border-blue-500 font-mono" />
+        </div>
+      </div>
+
+      <!-- Ledger Table -->
+      <div class="overflow-x-auto max-h-96 rounded-lg border border-gray-800">
         <table class="w-full text-left text-xs">
-          <thead class="sticky top-0 bg-[#111827] border-b border-gray-800 text-gray-400">
+          <thead class="sticky top-0 bg-[#111827] border-b border-gray-800 text-gray-400 shadow-sm">
             <tr>
-              <th class="py-2 px-3">Date / Time (IST)</th>
-              <th class="py-2 px-3">Action / Side</th>
-              <th class="py-2 px-3">Contract</th>
-              <th class="py-2 px-3">Size</th>
-              <th class="py-2 px-3">Price</th>
-              <th class="py-2 px-3 text-right">Fee / Realized</th>
+              <th class="py-2.5 px-3">Date / Time (IST)</th>
+              <th class="py-2.5 px-3">Action / Side</th>
+              <th class="py-2.5 px-3">Contract</th>
+              <th class="py-2.5 px-3">Size</th>
+              <th class="py-2.5 px-3">Price</th>
+              <th class="py-2.5 px-3 text-right">Fee / Realized</th>
+              <th class="py-2.5 px-3 text-right">Status & Reason</th>
             </tr>
           </thead>
           <tbody id="ledger-tbody" class="divide-y divide-gray-850 font-mono text-gray-300">
@@ -455,40 +625,80 @@
   </main>
 
   <!-- ========================================================================= -->
-  <!-- MODALS (Settings, WhatsApp Test, Branch Flip, Alerts) -->
+  <!-- MODALS -->
   <!-- ========================================================================= -->
   <!-- Settings Modal -->
-  <div id="settings-modal" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="w-full max-w-md rounded-2xl bg-gray-900 border border-gray-800 p-5 space-y-4 shadow-2xl">
-      <div class="flex items-center justify-between">
+  <div id="settings-modal" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="w-full max-w-lg rounded-2xl bg-gray-900 border border-gray-800 p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-gray-800 pb-3">
         <h3 class="font-bold text-gray-100 text-base">🔑 Cloud & Edge Configuration</h3>
-        <button onclick="closeSettingsModal()" class="text-gray-400 hover:text-gray-200">✕</button>
+        <button onclick="closeSettingsModal()" class="text-gray-400 hover:text-gray-200 text-lg">✕</button>
       </div>
       <div class="space-y-3 text-xs">
         <div>
-          <label class="block text-gray-400 mb-1">GitHub Personal Access Token (PAT)</label>
-          <input type="password" id="input-gh-pat" placeholder="ghp_..." class="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-gray-200 focus:outline-none focus:border-blue-500 font-mono">
+          <label class="block text-gray-300 font-medium mb-1">GitHub Personal Access Token (PAT)</label>
+          <input type="password" id="input-gh-pat" placeholder="ghp_..." class="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-gray-100 focus:outline-none focus:border-blue-500 font-mono text-xs">
+          <p class="text-[11px] text-gray-500 mt-0.5">Required for triggering workflows & flipping active release branches (needs Actions & Variables permissions).</p>
         </div>
         <div>
-          <label class="block text-gray-400 mb-1">Meta WhatsApp Recipient Phone</label>
-          <input type="text" id="input-wa-phone" placeholder="+919460853944" class="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-gray-200 focus:outline-none focus:border-blue-500 font-mono">
+          <label class="block text-gray-300 font-medium mb-1">Meta WhatsApp Recipient Phone</label>
+          <input type="text" id="input-wa-phone" placeholder="+919460853944" class="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-gray-100 focus:outline-none focus:border-blue-500 font-mono text-xs">
+        </div>
+        <div>
+          <label class="block text-gray-300 font-medium mb-1">Meta WhatsApp Cloud Access Token</label>
+          <input type="password" id="input-meta-wa-token" placeholder="EAA..." class="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-gray-100 focus:outline-none focus:border-blue-500 font-mono text-xs">
+        </div>
+        <div>
+          <label class="block text-gray-300 font-medium mb-1">Meta Phone Number ID</label>
+          <input type="text" id="input-meta-phone-id" placeholder="105432..." class="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-gray-100 focus:outline-none focus:border-blue-500 font-mono text-xs">
         </div>
       </div>
-      <div class="flex justify-end gap-2 pt-2">
-        <button onclick="closeSettingsModal()" class="px-3 py-1.5 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 text-xs">Cancel</button>
-        <button onclick="saveSettings()" class="px-3 py-1.5 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-500 text-xs shadow">Save Settings</button>
+      <div class="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-gray-800">
+        <div class="flex items-center gap-1.5">
+          <button onclick="copyBookmarkUrl()" class="px-2.5 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs border border-gray-700 font-medium transition" title="Copy 1-Click Bookmark URL with tokens embedded">
+            🔗 Bookmark URL
+          </button>
+          <button onclick="clearSavedSettings()" class="px-2.5 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs border border-rose-500/30 transition">
+            Clear
+          </button>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="closeSettingsModal()" class="px-3 py-1.5 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 text-xs font-medium">Cancel</button>
+          <button onclick="saveSettings()" class="px-4 py-1.5 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-500 text-xs shadow">Save Settings</button>
+        </div>
       </div>
     </div>
   </div>
 
   <!-- Alerts Modal -->
-  <div id="alerts-modal" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="w-full max-w-2xl max-h-[80vh] flex flex-col rounded-2xl bg-gray-900 border border-gray-800 p-5 space-y-4 shadow-2xl">
-      <div class="flex items-center justify-between">
-        <h3 class="font-bold text-gray-100 text-base">🚨 Alert Monitor (Last 30 Days)</h3>
-        <button onclick="closeAlertsModal()" class="text-gray-400 hover:text-gray-200">✕</button>
+  <div id="alerts-modal" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="w-full max-w-2xl max-h-[85vh] flex flex-col rounded-2xl bg-gray-900 border border-gray-800 p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-gray-800 pb-3">
+        <div>
+          <h3 class="font-bold text-gray-100 text-base">🚨 Alert Monitor (Last 30 Days)</h3>
+          <p class="text-xs text-gray-400 mt-0.5">Automated technical safeguards & portfolio risk events</p>
+        </div>
+        <button onclick="closeAlertsModal()" class="text-gray-400 hover:text-gray-200 text-lg">✕</button>
       </div>
-      <div id="alerts-modal-content" class="overflow-y-auto space-y-2 text-xs pr-1">
+
+      <!-- Category Filter Tabs -->
+      <div class="flex items-center justify-between gap-2">
+        <div class="inline-flex rounded-lg bg-gray-950 p-0.5 border border-gray-800 text-xs">
+          <button id="alert-tab-all" onclick="setAlertCategoryFilter('all')" class="px-2.5 py-1 rounded-md font-semibold bg-blue-600 text-white shadow-sm">All</button>
+          <button id="alert-tab-technical" onclick="setAlertCategoryFilter('technical')" class="px-2.5 py-1 rounded-md font-medium text-gray-400 hover:text-gray-200">Technical</button>
+          <button id="alert-tab-portfolio" onclick="setAlertCategoryFilter('portfolio')" class="px-2.5 py-1 rounded-md font-medium text-gray-400 hover:text-gray-200">Portfolio</button>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <button onclick="quickRunModeFromAlert('check-sl')" class="px-2 py-1 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[11px] font-medium hover:bg-amber-500/25">
+            ⚡ Check SL
+          </button>
+          <button onclick="quickRunModeFromAlert('attach-sl-only')" class="px-2 py-1 rounded bg-blue-500/15 text-blue-300 border border-blue-500/30 text-[11px] font-medium hover:bg-blue-500/25">
+            🛡️ Attach 2x SL
+          </button>
+        </div>
+      </div>
+
+      <div id="alerts-modal-content" class="overflow-y-auto space-y-2 text-xs pr-1 flex-1">
         <!-- Injected dynamically -->
       </div>
     </div>
@@ -498,6 +708,15 @@
   <!-- JAVASCRIPT LOGIC & DATA WIRING -->
   <!-- ========================================================================= -->
   <script>
+    // Constants & Storage Keys (Aligned 1:1 with v1)
+    const REPO_SLUG = 'ajay14sharma/delta-strangle-bot';
+    const WORKFLOW_FILE = 'daily_strangle.yml';
+    const STORAGE_TOKEN_KEY = 'delta_strangle_gh_pat';
+    const STORAGE_ACTIVE_BRANCH_KEY = 'delta_strangle_active_branch';
+    const STORAGE_WA_PHONE_KEY = 'delta_strangle_wa_phone';
+    const STORAGE_META_PHONE_ID_KEY = 'delta_strangle_meta_phone_id';
+    const STORAGE_META_TOKEN_KEY = 'delta_strangle_meta_wa_token';
+
     // State
     let dashboardState = null;
     let liveTickersBySymbol = {};
@@ -505,12 +724,59 @@
     let currentCurrency = 'USD';
     const fxRate = 85.0; // USD/INR
     let whatIfSpotOverride = null;
-    let currentExpiryCohortFilter = null;
     let currentPerfPeriod = '30D';
+    let currentCalendarMonth = '';
+    let availableMonths = [];
+    let currentAuditStatusTab = 'ALL';
+    let currentAuditCohort = 'ALL';
+    let currentAuditSearch = '';
+    let currentAlertCategory = 'all';
 
-    // 1. Storage Helpers
-    function getSavedToken() { return localStorage.getItem('gh_pat') || ''; }
-    function getSavedWaPhone() { return localStorage.getItem('meta_wa_phone') || '+919460853944'; }
+    // 1. Storage Helpers & Hash Bookmark Parsing
+    (function checkHashToken() {
+      if (window.location.hash && (window.location.hash.includes('token=') || window.location.hash.includes('waphone='))) {
+        const params = new URLSearchParams(window.location.hash.slice(1));
+        const tok = params.get('token');
+        const waPhone = params.get('waphone');
+        const metaPid = params.get('metapid');
+        const metaTok = params.get('metatok');
+        if (tok) {
+          localStorage.setItem(STORAGE_TOKEN_KEY, tok.trim());
+          localStorage.setItem('gh_pat', tok.trim());
+        }
+        if (waPhone) {
+          localStorage.setItem(STORAGE_WA_PHONE_KEY, waPhone.trim());
+          localStorage.setItem('meta_wa_phone', waPhone.trim());
+        }
+        if (metaPid) localStorage.setItem(STORAGE_META_PHONE_ID_KEY, metaPid.replace(/\D+/g, ''));
+        if (metaTok) localStorage.setItem(STORAGE_META_TOKEN_KEY, metaTok.trim());
+        history.replaceState(null, '', window.location.pathname + window.location.search);
+      }
+    })();
+
+    function getSavedToken() {
+      return localStorage.getItem(STORAGE_TOKEN_KEY) || localStorage.getItem('gh_pat') || '';
+    }
+    function getSavedWaPhone() {
+      return localStorage.getItem(STORAGE_WA_PHONE_KEY) || localStorage.getItem('meta_wa_phone') || '+919460853944';
+    }
+    function getSavedMetaPhoneId() {
+      return localStorage.getItem(STORAGE_META_PHONE_ID_KEY) || '';
+    }
+    function getSavedMetaToken() {
+      return localStorage.getItem(STORAGE_META_TOKEN_KEY) || '';
+    }
+    function getActiveBranch() {
+      const gh = (dashboardState && dashboardState.github_actions) || {};
+      return (gh.active_branch || localStorage.getItem(STORAGE_ACTIVE_BRANCH_KEY) || 'green').toLowerCase();
+    }
+    function getActiveBotLots() {
+      const el = document.getElementById('bot-lots-input');
+      const val = el ? parseInt(el.value, 10) : NaN;
+      if (!isNaN(val) && val > 0) return val;
+      const gh = (dashboardState && dashboardState.github_actions) || {};
+      return parseInt(gh.bot_lots || 500, 10) || 500;
+    }
 
     function showToast(msg, type = 'info') {
       const banner = document.getElementById('toast-banner');
@@ -521,7 +787,7 @@
         'bg-gray-900/90 text-gray-200 border-gray-700'
       }`;
       banner.classList.remove('hidden');
-      setTimeout(() => banner.classList.add('hidden'), 4000);
+      setTimeout(() => banner.classList.add('hidden'), 4500);
     }
 
     function toggleActionMenu() {
@@ -550,6 +816,8 @@
       renderHeaderAndKPIs();
       renderLivePositions();
       renderPortfolioPerformanceChart();
+      renderCalendarHeatmap();
+      renderAuditLedger();
     }
 
     function formatMoney(usdVal, showSign = false) {
@@ -615,11 +883,39 @@
       await loadDashboardSnapshot();
       await fetchLiveDeltaTickers();
       renderHeaderAndKPIs();
+      renderAuditCohortPills();
       renderAuditLedger();
       showToast('Dashboard synced!', 'success');
     }
 
-    // 3. Render KPIs & Header
+    // 3. Render KPIs, Header & Milestone Timers
+    function updateMilestoneCountdown() {
+      const now = new Date();
+      const istOffsetMs = (5 * 60 + 30) * 60 * 1000;
+      const nowIst = new Date(now.getTime() + istOffsetMs);
+
+      // 17:30 IST Settlement
+      const targetSettle = new Date(nowIst);
+      targetSettle.setUTCHours(17, 30, 0, 0);
+      if (nowIst >= targetSettle) targetSettle.setUTCDate(targetSettle.getUTCDate() + 1);
+      const sDiff = Math.max(0, Math.floor((targetSettle - nowIst) / 1000));
+      const sh = Math.floor(sDiff / 3600);
+      const sm = Math.floor((sDiff % 3600) / 60);
+
+      // 22:30 IST Entry
+      const targetEntry = new Date(nowIst);
+      targetEntry.setUTCHours(22, 30, 0, 0);
+      if (nowIst >= targetEntry) targetEntry.setUTCDate(targetEntry.getUTCDate() + 1);
+      const eDiff = Math.max(0, Math.floor((targetEntry - nowIst) / 1000));
+      const eh = Math.floor(eDiff / 3600);
+      const em = Math.floor((eDiff % 3600) / 60);
+
+      const el = document.getElementById('kpi-countdown-timer');
+      if (el) el.textContent = `${eh}h ${em}m`;
+      const sub = document.getElementById('kpi-settle-sub');
+      if (sub) sub.textContent = `🏁 Settle: ${sh}h ${sm}m`;
+    }
+
     function renderHeaderAndKPIs() {
       if (!dashboardState) return;
       const w = dashboardState.wallet || {};
@@ -642,41 +938,81 @@
         }`;
       }
 
-      // Realized PnL & Win Rate
-      const perf = dashboardState.portfolio_performance || {};
-      const realizedUsd = Number(perf.net_realized_pnl_usd || -208.89);
-      const grossUsd = Number(perf.gross_profit_usd || -137.96);
-      const feesUsd = Number(perf.fees_usd || 70.93);
-      const winRate = perf.win_rate_pct !== undefined ? perf.win_rate_pct : 43;
+      // Realized PnL & Win Rate from Summary
+      const perf = (dashboardState.portfolio_performance && dashboardState.portfolio_performance.summary) || {};
+      const realizedUsd = Number(perf.total_net_pnl_usd || -5034.10);
+      const grossUsd = Number(perf.total_gross_pnl_usd || -4275.25);
+      const feesUsd = Number(perf.total_fees_usd || 758.85);
+      const winRate = perf.day_win_rate_pct !== undefined ? perf.day_win_rate_pct : 30.8;
 
       document.getElementById('kpi-realized-pnl').textContent = formatMoney(realizedUsd, true);
       document.getElementById('kpi-gross-pnl').textContent = `Gross: ${formatMoney(grossUsd, true)}`;
       document.getElementById('kpi-fees-label').textContent = `Fees: ${formatMoney(feesUsd)} • Profit Factor: 0.74x`;
       document.getElementById('kpi-win-rate').textContent = `Win: ${winRate}%`;
 
-      // Branch Badge
+      // Branch Badges
+      const gh = dashboardState.github_actions || {};
+      const activeBranch = getActiveBranch();
       const branchPill = document.getElementById('header-branch-pill');
+      const branchText = document.getElementById('header-branch-text');
+      const branchDot = document.getElementById('header-branch-dot');
       const branchActionText = document.getElementById('menu-branch-action-text');
-      const activeBranch = dashboardState.active_branch || 'green';
+      const orchBranch = document.getElementById('orchestrator-branch-badge');
+      const orchFlip = document.getElementById('orchestrator-flip-label');
+
       if (activeBranch === 'blue') {
-        branchPill.className = 'px-2 py-0.5 rounded-full text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20 mono';
-        branchPill.textContent = '🔵 Blue (Active)';
-        branchActionText.textContent = '⇄ Flip to Green';
+        if (branchPill) branchPill.className = 'px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-300 border border-blue-500/30 mono transition flex items-center gap-1 cursor-pointer shadow-sm';
+        if (branchText) branchText.textContent = '🔵 Blue (Active)';
+        if (branchDot) branchDot.className = 'w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse';
+        if (branchActionText) branchActionText.textContent = '⇄ Flip to Green';
+        if (orchBranch) {
+          orchBranch.textContent = '🔵 Blue (Active)';
+          orchBranch.className = 'px-2.5 py-1 rounded-md text-xs font-bold mono bg-blue-500/15 text-blue-300 border border-blue-500/30';
+        }
+        if (orchFlip) orchFlip.textContent = '⇄ Flip to Green (Active)';
       } else {
-        branchPill.className = 'px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 mono';
-        branchPill.textContent = '🟢 Green (Active)';
-        branchActionText.textContent = '⇄ Flip to Blue';
+        if (branchPill) branchPill.className = 'px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 mono transition flex items-center gap-1 cursor-pointer shadow-sm';
+        if (branchText) branchText.textContent = '🟢 Green (Active)';
+        if (branchDot) branchDot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse';
+        if (branchActionText) branchActionText.textContent = '⇄ Flip to Blue';
+        if (orchBranch) {
+          orchBranch.textContent = '🟢 Green (Active)';
+          orchBranch.className = 'px-2.5 py-1 rounded-md text-xs font-bold mono bg-emerald-500/15 text-emerald-300 border border-emerald-500/30';
+        }
+        if (orchFlip) orchFlip.textContent = '⇄ Flip to Blue (Active)';
       }
 
-      // Alert Count
+      // BOT_MODE Badge
+      const botMode = (gh.bot_mode || 'live').toUpperCase();
+      const botModeBadge = document.getElementById('orchestrator-bot-mode-badge');
+      if (botModeBadge) {
+        botModeBadge.textContent = `BOT_MODE: ${botMode}`;
+        botModeBadge.className = `px-2.5 py-1 rounded-md text-xs font-bold mono ${
+          botMode === 'LIVE'
+            ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+            : 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+        }`;
+      }
+
+      // BOT_LOTS Input
+      const botLotsInput = document.getElementById('bot-lots-input');
+      if (botLotsInput && !botLotsInput.dataset.edited) {
+        botLotsInput.value = gh.bot_lots || 500;
+      }
+
+      // Alerts Banner Count
       const alertStrip = document.getElementById('alerts-summary-text');
       const critAlerts = dashboardState.critical_alerts || [];
+      const techAlerts = dashboardState.technical_alerts || [];
+      const portAlerts = dashboardState.portfolio_alerts || [];
       if (alertStrip) {
-        alertStrip.textContent = `${critAlerts.length || 12} Alerts in Last 30 Days (2 Technical Guarded • 10 Portfolio)`;
+        alertStrip.textContent = `${critAlerts.length || 12} Alerts in Last 30 Days (${techAlerts.length || 2} Technical Guarded • ${portAlerts.length || 10} Portfolio)`;
       }
+
+      updateMilestoneCountdown();
     }
 
-    // 4. Option Positions, Safe Corridor & Payoff Math
+    // 4. Positions & Corridor Math
     function parseOptionSymbol(sym) {
       const parts = String(sym || '').split('-');
       if (parts.length !== 4) return { isCall: false, strike: 0, expCode: '' };
@@ -733,9 +1069,6 @@
       // Render Table Rows
       parsedPositions.forEach(p => {
         const isCall = p.parsed.isCall;
-        const diffUsd = isCall ? (p.parsed.strike - spotPx) : (spotPx - p.parsed.strike);
-        const otmPct = spotPx > 0 ? (diffUsd / spotPx) * 100 : 0;
-
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-gray-800/40 transition';
         tr.innerHTML = `
@@ -750,18 +1083,10 @@
               </div>
             </div>
           </td>
+          <td class="py-3 px-3 text-gray-300 font-semibold">$${p.entryPx.toFixed(2)}</td>
+          <td class="py-3 px-3 text-gray-200 font-semibold">$${p.markPx.toFixed(2)}</td>
           <td class="py-3 px-3">
-            <span class="text-gray-200 font-semibold">$${p.parsed.strike.toLocaleString('en-US')}</span>
-            <span class="text-emerald-400 text-[11px] ml-1.5">+${otmPct.toFixed(2)}% OTM</span>
-          </td>
-          <td class="py-3 px-3 text-gray-300">
-            $${p.entryPx.toFixed(2)} <span class="text-gray-500 text-[11px]">(${formatMoney(p.entryCredit)})</span>
-          </td>
-          <td class="py-3 px-3 text-gray-300 font-semibold">
-            $${p.markPx.toFixed(2)}
-          </td>
-          <td class="py-3 px-3">
-            <div class="text-gray-300">$${p.slTrigger.toFixed(1)}</div>
+            <div class="text-gray-300 font-mono">$${p.slTrigger.toFixed(1)}</div>
             <div class="text-[10px] text-gray-500">Dist: $${Math.max(0, p.slDist).toFixed(1)}</div>
           </td>
           <td class="py-3 px-3">
@@ -1314,19 +1639,45 @@
         : [];
       
       const sliceCount = currentPerfPeriod === '7D' ? 7 : (currentPerfPeriod === '30D' ? 30 : rawDaily.length);
-      const targetDaily = rawDaily.length > 0 ? rawDaily.slice(-sliceCount) : [
-        { date: '10-04', net_pnl_usd: 0, cumulative_net_pnl_usd: 0 },
-        { date: '10-05', net_pnl_usd: -69.2, cumulative_net_pnl_usd: -69.2 },
-        { date: '10-06', net_pnl_usd: 37.5, cumulative_net_pnl_usd: -31.7 },
-        { date: '10-07', net_pnl_usd: -141.9, cumulative_net_pnl_usd: -173.6 },
-        { date: '10-08', net_pnl_usd: -15.4, cumulative_net_pnl_usd: -189.0 },
-        { date: '10-09', net_pnl_usd: 145.8, cumulative_net_pnl_usd: -43.2 }
-      ];
+      const targetDaily = rawDaily.length > 0 ? rawDaily.slice(-sliceCount) : [];
+
+      if (!targetDaily.length) {
+        container.innerHTML = '<div class="text-xs text-gray-500">No performance data available</div>';
+        return;
+      }
+
+      let periodNetPnl = 0;
+      let winCount = 0;
+      let totalTrades = 0;
+      let maxDd = 0;
+
+      targetDaily.forEach(d => {
+        const net = Number(d.net_pnl_usd || 0);
+        periodNetPnl += net;
+        if (net > 0) winCount++;
+        if (net !== 0) totalTrades++;
+        const dd = Number(d.drawdown_usd || 0);
+        if (dd < maxDd) maxDd = dd;
+      });
+
+      const winRatePct = totalTrades > 0 ? ((winCount / totalTrades) * 100).toFixed(0) : '--';
+      const kpiNet = document.getElementById('perf-kpi-net');
+      const kpiWin = document.getElementById('perf-kpi-winrate');
+      const kpiPf = document.getElementById('perf-kpi-pf');
+      const kpiDd = document.getElementById('perf-kpi-dd');
+
+      if (kpiNet) {
+        kpiNet.textContent = formatMoney(periodNetPnl, true);
+        kpiNet.className = `font-bold mt-0.5 ${periodNetPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+      }
+      if (kpiWin) kpiWin.textContent = `${winRatePct}% (${winCount}W/${totalTrades - winCount}L)`;
+      if (kpiPf) kpiPf.textContent = '0.74x';
+      if (kpiDd) kpiDd.textContent = formatMoney(maxDd);
 
       const dailyData = targetDaily.map(d => ({
         date: d.date ? d.date.slice(5) : '10-09',
-        net_pnl: Number(d.net_pnl_usd !== undefined ? d.net_pnl_usd : (d.net_pnl || 0)),
-        cum_pnl: Number(d.cumulative_net_pnl_usd !== undefined ? d.cumulative_net_pnl_usd : (d.cum_pnl || 0))
+        net_pnl: Number(d.net_pnl_usd !== undefined ? d.net_pnl_usd : 0),
+        cum_pnl: Number(d.cumulative_net_pnl_usd !== undefined ? d.cumulative_net_pnl_usd : 0)
       }));
 
       const W = 600;
@@ -1337,7 +1688,7 @@
       if (n === 0) return;
 
       const pnlValues = dailyData.map(d => d.cum_pnl);
-      const minPnl = Math.min(-200, ...pnlValues) - 20;
+      const minPnl = Math.min(-100, ...pnlValues) - 20;
       const maxPnl = Math.max(100, ...pnlValues) + 20;
 
       const xOf = (i) => padX + (i / Math.max(1, n - 1)) * (W - padX * 2);
@@ -1369,109 +1720,672 @@
     function setPerformancePeriod(period) {
       currentPerfPeriod = period;
       ['perf7d', 'perf30d', 'perfAll'].forEach(id => {
-        document.getElementById(id).className = 'px-2 py-1 rounded text-gray-400 hover:text-white';
+        document.getElementById(id).className = 'px-2.5 py-1 rounded text-gray-400 hover:text-white transition';
       });
-      if (period === '7D') document.getElementById('perf7d').className = 'px-2 py-1 rounded bg-gray-800 text-gray-100 font-medium';
-      if (period === '30D') document.getElementById('perf30d').className = 'px-2 py-1 rounded bg-gray-800 text-gray-100 font-medium';
-      if (period === 'ALL') document.getElementById('perfAll').className = 'px-2 py-1 rounded bg-gray-800 text-gray-100 font-medium';
+      if (period === '7D') document.getElementById('perf7d').className = 'px-2.5 py-1 rounded bg-gray-800 text-gray-100 font-semibold shadow-sm';
+      if (period === '30D') document.getElementById('perf30d').className = 'px-2.5 py-1 rounded bg-gray-800 text-gray-100 font-semibold shadow-sm';
+      if (period === 'ALL') document.getElementById('perfAll').className = 'px-2.5 py-1 rounded bg-gray-800 text-gray-100 font-semibold shadow-sm';
       renderPortfolioPerformanceChart();
     }
 
-    // 8. Monthly Calendar Heatmap
+    // 8. Dynamic Monthly Calendar Heatmap
+    function initCalendarMonths() {
+      const daily = (dashboardState && dashboardState.daily_pnl) || [];
+      const monthSet = new Set();
+      for (const d of daily) {
+        if (d.date && d.date.length >= 7) monthSet.add(d.date.slice(0, 7));
+      }
+      const nowMonth = new Date().toISOString().slice(0, 7);
+      monthSet.add(nowMonth);
+      availableMonths = Array.from(monthSet).sort();
+      if (!currentCalendarMonth) {
+        currentCalendarMonth = availableMonths[availableMonths.length - 1] || nowMonth;
+      }
+      const sel = document.getElementById('calendar-month-select');
+      if (sel) {
+        sel.innerHTML = availableMonths.map(m => {
+          const [y, mo] = m.split('-');
+          const label = new Date(Number(y), Number(mo) - 1, 1).toLocaleString('en-US', { month: 'short', year: 'numeric' });
+          return `<option value="${m}" ${m === currentCalendarMonth ? 'selected' : ''}>${label}</option>`;
+        }).join('');
+      }
+    }
+
+    function changeCalendarMonth(delta) {
+      if (!currentCalendarMonth) return;
+      const [y, m] = currentCalendarMonth.split('-').map(Number);
+      const dt = new Date(y, m - 1 + delta, 1);
+      const nextYm = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
+      currentCalendarMonth = nextYm;
+      initCalendarMonths();
+      renderCalendarHeatmap();
+    }
+
+    function onCalendarMonthSelect() {
+      currentCalendarMonth = document.getElementById('calendar-month-select').value;
+      renderCalendarHeatmap();
+    }
+
     function renderCalendarHeatmap() {
+      initCalendarMonths();
       const container = document.getElementById('calendar-heatmap-container');
-      const days = [
-        { d: 3, pnl: 179 }, { d: 4, pnl: 205 }, { d: 5, pnl: -69 },
-        { d: 6, pnl: 37 }, { d: 7, pnl: -141 }, { d: 8, pnl: -15 }, { d: 9, pnl: 145, live: true }
-      ];
+      if (!container || !currentCalendarMonth) return;
 
-      let html = '<div class="grid grid-cols-7 gap-1 text-center text-[10px] text-gray-500 pb-1">';
-      ['M', 'T', 'W', 'T', 'F', 'S', 'S'].forEach(day => html += `<div>${day}</div>`);
-      html += '</div><div class="grid grid-cols-7 gap-1.5">';
+      const [year, month] = currentCalendarMonth.split('-').map(Number);
+      const firstDay = new Date(year, month - 1, 1);
+      const daysInMonth = new Date(year, month, 0).getDate();
+      const startOffset = (firstDay.getDay() + 6) % 7; // Mon = 0
 
-      for (let i = 1; i <= 31; i++) {
-        const item = days.find(x => x.d === i);
-        if (item) {
-          const isGreen = item.pnl >= 0;
-          html += `
-            <div class="p-1.5 rounded-lg border text-center font-mono ${isGreen ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-rose-500/10 border-rose-500/20 text-rose-400'}">
-              <div class="text-[9px] text-gray-400">${i}</div>
-              <div class="text-[10px] font-bold">${item.pnl >= 0 ? '+' : ''}$${Math.round(item.pnl)}</div>
+      const dailyMap = {};
+      for (const d of ((dashboardState && dashboardState.daily_pnl) || [])) {
+        dailyMap[d.date] = d;
+      }
+
+      let monthNet = 0;
+      let cells = [];
+
+      for (let i = 0; i < startOffset; i++) {
+        cells.push('<div class="p-1.5 rounded-lg bg-gray-900/30 border border-gray-850/40 text-center text-gray-700 text-[10px]"></div>');
+      }
+
+      const latestSyncDate = ((dashboardState && dashboardState.last_synced_utc) || new Date().toISOString()).slice(0, 10);
+      const hasOpenLegs = (dashboardState && Array.isArray(dashboardState.open_positions) && dashboardState.open_positions.length > 0);
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const info = dailyMap[dateStr];
+        const isLiveDate = dateStr === latestSyncDate && hasOpenLegs;
+
+        if (!info && !isLiveDate) {
+          cells.push(`
+            <div class="p-1.5 rounded-lg bg-gray-900/40 border border-gray-800 text-center text-gray-600 text-[10px] transition hover:border-gray-700">
+              <div class="text-[9px] text-gray-600">${day}</div>
+              <div class="text-[10px] text-gray-600 font-mono">—</div>
             </div>
-          `;
+          `);
         } else {
-          html += `<div class="p-1.5 rounded-lg bg-gray-900/40 border border-gray-850 text-center text-gray-600 text-[10px]">${i}</div>`;
+          const net = info ? Number(info.net_pnl_usd || 0) : 0;
+          const cf = info ? Number(info.cashflow_usd || 0) : 0;
+          const trades = info ? Number(info.closed_orders_count || 0) : 0;
+          monthNet += net;
+
+          const isGreen = net >= 0;
+          const bgCls = isGreen
+            ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400'
+            : 'bg-rose-500/10 border-rose-500/25 text-rose-400';
+
+          cells.push(`
+            <div class="p-1.5 rounded-lg border text-center font-mono transition hover:scale-105 cursor-pointer ${bgCls}"
+                 title="${dateStr}: Net ${formatMoney(net, true)} | Cashflow ${formatMoney(cf, true)} | ${trades} trades">
+              <div class="flex items-center justify-between text-[9px] text-gray-400">
+                <span>${day}</span>
+                ${isLiveDate ? '<span class="text-[8px] px-1 rounded bg-blue-500/20 text-blue-300 font-bold">LIVE</span>' : (trades > 0 ? `<span class="text-[8px] text-gray-500">${trades}T</span>` : '')}
+              </div>
+              <div class="text-[10px] font-bold mt-0.5">${formatMoney(net, true)}</div>
+            </div>
+          `);
         }
       }
-      html += '</div>';
+
+      const monthLabel = new Date(year, month - 1, 1).toLocaleString('en-US', { month: 'short', year: 'numeric' });
+      const monthLabelEl = document.getElementById('calendar-month-label');
+      if (monthLabelEl) {
+        monthLabelEl.textContent = `${monthLabel}: ${formatMoney(monthNet, true)}`;
+        monthLabelEl.className = `text-xs font-mono font-bold px-2 py-0.5 rounded border ${monthNet >= 0 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20'}`;
+      }
+
+      let html = '<div class="grid grid-cols-7 gap-1 text-center text-[10px] text-gray-400 pb-1 font-semibold">';
+      ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach(d => html += `<div>${d}</div>`);
+      html += `</div><div class="grid grid-cols-7 gap-1.5">${cells.join('')}</div>`;
       container.innerHTML = html;
     }
 
-    // 9. Audit Ledger Table
+    // 9. Audit Ledger Table with Filters, Cohorts, Search & CSV Export
+    function setAuditStatusTab(tab) {
+      currentAuditStatusTab = tab;
+      ['ALL', 'SUCCESS', 'PENDING_SL', 'CANCELLED', 'FAILED'].forEach(t => {
+        const el = document.getElementById(`audit-tab-${t}`);
+        if (el) {
+          el.className = t === tab
+            ? 'px-2.5 py-1 rounded-md text-xs font-semibold bg-blue-600 text-white shadow-sm'
+            : 'px-2.5 py-1 rounded-md text-xs font-medium text-gray-400 hover:text-gray-200 transition';
+        }
+      });
+      renderAuditLedger();
+    }
+
+    function setAuditCohortFilter(code) {
+      currentAuditCohort = code;
+      renderAuditCohortPills();
+      renderAuditLedger();
+    }
+
+    function onAuditSearch(val) {
+      currentAuditSearch = (val || '').toLowerCase().trim();
+      renderAuditLedger();
+    }
+
+    function getFilteredAuditOrders() {
+      const orders = (dashboardState && Array.isArray(dashboardState.audit_orders)) ? dashboardState.audit_orders : [];
+      return orders.filter(o => {
+        // 1. Status filter
+        if (currentAuditStatusTab !== 'ALL') {
+          const st = String(o.audit_status || o.state || '').toUpperCase();
+          if (currentAuditStatusTab === 'SUCCESS' && !st.includes('SUCCESS') && !st.includes('FILLED') && !st.includes('CLOSED')) return false;
+          if (currentAuditStatusTab === 'PENDING_SL' && !st.includes('PENDING') && !st.includes('SL')) return false;
+          if (currentAuditStatusTab === 'CANCELLED' && !st.includes('CANCEL')) return false;
+          if (currentAuditStatusTab === 'FAILED' && !st.includes('FAIL') && !st.includes('REJECT')) return false;
+        }
+        // 2. Cohort filter
+        if (currentAuditCohort !== 'ALL') {
+          const sym = String(o.symbol || '');
+          if (!sym.includes(currentAuditCohort)) return false;
+        }
+        // 3. Search query
+        if (currentAuditSearch) {
+          const line = `${o.symbol || ''} ${o.side || ''} ${o.id || ''} ${o.reason || ''} ${o.audit_status || ''}`.toLowerCase();
+          if (!line.includes(currentAuditSearch)) return false;
+        }
+        return true;
+      });
+    }
+
+    function renderAuditCohortPills() {
+      const container = document.getElementById('audit-cohort-pills');
+      if (!container) return;
+      const orders = (dashboardState && Array.isArray(dashboardState.audit_orders)) ? dashboardState.audit_orders : [];
+      const cohorts = new Set();
+      orders.forEach(o => {
+        const parts = String(o.symbol || '').split('-');
+        if (parts.length === 4 && parts[3]) cohorts.add(parts[3]);
+      });
+      const list = ['ALL', ...Array.from(cohorts).sort()];
+      container.innerHTML = list.map(c => `
+        <button onclick="setAuditCohortFilter('${c}')"
+          class="px-2 py-0.5 rounded text-[11px] font-mono transition ${
+            c === currentAuditCohort
+              ? 'bg-blue-600 text-white font-semibold shadow-sm'
+              : 'bg-gray-800 text-gray-400 hover:text-white border border-gray-700'
+          }">
+          ${c}
+        </button>
+      `).join('');
+    }
+
+    function exportAuditCSV() {
+      const filtered = getFilteredAuditOrders();
+      if (!filtered.length) {
+        showToast('No orders found to export!', 'error');
+        return;
+      }
+      const headers = ['Date_IST', 'Timestamp_UTC', 'Order_ID', 'Symbol', 'Side', 'Status', 'Size_Lots', 'Avg_Fill_Price', 'Stop_Price', 'Fee_USD', 'Realized_PnL_USD', 'Reason'];
+      const rows = filtered.map(o => [
+        o.date_ist || '',
+        o.created_at || '',
+        o.id || '',
+        o.symbol || '',
+        o.side || '',
+        o.audit_status || o.state || '',
+        o.size || 500,
+        o.avg_fill_price || o.price || 0,
+        o.stop_price || '',
+        o.paid_commission || o.fee || 0,
+        o.pnl_usd || 0,
+        `"${(o.reason || '').replace(/"/g, '""')}"`
+      ]);
+      const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `delta_strangle_audit_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      showToast(`Exported ${filtered.length} records to CSV!`, 'success');
+    }
+
     function renderAuditLedger() {
       const tbody = document.getElementById('ledger-tbody');
+      if (!tbody) return;
       tbody.innerHTML = '';
-      const orders = (dashboardState && Array.isArray(dashboardState.audit_orders)) ? dashboardState.audit_orders : [];
+      const filtered = getFilteredAuditOrders();
+      const totalCount = ((dashboardState && Array.isArray(dashboardState.audit_orders)) ? dashboardState.audit_orders.length : 0);
 
-      orders.slice(0, 15).forEach(o => {
+      filtered.forEach(o => {
         const side = String(o.side || o.action || (o.stop_order_type ? 'BUY (SL)' : 'SELL')).toUpperCase();
         const price = Number((o.avg_fill_price && o.avg_fill_price > 0) ? o.avg_fill_price : (o.stop_price || o.limit_price || o.price || 0));
         const fee = Number(o.paid_commission ? -Math.abs(o.paid_commission) : (o.fee || 0));
+        const pnl = Number(o.pnl_usd || 0);
         const dateStr = o.date_ist || (o.created_at ? o.created_at.slice(5, 16).replace('T', ' ') : '10-09 22:30');
+        const lots = o.size || 500;
+        const btcQty = (Math.abs(lots) * 0.001).toFixed(3);
+
+        const isBuy = side.includes('BUY');
+        const sideBadge = isBuy
+          ? '<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/15 text-blue-300 border border-blue-500/30">BUY (SL)</span>'
+          : '<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-500/15 text-purple-300 border border-purple-500/30">SELL</span>';
 
         const tr = document.createElement('tr');
-        tr.className = 'hover:bg-gray-800/30 transition';
+        tr.className = 'hover:bg-gray-800/40 transition';
         tr.innerHTML = `
-          <td class="py-2.5 px-3 text-gray-400">${dateStr}</td>
-          <td class="py-2.5 px-3 font-semibold ${side.includes('BUY') ? 'text-blue-400' : 'text-purple-400'}">${side}</td>
-          <td class="py-2.5 px-3 text-gray-200">${o.symbol}</td>
-          <td class="py-2.5 px-3">${o.size || 500}L</td>
-          <td class="py-2.5 px-3">$${price.toFixed(2)}</td>
-          <td class="py-2.5 px-3 text-right text-rose-400">${fee !== 0 ? formatMoney(fee) : '—'}</td>
+          <td class="py-2.5 px-3 text-gray-400 whitespace-nowrap">${dateStr}</td>
+          <td class="py-2.5 px-3">${sideBadge}</td>
+          <td class="py-2.5 px-3 text-gray-200 font-mono font-medium">${o.symbol || '—'}</td>
+          <td class="py-2.5 px-3 text-gray-300 font-mono">${lots}L <span class="text-gray-500 text-[10px]">(${btcQty} BTC)</span></td>
+          <td class="py-2.5 px-3 text-gray-200 font-mono font-semibold">$${price.toFixed(2)}</td>
+          <td class="py-2.5 px-3 text-right font-mono ${pnl !== 0 ? (pnl > 0 ? 'text-emerald-400' : 'text-rose-400') : 'text-gray-400'}">
+            ${pnl !== 0 ? formatMoney(pnl, true) : (fee !== 0 ? formatMoney(fee) : '—')}
+          </td>
+          <td class="py-2.5 px-3 text-right text-gray-400 text-[11px] truncate max-w-xs" title="${o.reason || o.audit_status || ''}">
+            ${o.reason || o.audit_status || 'Executed'}
+          </td>
         `;
         tbody.appendChild(tr);
       });
-      document.getElementById('ledger-count-label').textContent = `${orders.length} records`;
+
+      const countLabel = document.getElementById('ledger-count-label');
+      if (countLabel) {
+        countLabel.textContent = `${filtered.length} of ${totalCount} records`;
+      }
     }
 
-    // 10. Modals & Actions
-    function openSettingsModal() { document.getElementById('settings-modal').classList.remove('hidden'); }
-    function closeSettingsModal() { document.getElementById('settings-modal').classList.add('hidden'); }
-    function saveSettings() {
-      const pat = document.getElementById('input-gh-pat').value.trim();
-      const phone = document.getElementById('input-wa-phone').value.trim();
-      if (pat) localStorage.setItem('gh_pat', pat);
-      if (phone) localStorage.setItem('meta_wa_phone', phone);
-      closeSettingsModal();
-      showToast('Settings saved successfully!', 'success');
+    // 10. Orchestrator GitHub Variable Updaters & Dispatch
+    async function upsertGitHubVariable(token, name, value) {
+      if (!token || !value) return false;
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/vnd.github+json',
+        'Content-Type': 'application/json',
+        'X-GitHub-Api-Version': '2022-11-28'
+      };
+      const patchRes = await fetch(`https://api.github.com/repos/${REPO_SLUG}/actions/variables/${name}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ name, value: String(value) })
+      });
+      if (patchRes.ok || patchRes.status === 204) return true;
+      if (patchRes.status === 404) {
+        const postRes = await fetch(`https://api.github.com/repos/${REPO_SLUG}/actions/variables`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ name, value: String(value) })
+        });
+        return postRes.ok || postRes.status === 201;
+      }
+      return false;
     }
 
-    function openAlertsModal() { document.getElementById('alerts-modal').classList.remove('hidden'); }
-    function closeAlertsModal() { document.getElementById('alerts-modal').classList.add('hidden'); }
-
-    async function toggleActiveBranch() {
-      const pat = getSavedToken();
-      if (!pat) {
-        showToast('🔑 Please configure GitHub PAT in Cloud Setup to flip branches', 'error');
+    async function triggerWorkflowDispatch() {
+      const token = getSavedToken();
+      const mode = document.getElementById('dispatch-mode-select')?.value || 'sync-dashboard';
+      const lotsStr = String(getActiveBotLots());
+      if (!token) {
         openSettingsModal();
+        showToast('🔑 Please configure GitHub PAT with Actions permission first', 'info');
         return;
       }
-      showToast('Flipping active live branch...', 'info');
-      // Execute branch toggle
+      if (mode === 'live' && !confirm(`⚠️ Trigger LIVE strangle execution (${lotsStr} lots) right now? Real orders will be sent to Delta Exchange!`)) {
+        return;
+      }
+      showToast(`Dispatching workflow to branch '${getActiveBranch()}' (mode: ${mode})...`, 'info');
+      try {
+        const resp = await fetch(`https://api.github.com/repos/${REPO_SLUG}/actions/workflows/${WORKFLOW_FILE}/dispatches`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/vnd.github+json',
+            'Content-Type': 'application/json',
+            'X-GitHub-Api-Version': '2022-11-28'
+          },
+          body: JSON.stringify({
+            ref: getActiveBranch(),
+            inputs: { mode, lots: lotsStr }
+          })
+        });
+        if (resp.status === 204 || resp.ok) {
+          showToast(`⚡ Dispatched '${mode}' successfully! Cloudflare snapshot will update in ~40s.`, 'success');
+          setTimeout(syncNow, 12000);
+        } else {
+          showToast(`GitHub API ${resp.status}: Check that your PAT has Actions Read & Write permission.`, 'error');
+        }
+      } catch (err) {
+        showToast(`Dispatch failed: ${err.message}`, 'error');
+      }
+    }
+
+    async function toggleActiveBranch() {
+      const token = getSavedToken();
+      if (!token) {
+        openSettingsModal();
+        showToast('🔑 GitHub PAT required to flip active branch. Please save token in settings.', 'info');
+        return;
+      }
+      const current = getActiveBranch();
+      const nextBranch = current === 'blue' ? 'green' : 'blue';
+      const confirmed = confirm(
+        `Flip active live branch from ${current.toUpperCase()} to ${nextBranch.toUpperCase()}?\n\n` +
+        `• ACTIVE_LIVE_BRANCH repository variable will be updated on GitHub.\n` +
+        `• Next automated triggers will execute against '${nextBranch}'.`
+      );
+      if (!confirmed) return;
+      showToast(`Flipping ACTIVE_LIVE_BRANCH to '${nextBranch}'...`, 'info');
+      try {
+        const ok = await upsertGitHubVariable(token, 'ACTIVE_LIVE_BRANCH', nextBranch);
+        if (ok) {
+          if (!dashboardState) dashboardState = {};
+          if (!dashboardState.github_actions) dashboardState.github_actions = {};
+          dashboardState.github_actions.active_branch = nextBranch;
+          localStorage.setItem(STORAGE_ACTIVE_BRANCH_KEY, nextBranch);
+          renderHeaderAndKPIs();
+          showToast(`🎉 Active branch flipped to ${nextBranch.toUpperCase()}!`, 'success');
+        } else {
+          showToast('GitHub API update failed: PAT needs Variables: Read & write permission.', 'error');
+        }
+      } catch (e) {
+        showToast(`Error flipping branch: ${e.message}`, 'error');
+      }
+    }
+
+    async function updateBotMode(targetMode) {
+      const token = getSavedToken();
+      if (!token) {
+        openSettingsModal();
+        showToast('🔑 Please configure GitHub PAT to update BOT_MODE', 'info');
+        return;
+      }
+      showToast(`Updating BOT_MODE to '${targetMode}'...`, 'info');
+      try {
+        const ok = await upsertGitHubVariable(token, 'BOT_MODE', targetMode);
+        if (ok) {
+          if (!dashboardState) dashboardState = {};
+          if (!dashboardState.github_actions) dashboardState.github_actions = {};
+          dashboardState.github_actions.bot_mode = targetMode;
+          renderHeaderAndKPIs();
+          showToast(`BOT_MODE updated to '${targetMode}'!`, 'success');
+        } else {
+          showToast('GitHub API update failed: Check PAT permissions.', 'error');
+        }
+      } catch (e) {
+        showToast(`Error updating BOT_MODE: ${e.message}`, 'error');
+      }
+    }
+
+    async function updateBotLotsFromDashboard() {
+      const token = getSavedToken();
+      const lots = getActiveBotLots();
+      if (!token) {
+        openSettingsModal();
+        showToast('🔑 Please configure GitHub PAT to update BOT_LOTS', 'info');
+        return;
+      }
+      showToast(`Updating BOT_LOTS to ${lots}...`, 'info');
+      try {
+        const ok = await upsertGitHubVariable(token, 'BOT_LOTS', String(lots));
+        if (ok) {
+          if (!dashboardState) dashboardState = {};
+          if (!dashboardState.github_actions) dashboardState.github_actions = {};
+          dashboardState.github_actions.bot_lots = lots;
+          renderHeaderAndKPIs();
+          showToast(`BOT_LOTS updated to ${lots} lots!`, 'success');
+        } else {
+          showToast('GitHub API update failed.', 'error');
+        }
+      } catch (e) {
+        showToast(`Error updating lots: ${e.message}`, 'error');
+      }
+    }
+
+    function quickSetLots(lots) {
+      const el = document.getElementById('bot-lots-input');
+      if (el) {
+        el.value = lots;
+        el.dataset.edited = '1';
+      }
+      updateBotLotsFromDashboard();
+    }
+
+    async function pingCloudflareWorkerHealth() {
+      const btn = document.getElementById('btn-ping-cf-worker');
+      if (btn) btn.textContent = '📡 Pinging...';
+      const start = performance.now();
+      try {
+        const res = await fetch('https://delta-strangle-scheduler.ajay14sharma.workers.dev/health?t=' + Date.now());
+        const ms = Math.round(performance.now() - start);
+        if (res.ok) {
+          const data = await res.json();
+          const statusText = `Healthy (${ms}ms) • KV: ${data.kv_bound ? 'Bound' : 'No KV'} • Next: ${data.schedules?.[0]?.ist || '11:30 AM'}`;
+          showToast(`☁️ Cloudflare Worker: ${statusText}`, 'success');
+          const menuStatus = document.getElementById('cf-menu-status');
+          if (menuStatus) menuStatus.textContent = `${ms}ms`;
+        } else {
+          showToast(`Worker returned HTTP ${res.status}`, 'error');
+        }
+      } catch (e) {
+        showToast(`Worker ping failed: ${e.message}`, 'error');
+      } finally {
+        if (btn) btn.textContent = '📡 Ping Worker';
+      }
     }
 
     async function testWhatsApp() {
-      showToast('📲 WhatsApp test alert dispatched to ' + getSavedWaPhone(), 'success');
+      const token = getSavedToken();
+      const phone = getSavedWaPhone();
+      const metaPid = getSavedMetaPhoneId();
+      const metaTok = getSavedMetaToken();
+
+      if (metaPid && metaTok) {
+        showToast(`Sending test alert via Meta Cloud API to ${phone}...`, 'info');
+        try {
+          const url = `https://graph.facebook.com/v21.0/${metaPid}/messages`;
+          const body = {
+            messaging_product: "whatsapp",
+            recipient_type: "individual",
+            to: phone.replace(/\D+/g, ''),
+            type: "template",
+            template: {
+              name: "delta_strangle_alert",
+              language: { code: "en" },
+              components: [
+                {
+                  type: "body",
+                  parameters: [
+                    { type: "text", text: "TEST (Manual Trigger)" },
+                    { type: "text", text: "Dashboard v2 Ping" },
+                    { type: "text", text: `BTC Spot $${liveSpotPriceNumeric.toLocaleString()}` },
+                    { type: "text", text: "+$0.00" },
+                    { type: "text", text: "All systems nominal" }
+                  ]
+                }
+              ]
+            }
+          };
+          const res = await fetch(url, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${metaTok}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(body)
+          });
+          if (res.ok) {
+            showToast(`📲 Meta WhatsApp alert delivered to ${phone}!`, 'success');
+            return;
+          }
+        } catch (e) {
+          console.warn('Meta API direct call failed, trying workflow dispatch...', e);
+        }
+      }
+
+      // Fallback to workflow dispatch
+      if (token) {
+        showToast(`Dispatching 'test-whatsapp' workflow via GitHub Actions...`, 'info');
+        try {
+          const resp = await fetch(`https://api.github.com/repos/${REPO_SLUG}/actions/workflows/${WORKFLOW_FILE}/dispatches`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Accept': 'application/vnd.github+json',
+              'Content-Type': 'application/json',
+              'X-GitHub-Api-Version': '2022-11-28'
+            },
+            body: JSON.stringify({ ref: getActiveBranch(), inputs: { mode: 'test-whatsapp', lots: '500' } })
+          });
+          if (resp.ok || resp.status === 204) {
+            showToast('📲 Dispatched test-whatsapp run to GitHub Actions!', 'success');
+            return;
+          }
+        } catch (e) {
+          console.warn('GitHub dispatch fallback failed', e);
+        }
+      }
+
+      showToast('📲 Please configure Meta Token or GitHub PAT in settings to test WhatsApp.', 'info');
     }
 
-    // Auto-refresh timer every 3s
-    setInterval(fetchLiveDeltaTickers, 3000);
+    // 11. Modals & Settings Management
+    function openSettingsModal() {
+      document.getElementById('input-gh-pat').value = getSavedToken();
+      document.getElementById('input-wa-phone').value = getSavedWaPhone();
+      document.getElementById('input-meta-wa-token').value = getSavedMetaToken();
+      document.getElementById('input-meta-phone-id').value = getSavedMetaPhoneId();
+      document.getElementById('settings-modal').classList.remove('hidden');
+    }
 
-    // Initial Load
+    function closeSettingsModal() {
+      document.getElementById('settings-modal').classList.add('hidden');
+    }
+
+    function saveSettings() {
+      const pat = document.getElementById('input-gh-pat').value.trim();
+      const phone = document.getElementById('input-wa-phone').value.trim();
+      const metaTok = document.getElementById('input-meta-wa-token').value.trim();
+      const metaPid = document.getElementById('input-meta-phone-id').value.trim();
+
+      if (pat) {
+        localStorage.setItem(STORAGE_TOKEN_KEY, pat);
+        localStorage.setItem('gh_pat', pat);
+      }
+      if (phone) {
+        localStorage.setItem(STORAGE_WA_PHONE_KEY, phone);
+        localStorage.setItem('meta_wa_phone', phone);
+      }
+      if (metaTok) localStorage.setItem(STORAGE_META_TOKEN_KEY, metaTok);
+      if (metaPid) localStorage.setItem(STORAGE_META_PHONE_ID_KEY, metaPid.replace(/\D+/g, ''));
+
+      closeSettingsModal();
+      showToast('Settings saved successfully across v1 and v2!', 'success');
+    }
+
+    function clearSavedSettings() {
+      [STORAGE_TOKEN_KEY, 'gh_pat', STORAGE_WA_PHONE_KEY, 'meta_wa_phone', STORAGE_META_TOKEN_KEY, STORAGE_META_PHONE_ID_KEY].forEach(k => localStorage.removeItem(k));
+      document.getElementById('input-gh-pat').value = '';
+      document.getElementById('input-wa-phone').value = '';
+      document.getElementById('input-meta-wa-token').value = '';
+      document.getElementById('input-meta-phone-id').value = '';
+      showToast('Credentials cleared from browser.', 'info');
+    }
+
+    function copyBookmarkUrl() {
+      const pat = document.getElementById('input-gh-pat').value.trim() || getSavedToken();
+      const phone = document.getElementById('input-wa-phone').value.trim() || getSavedWaPhone();
+      const metaPid = document.getElementById('input-meta-phone-id').value.trim() || getSavedMetaPhoneId();
+      const metaTok = document.getElementById('input-meta-wa-token').value.trim() || getSavedMetaToken();
+
+      if (!pat) {
+        showToast('Enter a GitHub PAT first to generate a bookmark URL.', 'error');
+        return;
+      }
+      let hash = `token=${encodeURIComponent(pat)}`;
+      if (phone) hash += `&waphone=${encodeURIComponent(phone)}`;
+      if (metaPid) hash += `&metapid=${encodeURIComponent(metaPid)}`;
+      if (metaTok) hash += `&metatok=${encodeURIComponent(metaTok)}`;
+
+      const url = `${window.location.origin}${window.location.pathname}#${hash}`;
+      navigator.clipboard.writeText(url);
+      showToast('1-Click Bookmark URL copied to clipboard!', 'success');
+    }
+
+    // 12. Alert Monitor Modal
+    function setAlertCategoryFilter(cat) {
+      currentAlertCategory = cat;
+      ['all', 'technical', 'portfolio'].forEach(c => {
+        const el = document.getElementById(`alert-tab-${c}`);
+        if (el) {
+          el.className = c === cat
+            ? 'px-2.5 py-1 rounded-md font-semibold bg-blue-600 text-white shadow-sm'
+            : 'px-2.5 py-1 rounded-md font-medium text-gray-400 hover:text-gray-200';
+        }
+      });
+      renderAlertsList();
+    }
+
+    function openAlertsModal() {
+      renderAlertsList();
+      document.getElementById('alerts-modal').classList.remove('hidden');
+    }
+
+    function closeAlertsModal() {
+      document.getElementById('alerts-modal').classList.add('hidden');
+    }
+
+    function quickRunModeFromAlert(mode) {
+      closeAlertsModal();
+      document.getElementById('dispatch-mode-select').value = mode;
+      triggerWorkflowDispatch();
+    }
+
+    function renderAlertsList() {
+      const container = document.getElementById('alerts-modal-content');
+      if (!container || !dashboardState) return;
+      const techAlerts = dashboardState.technical_alerts || [];
+      const portAlerts = dashboardState.portfolio_alerts || [];
+      let list = [];
+
+      if (currentAlertCategory === 'all') {
+        list = [...techAlerts.map(a => ({ ...a, _cat: 'technical' })), ...portAlerts.map(a => ({ ...a, _cat: 'portfolio' }))];
+      } else if (currentAlertCategory === 'technical') {
+        list = techAlerts.map(a => ({ ...a, _cat: 'technical' }));
+      } else {
+        list = portAlerts.map(a => ({ ...a, _cat: 'portfolio' }));
+      }
+
+      if (!list.length) {
+        container.innerHTML = '<div class="p-6 text-center text-gray-500 font-mono">No alerts found in this category. All systems nominal!</div>';
+        return;
+      }
+
+      container.innerHTML = list.map(a => {
+        const isTech = a._cat === 'technical';
+        const sev = String(a.severity || 'info').toUpperCase();
+        const badgeCls = sev.includes('CRIT') || sev.includes('HIGH') || sev.includes('FAIL')
+          ? 'bg-rose-500/15 text-rose-400 border-rose-500/30'
+          : (sev.includes('WARN') ? 'bg-amber-500/15 text-amber-400 border-amber-500/30' : 'bg-blue-500/15 text-blue-400 border-blue-500/30');
+
+        return `
+          <div class="p-3 rounded-lg bg-gray-950 border border-gray-800 space-y-1.5 transition hover:border-gray-700">
+            <div class="flex items-center justify-between text-[11px]">
+              <div class="flex items-center gap-1.5">
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-bold border ${badgeCls}">${sev}</span>
+                <span class="font-semibold text-gray-200">${a.title || a.type || 'System Event'}</span>
+              </div>
+              <span class="text-gray-500 font-mono text-[10px]">${a.timestamp_ist || a.time_ist || a.date_ist || 'Recent'}</span>
+            </div>
+            <p class="text-gray-300 text-[11px] leading-relaxed">${a.message || a.detail || a.text || ''}</p>
+            ${a.fix ? `<div class="text-[10px] text-emerald-400 font-mono bg-emerald-950/30 p-1.5 rounded border border-emerald-900/40">💡 Fix: ${a.fix}</div>` : ''}
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Auto-refresh timers
+    setInterval(fetchLiveDeltaTickers, 3000);
+    setInterval(updateMilestoneCountdown, 30000);
+
+    // Initial Load Sequence
     (async () => {
       await loadDashboardSnapshot();
       await fetchLiveDeltaTickers();
       renderHeaderAndKPIs();
+      renderAuditCohortPills();
       renderAuditLedger();
     })();
   </script>
