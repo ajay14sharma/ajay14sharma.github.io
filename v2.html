@@ -278,8 +278,8 @@
             <button id="btn-iv-spike" onclick="setIvShockScenario(5)" class="px-1.5 py-0.5 rounded text-gray-400 hover:text-white">+5%</button>
           </div>
 
-          <button id="btn-toggle-sl-cap" onclick="toggleSlCap()" class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[11px] font-medium" title="Toggle 2.0x SL bracket cutoff in simulation">
-            🛡️ 2x SL Capped
+          <button id="btn-toggle-sl-cap" onclick="toggleSlCap()" class="px-2 py-0.5 rounded bg-gray-800 text-gray-300 border border-gray-700 text-[11px] font-medium" title="Toggle 2.0x SL bracket cutoff in simulation">
+            🛡️ 2x SL Capped (Off)
           </button>
         </div>
       </div>
@@ -832,7 +832,7 @@
     // Simulation Scenario Controls
     let simTimeHoursOverride = null;
     let simIvOffset = 0.0;
-    let simCapAt2xSl = true;
+    let simCapAt2xSl = false;
     let currentCorridorPositions = [];
     let currentCorridorPutBe = 81282;
     let currentCorridorCallBe = 84318;
@@ -886,11 +886,11 @@
       const btn = document.getElementById('btn-toggle-sl-cap');
       if (btn) {
         if (simCapAt2xSl) {
-          btn.className = 'px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[11px] font-medium';
-          btn.textContent = '🛡️ 2x SL Capped';
+          btn.className = 'px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[11px] font-medium shadow';
+          btn.textContent = '🛡️ 2x SL Capped (On)';
         } else {
-          btn.className = 'px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 text-[11px] font-medium';
-          btn.textContent = '⚠️ Uncapped Tail';
+          btn.className = 'px-2 py-0.5 rounded bg-gray-800 text-gray-300 border border-gray-700 text-[11px] font-medium';
+          btn.textContent = '🛡️ 2x SL Capped (Off)';
         }
       }
       renderLivePositions();
@@ -910,8 +910,28 @@
       const callDiff = nearestCallStrike - evalSpot;
 
       const totalCollectedCredit = positions.reduce((acc, p) => acc + (p.entryCredit || (p.entryPx * p.btcQty)), 0);
+      const putQty = puts.reduce((acc, p) => acc + p.btcQty, 0);
+      const callQty = calls.reduce((acc, p) => acc + p.btcQty, 0);
 
-      // Expiry payoff calculator
+      // Exact analytical strangle breakevens (matches Delta Exchange: 81282.10 and 84317.90)
+      const putBreakeven = putQty > 0 ? (nearestPutStrike - (totalCollectedCredit / putQty)) : (nearestPutStrike - 120);
+      const callBreakeven = callQty > 0 ? (nearestCallStrike + (totalCollectedCredit / callQty)) : (nearestCallStrike + 120);
+      currentCorridorPutBe = putBreakeven;
+      currentCorridorCallBe = callBreakeven;
+
+      document.getElementById('corridor-put-strike').textContent = `$${nearestPutStrike.toLocaleString('en-US')}`;
+      document.getElementById('corridor-put-otm').textContent = `${putDiff >= 0 ? '-' : '+'}$${Math.abs(putDiff).toFixed(0)} (${((putDiff/evalSpot)*100).toFixed(2)}% OTM)`;
+      document.getElementById('corridor-put-be').textContent = `Breakeven: $${Math.round(putBreakeven).toLocaleString('en-US')}`;
+
+      document.getElementById('corridor-call-strike').textContent = `$${nearestCallStrike.toLocaleString('en-US')}`;
+      document.getElementById('corridor-call-otm').textContent = `${callDiff >= 0 ? '+' : '-'}$${Math.abs(callDiff).toFixed(0)} (${((callDiff/evalSpot)*100).toFixed(2)}% OTM)`;
+      document.getElementById('corridor-call-be').textContent = `Breakeven: $${Math.round(callBreakeven).toLocaleString('en-US')}`;
+
+      document.getElementById('corridor-spot-display').textContent = whatIfSpotOverride !== null
+        ? `Sim Spot: $${Math.round(evalSpot).toLocaleString('en-US')}`
+        : `Live Spot: $${Math.round(spotPx).toLocaleString('en-US')}`;
+
+      // Expiry payoff calculator (matches Delta Exchange: pure options slope on both wings)
       const calcExpiryPayoff = (S) => {
         let pnl = 0;
         for (const p of positions) {
@@ -924,7 +944,18 @@
         return pnl;
       };
 
-      // Live Black-Scholes theoretical payoff calculator
+      // Uncapped expiry payoff for analytical baseline
+      const calcUncappedExpiryPayoff = (S) => {
+        let pnl = 0;
+        for (const p of positions) {
+          const k = p.parsed.strike;
+          const intrinsic = p.parsed.isCall ? Math.max(0, S - k) : Math.max(0, k - S);
+          pnl += (p.entryPx - intrinsic) * p.btcQty;
+        }
+        return pnl;
+      };
+
+      // Live Black-Scholes theoretical payoff calculator (T+0, matches Delta Exchange 'On Target Date')
       const effectiveHours = simTimeHoursOverride !== null ? simTimeHoursOverride : getLiveHoursToSettlement();
       const calcLivePayoff = (S) => {
         const T_years = Math.max(0.0001, effectiveHours / 8760.0);
@@ -955,48 +986,24 @@
         return netDelta;
       };
 
-      // Find breakevens
-      const findBe = (lo, hi, isPut) => {
-        for (let iter = 0; iter < 32; iter++) {
-          const mid = 0.5 * (lo + hi);
-          const v = calcExpiryPayoff(mid);
-          if (isPut) { if (v < 0) lo = mid; else hi = mid; }
-          else { if (v > 0) lo = mid; else hi = mid; }
-        }
-        return 0.5 * (lo + hi);
-      };
-      const putBreakeven = puts.length ? findBe(nearestPutStrike - 15000, nearestPutStrike, true) : (evalSpot * 0.95);
-      const callBreakeven = calls.length ? findBe(nearestCallStrike, nearestCallStrike + 15000, false) : (evalSpot * 1.05);
-      currentCorridorPutBe = putBreakeven;
-      currentCorridorCallBe = callBreakeven;
-
-      document.getElementById('corridor-put-strike').textContent = `$${nearestPutStrike.toLocaleString('en-US')}`;
-      document.getElementById('corridor-put-otm').textContent = `${putDiff >= 0 ? '-' : '+'}$${Math.abs(putDiff).toFixed(0)} (${((putDiff/evalSpot)*100).toFixed(2)}% OTM)`;
-      document.getElementById('corridor-put-be').textContent = `Breakeven: $${Math.round(putBreakeven).toLocaleString('en-US')}`;
-
-      document.getElementById('corridor-call-strike').textContent = `$${nearestCallStrike.toLocaleString('en-US')}`;
-      document.getElementById('corridor-call-otm').textContent = `${callDiff >= 0 ? '+' : '-'}$${Math.abs(callDiff).toFixed(0)} (${((callDiff/evalSpot)*100).toFixed(2)}% OTM)`;
-      document.getElementById('corridor-call-be').textContent = `Breakeven: $${Math.round(callBreakeven).toLocaleString('en-US')}`;
-
-      document.getElementById('corridor-spot-display').textContent = whatIfSpotOverride !== null
-        ? `Sim Spot: $${Math.round(evalSpot).toLocaleString('en-US')}`
-        : `Live Spot: $${Math.round(spotPx).toLocaleString('en-US')}`;
-
       // Update Simulated P&L readout
       const simExpiryPnl = calcExpiryPayoff(evalSpot);
       const simLivePnl = calcLivePayoff(evalSpot);
       const pnlEl = document.getElementById('whatif-pnl-readout');
-      pnlEl.textContent = `${formatMoney(simExpiryPnl, true)} Expiry (${formatMoney(simLivePnl, true)} Live)`;
-      pnlEl.className = `font-mono font-bold px-2 py-0.5 rounded border ${simExpiryPnl >= 0 ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' : 'text-rose-400 bg-rose-500/10 border-rose-500/20'}`;
+      if (pnlEl) {
+        pnlEl.textContent = `${formatMoney(simExpiryPnl, true)} Expiry (${formatMoney(simLivePnl, true)} Live)`;
+        pnlEl.className = `font-mono font-bold px-2 py-0.5 rounded border ${simExpiryPnl >= 0 ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' : 'text-rose-400 bg-rose-500/10 border-rose-500/20'}`;
+      }
 
       // Render SVG Dual-Curve Payoff Canvas
       const container = document.getElementById('safezone-svg-container');
       const tooltip = document.getElementById('safezone-chart-tooltip');
       if (!container) return;
 
-      const allStrikes = positions.map(p => p.parsed.strike).filter(k => k > 0);
-      const minDomain = Math.floor(Math.min(putBreakeven - 2000, evalSpot - 2500, nearestPutStrike - 2500, ...allStrikes) / 1000) * 1000;
-      const maxDomain = Math.ceil(Math.max(callBreakeven + 2000, evalSpot + 2500, nearestCallStrike + 2500, ...allStrikes) / 1000) * 1000;
+      // Coordinate Scaling & Domain (Symmetrically centered around strikes, matching Delta Exchange)
+      const spanBeyondStrikes = Math.max(2200, Math.round((nearestCallStrike - nearestPutStrike) * 0.75));
+      const minDomain = Math.floor((nearestPutStrike - spanBeyondStrikes) / 500) * 500;
+      const maxDomain = Math.ceil((nearestCallStrike + spanBeyondStrikes) / 500) * 500;
       const domainSpan = Math.max(3000, maxDomain - minDomain);
 
       // SVG Dimensions with generous padding for textual axes
@@ -1017,8 +1024,7 @@
       for (let i = 0; i <= numSteps; i++) {
         samples.push(minDomain + (i / numSteps) * domainSpan);
       }
-      allStrikes.forEach(k => samples.push(k));
-      samples.push(putBreakeven, callBreakeven, spotPx, evalSpot);
+      [nearestPutStrike, nearestCallStrike, putBreakeven, callBreakeven, spotPx, evalSpot].forEach(v => samples.push(v));
       samples.sort((a, b) => a - b);
 
       const curveData = samples.map(px => ({
@@ -1028,9 +1034,13 @@
         delta: calcNetDelta(px)
       }));
 
-      const maxPnl = Math.max(15, totalCollectedCredit * 1.25, ...curveData.map(c => c.expiryPnl), ...curveData.map(c => c.livePnl));
-      const minPnl = Math.min(-totalCollectedCredit * (simCapAt2xSl ? 1.35 : 2.6), ...curveData.map(c => c.expiryPnl), ...curveData.map(c => c.livePnl), -15);
-      const pnlSpan = Math.max(25, maxPnl - minPnl);
+      // Vertical Scaling: Max Profit plateau near top, wings sloping down into loss zone (matching Delta Exchange)
+      const maxPnl = Math.max(100, Math.round(totalCollectedCredit * 1.5));
+      const edgeLoss = Math.min(calcUncappedExpiryPayoff(minDomain), calcUncappedExpiryPayoff(maxDomain));
+      const minPnl = simCapAt2xSl
+        ? Math.min(-totalCollectedCredit * 1.5, -40)
+        : Math.min(-400, Math.max(-1200, Math.floor(edgeLoss / 100) * 100));
+      const pnlSpan = Math.max(50, maxPnl - minPnl);
 
       const yOf = (val) => padTop + ((maxPnl - val) / pnlSpan) * plotH;
       const zeroY = yOf(0);
@@ -1038,22 +1048,17 @@
       const expiryPoly = curveData.map(c => `${xOf(c.px).toFixed(1)},${yOf(c.expiryPnl).toFixed(1)}`).join(' ');
       const livePoly = curveData.map(c => `${xOf(c.px).toFixed(1)},${yOf(c.livePnl).toFixed(1)}`).join(' ');
 
-      // Shaded green profit area
-      const profitSamples = curveData.filter(c => c.expiryPnl >= 0);
-      let profitAreaSvg = '';
-      if (profitSamples.length > 0) {
-        const firstX = xOf(profitSamples[0].px);
-        const lastX = xOf(profitSamples[profitSamples.length - 1].px);
-        const areaPoints = [
-          `${firstX.toFixed(1)},${zeroY.toFixed(1)}`,
-          ...profitSamples.map(c => `${xOf(c.px).toFixed(1)},${yOf(c.expiryPnl).toFixed(1)}`),
-          `${lastX.toFixed(1)},${zeroY.toFixed(1)}`
-        ].join(' ');
-        profitAreaSvg = `<polygon points="${areaPoints}" fill="url(#profitGradV2)" fill-opacity="0.22" />`;
-      }
+      // Shaded green profit area (Exact trapezoid between Lower BE and Upper BE where PnL >= 0)
+      const profitAreaPoints = [
+        `${xOf(putBreakeven).toFixed(1)},${zeroY.toFixed(1)}`,
+        `${xOf(nearestPutStrike).toFixed(1)},${yOf(totalCollectedCredit).toFixed(1)}`,
+        `${xOf(nearestCallStrike).toFixed(1)},${yOf(totalCollectedCredit).toFixed(1)}`,
+        `${xOf(callBreakeven).toFixed(1)},${zeroY.toFixed(1)}`
+      ].join(' ');
+      const profitAreaSvg = `<polygon points="${profitAreaPoints}" fill="url(#profitGradV2)" fill-opacity="0.22" />`;
 
       // Generate clean horizontal Y-Gridlines
-      const yTicks = [maxPnl, maxPnl * 0.5, 0, minPnl * 0.5, minPnl];
+      const yTicks = [maxPnl, 0, Math.round(minPnl * 0.33), Math.round(minPnl * 0.66), minPnl];
       const yGridSvg = yTicks.map(val => {
         const y = yOf(val);
         const isZero = Math.abs(val) < 0.01;
@@ -1097,6 +1102,12 @@
       const simPnlAtEval = calcLivePayoff(evalSpot);
       const ySimSpot = yOf(simPnlAtEval);
 
+      // Stop Loss Bracket Cutoff Spot references
+      const putSlSpot = puts.length ? (nearestPutStrike - puts[0].entryPx * 2.0) : (nearestPutStrike - 170);
+      const callSlSpot = calls.length ? (nearestCallStrike + calls[0].entryPx * 2.0) : (nearestCallStrike + 66);
+      const xPutSl = xOf(putSlSpot);
+      const xCallSl = xOf(callSlSpot);
+
       container.innerHTML = `
         <svg id="payoff-svg-canvas" viewBox="0 0 ${W} ${H}" class="w-full h-full cursor-crosshair overflow-visible">
           <defs>
@@ -1126,7 +1137,7 @@
           <!-- Expected at Expiry Curve (Green Piecewise Tent) -->
           <polyline points="${expiryPoly}" fill="none" stroke="#10B981" stroke-width="2.5" stroke-linejoin="round" />
 
-          <!-- Live Theoretical (T+0) Curve (Cyan Smooth Arch) -->
+          <!-- Live Theoretical (T+0) Curve (Cyan Smooth Arch, matches Delta Exchange 'On Target Date') -->
           <polyline points="${livePoly}" fill="none" stroke="#38BDF8" stroke-width="2.2" stroke-linejoin="round" />
 
           <!-- Strike Markers -->
@@ -1138,12 +1149,22 @@
           <rect x="${(xCall - 28).toFixed(1)}" y="${padTop - 18}" width="56" height="15" rx="3" fill="#4C0519" stroke="#F43F5E" stroke-width="1" />
           <text x="${xCall.toFixed(1)}" y="${padTop - 7}" text-anchor="middle" fill="#FFE4E6" font-size="9" font-family="monospace" font-weight="bold">C $${(nearestCallStrike/1000).toFixed(1)}k</text>
 
-          <!-- Breakeven Indicators -->
+          <!-- Breakeven Indicators (Matches Delta Exchange: 81282.10 & 84317.90) -->
           <line x1="${xPutBe.toFixed(1)}" y1="${padTop + 4}" x2="${xPutBe.toFixed(1)}" y2="${H - padBottom}" stroke="#818CF8" stroke-width="1.2" stroke-dasharray="4 2" />
           <text x="${xPutBe.toFixed(1)}" y="${H - padBottom + 26}" text-anchor="middle" fill="#A5B4FC" font-size="8.5" font-family="monospace">BE $${(putBreakeven/1000).toFixed(1)}k</text>
 
           <line x1="${xCallBe.toFixed(1)}" y1="${padTop + 4}" x2="${xCallBe.toFixed(1)}" y2="${H - padBottom}" stroke="#C084FC" stroke-width="1.2" stroke-dasharray="4 2" />
           <text x="${xCallBe.toFixed(1)}" y="${H - padBottom + 26}" text-anchor="middle" fill="#E9D5FF" font-size="8.5" font-family="monospace">BE $${(callBreakeven/1000).toFixed(1)}k</text>
+
+          <!-- 2.0x SL Trigger Guideline Markers -->
+          ${(xPutSl >= padLeft && xPutSl <= W - padRight) ? `
+            <line x1="${xPutSl.toFixed(1)}" y1="${padTop + 10}" x2="${xPutSl.toFixed(1)}" y2="${H - padBottom}" stroke="#F43F5E" stroke-width="1" stroke-dasharray="2 2" stroke-opacity="0.6" />
+            <text x="${xPutSl.toFixed(1)}" y="${H - padBottom + 36}" text-anchor="middle" fill="#FDA4AF" font-size="7.5" font-family="monospace">2xSL $${(putSlSpot/1000).toFixed(1)}k</text>
+          ` : ''}
+          ${(xCallSl >= padLeft && xCallSl <= W - padRight) ? `
+            <line x1="${xCallSl.toFixed(1)}" y1="${padTop + 10}" x2="${xCallSl.toFixed(1)}" y2="${H - padBottom}" stroke="#F43F5E" stroke-width="1" stroke-dasharray="2 2" stroke-opacity="0.6" />
+            <text x="${xCallSl.toFixed(1)}" y="${H - padBottom + 36}" text-anchor="middle" fill="#FDA4AF" font-size="7.5" font-family="monospace">2xSL $${(callSlSpot/1000).toFixed(1)}k</text>
+          ` : ''}
 
           <!-- Live Spot Pin (Amber Dot on Live Curve) -->
           <line x1="${xLive.toFixed(1)}" y1="${padTop - 4}" x2="${xLive.toFixed(1)}" y2="${H - padBottom + 6}" stroke="#F59E0B" stroke-width="2" />
@@ -1244,12 +1265,12 @@
                 <span class="text-emerald-400 font-mono">+${formatMoney(Math.max(0, thetaGap), false)}</span>
               </div>
               <div class="flex items-center justify-between gap-4 text-[10px]">
-                <span class="text-gray-500">Position Delta ($\Delta$):</span>
+                <span class="text-gray-500">Position Delta (&Delta;):</span>
                 <span class="text-gray-300 font-mono">${hoverDelta >= 0 ? '+' : ''}${hoverDelta.toFixed(3)} BTC</span>
               </div>
             </div>
             <div class="text-[9px] mt-1.5 pt-1 border-t border-gray-800 text-gray-500">
-              ${isSafe ? '🟢 Inside Safe Corridor' : '🔴 Tail Risk Capped at 2.0x SL'}
+              ${isSafe ? '🟢 Inside Safe Corridor' : (simCapAt2xSl ? '🛡️ Protected by 2.0x SL' : '🔴 Unhedged Tail Risk')}
             </div>
           `;
         });
