@@ -431,27 +431,62 @@
             </div>
           </div>
 
+          <!-- Scenario Simulation Controls & Snap Shortcuts -->
+          <div class="flex flex-wrap items-center justify-between gap-2 p-3 rounded-xl bg-slate-900/90 border border-slate-800 text-xs mono">
+            <!-- Snap shortcuts -->
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span class="text-[11px] text-slate-400 font-semibold mr-1">🎯 Snap Spot:</span>
+              <button onclick="snapSpotTo('live')" class="px-2 py-0.5 rounded bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/40 text-[11px]">Live Spot</button>
+              <button onclick="snapSpotTo('put')" class="px-2 py-0.5 rounded bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/40 text-[11px]">Put Strike</button>
+              <button onclick="snapSpotTo('call')" class="px-2 py-0.5 rounded bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/40 text-[11px]">Call Strike</button>
+              <button onclick="snapSpotTo('lowerBe')" class="px-2 py-0.5 rounded bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 text-[11px]">Lower BE</button>
+              <button onclick="snapSpotTo('upperBe')" class="px-2 py-0.5 rounded bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/40 text-[11px]">Upper BE</button>
+            </div>
+
+            <!-- Time Decay Scenario & IV Shock -->
+            <div class="flex items-center gap-2 flex-wrap">
+              <div class="flex items-center gap-1 bg-slate-950 p-0.5 rounded-md border border-slate-800 text-[11px]">
+                <span class="text-slate-500 px-1.5">⏳ Time:</span>
+                <button id="btn-v1-decay-live" onclick="setTimeDecayScenario(null)" class="px-2 py-0.5 rounded bg-indigo-600 text-white font-semibold">Live</button>
+                <button id="btn-v1-decay-12h" onclick="setTimeDecayScenario(12)" class="px-2 py-0.5 rounded text-slate-400 hover:text-white">12h</button>
+                <button id="btn-v1-decay-6h" onclick="setTimeDecayScenario(6)" class="px-2 py-0.5 rounded text-slate-400 hover:text-white">6h</button>
+                <button id="btn-v1-decay-expiry" onclick="setTimeDecayScenario(0)" class="px-2 py-0.5 rounded text-slate-400 hover:text-white">Expiry</button>
+              </div>
+
+              <div class="flex items-center gap-1 bg-slate-950 p-0.5 rounded-md border border-slate-800 text-[11px]">
+                <span class="text-slate-500 px-1.5">⚡ IV:</span>
+                <button id="btn-v1-iv-crush" onclick="setIvShockScenario(-5)" class="px-1.5 py-0.5 rounded text-slate-400 hover:text-white">-5%</button>
+                <button id="btn-v1-iv-base" onclick="setIvShockScenario(0)" class="px-1.5 py-0.5 rounded bg-slate-800 text-white font-semibold border border-slate-700">Live</button>
+                <button id="btn-v1-iv-spike" onclick="setIvShockScenario(5)" class="px-1.5 py-0.5 rounded text-slate-400 hover:text-white">+5%</button>
+              </div>
+
+              <button id="btn-v1-toggle-sl-cap" onclick="toggleSlCap()" class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[11px] font-medium" title="Toggle 2.0x SL bracket cutoff in simulation">
+                🛡️ 2x SL Capped
+              </button>
+            </div>
+          </div>
+
           <!-- Interactive SVG Payoff Chart Canvas -->
           <div class="relative w-full bg-slate-900/90 rounded-2xl border border-slate-800 p-4 shadow-inner">
             <!-- Floating Crosshair Tooltip -->
             <div id="payoff-chart-tooltip"
-              class="hidden absolute z-30 pointer-events-none px-3 py-2 rounded-xl bg-slate-950/95 border border-slate-700 shadow-2xl text-xs mono text-slate-200">
+              class="hidden absolute z-30 pointer-events-none px-3.5 py-2.5 rounded-xl bg-slate-950/95 border border-slate-700 shadow-2xl text-xs mono text-slate-200 backdrop-blur-md">
             </div>
 
             <!-- The SVG Container -->
-            <div id="expanded-payoff-svg-container" class="w-full h-64 overflow-hidden">
+            <div id="expanded-payoff-svg-container" class="w-full h-72 overflow-hidden">
               <!-- Injected by renderExpandedPayoffVisualizer() -->
             </div>
 
             <!-- Legend / Explainer -->
             <div class="mt-3 pt-3 border-t border-slate-800/80 flex flex-wrap items-center justify-between text-[11px] mono text-slate-400 gap-2">
               <div class="flex items-center gap-4 flex-wrap">
-                <span class="flex items-center gap-1.5"><span class="w-3 h-0.5 bg-emerald-400 inline-block"></span> Expiration Payoff</span>
-                <span class="flex items-center gap-1.5"><span class="w-3 h-0.5 bg-amber-400 inline-block"></span> Live BTC Spot</span>
-                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500/30 border border-emerald-400 inline-block"></span> Safe Profit Zone</span>
-                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-rose-500/30 border border-rose-400 inline-block"></span> 2.0x SL Capped Zone</span>
+                <span class="flex items-center gap-1.5"><span class="w-3.5 h-1 rounded bg-emerald-400 inline-block"></span> <strong>Expected at Expiry (5:30 PM)</strong></span>
+                <span class="flex items-center gap-1.5"><span class="w-3.5 h-1 rounded bg-sky-400 inline-block"></span> <strong>Live Theoretical (T+0)</strong></span>
+                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block ring-2 ring-amber-400/40"></span> <strong>Live Spot Position</strong></span>
+                <span class="flex items-center gap-1.5"><span class="w-3 h-0.5 border-t border-dashed border-rose-400 inline-block"></span> <strong>2.0x SL Trigger</strong></span>
               </div>
-              <span class="text-slate-500">💡 Hover over the curve to inspect projected PnL at any BTC spot price</span>
+              <span class="text-slate-500 italic">💡 Hover curve to inspect Spot price, P&L delta, and Theta cushion</span>
             </div>
           </div>
 
@@ -2002,7 +2037,9 @@
       if (slider) {
         slider.min = String(minSlider);
         slider.max = String(maxSlider);
-        if (whatIfSpotOverride === null && document.activeElement !== slider) {
+        if (whatIfSpotOverride !== null) {
+          slider.value = String(Math.round(whatIfSpotOverride / 50) * 50);
+        } else if (document.activeElement !== slider) {
           slider.value = String(Math.round(spotPx / 50) * 50);
         }
       }
@@ -2250,10 +2287,123 @@
       renderLivePositions();
     }
 
+    // Options Math Engine (Black-Scholes Theoretical Pricing & Greeks)
+    function normCdf(x) {
+      const a1 = 0.254829592, a2 = -0.284496736, a3 = 1.421413741;
+      const a4 = -1.453152027, a5 = 1.061405429, p = 0.3275911;
+      const sign = x < 0 ? -1 : 1;
+      const absX = Math.abs(x) / Math.SQRT2;
+      const t = 1.0 / (1.0 + p * absX);
+      const erf = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-absX * absX);
+      return 0.5 * (1.0 + sign * erf);
+    }
+
+    function bsPrice(S, K, sigma, T, isCall) {
+      if (T <= 0.0001 || sigma <= 0.001) {
+        return isCall ? Math.max(0, S - K) : Math.max(0, K - S);
+      }
+      const sT = sigma * Math.sqrt(T);
+      if (sT <= 0.00001) {
+        return isCall ? Math.max(0, S - K) : Math.max(0, K - S);
+      }
+      const d1 = (Math.log(S / K) + 0.5 * sigma * sigma * T) / sT;
+      const d2 = d1 - sT;
+      return isCall ? (S * normCdf(d1) - K * normCdf(d2)) : (K * normCdf(-d2) - S * normCdf(-d1));
+    }
+
+    function bsDelta(S, K, sigma, T, isCall) {
+      if (T <= 0.0001 || sigma <= 0.001) {
+        if (isCall) return S > K ? 1.0 : 0.0;
+        return S < K ? -1.0 : 0.0;
+      }
+      const sT = sigma * Math.sqrt(T);
+      const d1 = (Math.log(S / K) + 0.5 * sigma * sigma * T) / sT;
+      return isCall ? normCdf(d1) : (normCdf(d1) - 1.0);
+    }
+
+    function getLiveHoursToSettlement() {
+      const now = new Date();
+      let target = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 12, 0, 0));
+      if (now.getTime() > target.getTime()) {
+        target.setUTCDate(target.getUTCDate() + 1);
+      }
+      const diffHours = (target.getTime() - now.getTime()) / (1000 * 60 * 60);
+      return Math.max(0.1, Math.min(24, diffHours));
+    }
+
+    // Simulation Scenario Controls for v1 Expanded Payoff Visualizer
+    let simTimeHoursOverride = null;
+    let simIvOffset = 0.0;
+    let simCapAt2xSl = true;
+    let currentVisualizerPositions = [];
+    let currentVisualizerPutBe = 81282;
+    let currentVisualizerCallBe = 84318;
+
+    function snapSpotTo(target) {
+      const puts = currentVisualizerPositions.filter(p => !p.parsed.isCall && p.parsed.strike > 0);
+      const calls = currentVisualizerPositions.filter(p => p.parsed.isCall && p.parsed.strike > 0);
+      const nearestPutStrike = puts.length ? Math.max(...puts.map(p => p.parsed.strike)) : 81400;
+      const nearestCallStrike = calls.length ? Math.min(...calls.map(p => p.parsed.strike)) : 84200;
+
+      if (target === 'live') {
+        resetWhatIfSpot();
+        return;
+      } else if (target === 'put') {
+        onWhatIfSpotInput(nearestPutStrike);
+      } else if (target === 'call') {
+        onWhatIfSpotInput(nearestCallStrike);
+      } else if (target === 'lowerBe') {
+        onWhatIfSpotInput(Math.round(currentVisualizerPutBe));
+      } else if (target === 'upperBe') {
+        onWhatIfSpotInput(Math.round(currentVisualizerCallBe));
+      }
+    }
+
+    function setTimeDecayScenario(hours) {
+      simTimeHoursOverride = hours;
+      ['live', '12h', '6h', 'expiry'].forEach(id => {
+        const btn = document.getElementById(`btn-v1-decay-${id}`);
+        if (btn) btn.className = 'px-2 py-0.5 rounded text-slate-400 hover:text-white';
+      });
+      const activeId = hours === null ? 'live' : (hours === 12 ? '12h' : (hours === 6 ? '6h' : 'expiry'));
+      const activeBtn = document.getElementById(`btn-v1-decay-${activeId}`);
+      if (activeBtn) activeBtn.className = 'px-2 py-0.5 rounded bg-indigo-600 text-white font-semibold';
+      renderLivePositions();
+    }
+
+    function setIvShockScenario(offset) {
+      simIvOffset = offset;
+      ['crush', 'base', 'spike'].forEach(id => {
+        const btn = document.getElementById(`btn-v1-iv-${id}`);
+        if (btn) btn.className = 'px-1.5 py-0.5 rounded text-slate-400 hover:text-white';
+      });
+      const activeId = offset === -5 ? 'crush' : (offset === 0 ? 'base' : 'spike');
+      const activeBtn = document.getElementById(`btn-v1-iv-${activeId}`);
+      if (activeBtn) activeBtn.className = 'px-1.5 py-0.5 rounded bg-slate-800 text-white font-semibold border border-slate-700';
+      renderLivePositions();
+    }
+
+    function toggleSlCap() {
+      simCapAt2xSl = !simCapAt2xSl;
+      const btn = document.getElementById('btn-v1-toggle-sl-cap');
+      if (btn) {
+        if (simCapAt2xSl) {
+          btn.className = 'px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[11px] font-medium';
+          btn.textContent = '🛡️ 2x SL Capped';
+        } else {
+          btn.className = 'px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 text-[11px] font-medium';
+          btn.textContent = '⚠️ Uncapped Tail';
+        }
+      }
+      renderLivePositions();
+    }
+
     function renderExpandedPayoffVisualizer(displayedPositions, spotPx) {
       const container = document.getElementById('expanded-payoff-svg-container');
       const tooltip = document.getElementById('payoff-chart-tooltip');
       if (!container) return;
+
+      currentVisualizerPositions = displayedPositions || [];
 
       if (!displayedPositions || !displayedPositions.length || spotPx <= 0) {
         container.innerHTML = `
@@ -2263,6 +2413,7 @@
         return;
       }
 
+      const evalSpot = whatIfSpotOverride !== null ? whatIfSpotOverride : spotPx;
       const calls = displayedPositions.filter(p => p.parsed.isCall && p.parsed.strike > 0);
       const puts = displayedPositions.filter(p => !p.parsed.isCall && p.parsed.strike > 0);
       const hasCalls = calls.length > 0;
@@ -2272,40 +2423,63 @@
         ? Math.max(...puts.map(p => p.parsed.strike))
         : Math.round(spotPx * 0.975);
       const nearestCallStrike = hasCalls
-        ? Math.min(...calls.map(c => c.parsed.strike))
+        ? Math.min(...calls.map(p => p.parsed.strike))
         : Math.round(spotPx * 1.025);
 
       const totalCollectedUsd = displayedPositions.reduce((acc, p) => acc + (p.entryPx * p.btcQty), 0);
       const maxExpiryProfitUsd = totalCollectedUsd;
 
-      const calcExpiryPayoffAt = (S) => {
+      // Expiry Payoff Calculator
+      const calcExpiryPayoff = (S) => {
         let pnl = 0;
         for (const p of displayedPositions) {
           const k = p.parsed.strike;
           const intrinsic = p.parsed.isCall ? Math.max(0, S - k) : Math.max(0, k - S);
-          pnl += (p.entryPx - intrinsic) * p.btcQty;
+          const legPnl = (p.entryPx - intrinsic) * p.btcQty;
+          const maxLoss = -(p.entryPx * p.btcQty);
+          pnl += (simCapAt2xSl && p.sl_active !== false) ? Math.max(maxLoss, legPnl) : legPnl;
         }
         return pnl;
       };
 
-      const calcCappedExpiryPayoffAt = (S) => {
+      // Live Black-Scholes Theoretical Payoff Calculator (T+0)
+      const effectiveHours = simTimeHoursOverride !== null ? simTimeHoursOverride : getLiveHoursToSettlement();
+      const calcLivePayoff = (S) => {
+        const T_years = Math.max(0.0001, effectiveHours / 8760.0);
         let pnl = 0;
         for (const p of displayedPositions) {
           const k = p.parsed.strike;
-          const intrinsic = p.parsed.isCall ? Math.max(0, S - k) : Math.max(0, k - S);
-          const legUncapped = (p.entryPx - intrinsic) * p.btcQty;
-          const maxLossPerLeg = -(p.entryPx * p.btcQty);
-          pnl += p.sl_active !== false ? Math.max(maxLossPerLeg, legUncapped) : legUncapped;
+          const baseIv = (p.ivPct || 22.0) / 100.0;
+          const effectiveIv = Math.max(0.05, Math.min(1.5, baseIv + (simIvOffset / 100.0)));
+          const optVal = bsPrice(S, k, effectiveIv, T_years, p.parsed.isCall);
+          const legPnl = (p.entryPx - optVal) * p.btcQty;
+          const maxLoss = -(p.entryPx * p.btcQty);
+          pnl += (simCapAt2xSl && p.sl_active !== false) ? Math.max(maxLoss, legPnl) : legPnl;
         }
         return pnl;
       };
 
-      const findBreakeven = (lowPx, highPx, isPutSide) => {
+      // Net Delta Calculator
+      const calcNetDelta = (S) => {
+        const T_years = Math.max(0.0001, effectiveHours / 8760.0);
+        let netDelta = 0;
+        for (const p of displayedPositions) {
+          const k = p.parsed.strike;
+          const baseIv = (p.ivPct || 22.0) / 100.0;
+          const effectiveIv = Math.max(0.05, Math.min(1.5, baseIv + (simIvOffset / 100.0)));
+          const legDelta = bsDelta(S, k, effectiveIv, T_years, p.parsed.isCall);
+          netDelta += (-legDelta) * p.btcQty;
+        }
+        return netDelta;
+      };
+
+      // Find Breakevens via binary search
+      const findBe = (lowPx, highPx, isPutSide) => {
         let lo = lowPx;
         let hi = highPx;
-        for (let iter = 0; iter < 30; iter++) {
+        for (let iter = 0; iter < 32; iter++) {
           const mid = 0.5 * (lo + hi);
-          const val = calcExpiryPayoffAt(mid);
+          const val = calcExpiryPayoff(mid);
           if (isPutSide) {
             if (val < 0) lo = mid;
             else hi = mid;
@@ -2317,14 +2491,17 @@
         return 0.5 * (lo + hi);
       };
 
-      const putBreakeven = hasPuts ? findBreakeven(nearestPutStrike - 25000, nearestPutStrike, true) : (spotPx * 0.95);
-      const callBreakeven = hasCalls ? findBreakeven(nearestCallStrike, nearestCallStrike + 25000, false) : (spotPx * 1.05);
+      const putBreakeven = hasPuts ? findBe(nearestPutStrike - 25000, nearestPutStrike, true) : (evalSpot * 0.95);
+      const callBreakeven = hasCalls ? findBe(nearestCallStrike, nearestCallStrike + 25000, false) : (evalSpot * 1.05);
+      currentVisualizerPutBe = putBreakeven;
+      currentVisualizerCallBe = callBreakeven;
 
       const putDistPct = spotPx > 0 ? ((spotPx - nearestPutStrike) / spotPx) * 100 : 0;
       const callDistPct = spotPx > 0 ? ((nearestCallStrike - spotPx) / spotPx) * 100 : 0;
       const putBeDistPct = spotPx > 0 ? ((spotPx - putBreakeven) / spotPx) * 100 : 0;
       const callBeDistPct = spotPx > 0 ? ((callBreakeven - spotPx) / spotPx) * 100 : 0;
 
+      // Update Upper Metric Ribbon
       const maxProfitEl = document.getElementById('vis-max-profit');
       const profitZoneEl = document.getElementById('vis-profit-zone');
       const lowerBeEl = document.getElementById('vis-lower-be');
@@ -2345,9 +2522,8 @@
       if (upperBeEl) upperBeEl.textContent = `$${Math.round(callBreakeven).toLocaleString()}`;
       if (callCushionEl) callCushionEl.textContent = `${callBeDistPct >= 0 ? '+' : ''}${callBeDistPct.toFixed(1)}% Cushion (${callDistPct.toFixed(1)}% to Call Strike)`;
 
-      const allSlActive = displayedPositions.every(p => p.sl_active !== false);
-      if (slBoundsEl) slBoundsEl.textContent = allSlActive ? `Capped: -${formatAnalyticsMoney(maxExpiryProfitUsd, false)} Max` : 'Uncapped';
-      if (slStatusEl) slStatusEl.textContent = allSlActive ? `✅ 2.0x SL Bracket Active` : '⚠️ Warning: Unhedged';
+      if (slBoundsEl) slBoundsEl.textContent = simCapAt2xSl ? `Capped: -${formatAnalyticsMoney(maxExpiryProfitUsd, false)} Max` : '⚠️ Uncapped Tail';
+      if (slStatusEl) slStatusEl.textContent = simCapAt2xSl ? `✅ 2.0x SL Active` : '⚠️ 2.0x SL Disabled';
 
       const netDeltaBtc = displayedPositions.reduce((acc, p) => acc + p.posDeltaBtc, 0);
       const netThetaUsd = displayedPositions.reduce((acc, p) => acc + p.posThetaUsdPerDay, 0);
@@ -2359,145 +2535,189 @@
       const ivEl = document.getElementById('vis-avg-iv');
       if (deltaEl) deltaEl.textContent = `${netDeltaBtc >= 0 ? '+' : ''}${netDeltaBtc.toFixed(3)} BTC`;
       if (thetaEl) thetaEl.textContent = `+${formatAnalyticsMoney(netThetaUsd, false)}/day`;
-      if (ivEl) ivEl.textContent = `${avgIv.toFixed(1)}%`;
+      if (ivEl) ivEl.textContent = `${(avgIv + simIvOffset).toFixed(1)}%`;
 
+      // Coordinate Scaling & Domain
       const allStrikes = displayedPositions.map(p => p.parsed.strike).filter(k => k > 0);
-      const marginBuffer = Math.max(2500, spotPx * 0.04);
-      const minDomain = Math.min(putBreakeven - marginBuffer, spotPx * 0.94, ...allStrikes) - 1000;
-      const maxDomain = Math.max(callBreakeven + marginBuffer, spotPx * 1.06, ...allStrikes) + 1000;
-      const domainSpan = Math.max(2000, maxDomain - minDomain);
+      const minDomain = Math.floor(Math.min(putBreakeven - 2500, evalSpot - 3000, nearestPutStrike - 3000, ...allStrikes) / 1000) * 1000;
+      const maxDomain = Math.ceil(Math.max(callBreakeven + 2500, evalSpot + 3000, nearestCallStrike + 3000, ...allStrikes) / 1000) * 1000;
+      const domainSpan = Math.max(3000, maxDomain - minDomain);
 
       const W = 840;
-      const H = 250;
-      const padLeft = 65;
-      const padRight = 30;
-      const padTop = 25;
-      const padBottom = 35;
+      const H = 270;
+      const padLeft = 70;
+      const padRight = 36;
+      const padTop = 32;
+      const padBottom = 42;
       const plotW = W - padLeft - padRight;
       const plotH = H - padTop - padBottom;
 
       const xOf = (px) => padLeft + Math.max(0, Math.min(1, (px - minDomain) / domainSpan)) * plotW;
 
+      // Sample 70 points across domain
       const samples = [];
-      const numSamples = 60;
-      for (let i = 0; i <= numSamples; i++) {
-        samples.push(minDomain + (i / numSamples) * domainSpan);
+      const numSteps = 70;
+      for (let i = 0; i <= numSteps; i++) {
+        samples.push(minDomain + (i / numSteps) * domainSpan);
       }
       allStrikes.forEach(k => samples.push(k));
-      samples.push(putBreakeven, callBreakeven, spotPx);
+      samples.push(putBreakeven, callBreakeven, spotPx, evalSpot);
       samples.sort((a, b) => a - b);
 
-      const curvePoints = samples.map(px => ({
+      const curveData = samples.map(px => ({
         px,
-        pnl: calcExpiryPayoffAt(px),
-        cappedPnl: calcCappedExpiryPayoffAt(px)
+        expiryPnl: calcExpiryPayoff(px),
+        livePnl: calcLivePayoff(px),
+        delta: calcNetDelta(px)
       }));
 
-      const maxPnl = Math.max(10, maxExpiryProfitUsd * 1.15, ...curvePoints.map(c => c.pnl));
-      const minPnl = Math.min(-maxExpiryProfitUsd * 1.5, ...curvePoints.map(c => c.cappedPnl), -10);
-      const pnlSpan = Math.max(20, maxPnl - minPnl);
+      const maxPnl = Math.max(15, totalCollectedUsd * 1.25, ...curveData.map(c => c.expiryPnl), ...curveData.map(c => c.livePnl));
+      const minPnl = Math.min(-totalCollectedUsd * (simCapAt2xSl ? 1.35 : 2.6), ...curveData.map(c => c.expiryPnl), ...curveData.map(c => c.livePnl), -15);
+      const pnlSpan = Math.max(25, maxPnl - minPnl);
 
       const yOf = (val) => padTop + ((maxPnl - val) / pnlSpan) * plotH;
       const zeroY = yOf(0);
 
-      const uncappedPoly = curvePoints.map(c => `${xOf(c.px).toFixed(1)},${yOf(c.pnl).toFixed(1)}`).join(' ');
-      const cappedPoly = curvePoints.map(c => `${xOf(c.px).toFixed(1)},${yOf(c.cappedPnl).toFixed(1)}`).join(' ');
+      const expiryPoly = curveData.map(c => `${xOf(c.px).toFixed(1)},${yOf(c.expiryPnl).toFixed(1)}`).join(' ');
+      const livePoly = curveData.map(c => `${xOf(c.px).toFixed(1)},${yOf(c.livePnl).toFixed(1)}`).join(' ');
 
-      const profitSamples = curvePoints.filter(c => c.pnl >= 0);
+      // Shaded profit region for expiry
+      const profitSamples = curveData.filter(c => c.expiryPnl >= 0);
       let profitAreaSvg = '';
       if (profitSamples.length > 0) {
         const firstX = xOf(profitSamples[0].px);
         const lastX = xOf(profitSamples[profitSamples.length - 1].px);
         const areaPoints = [
           `${firstX.toFixed(1)},${zeroY.toFixed(1)}`,
-          ...profitSamples.map(c => `${xOf(c.px).toFixed(1)},${yOf(c.pnl).toFixed(1)}`),
+          ...profitSamples.map(c => `${xOf(c.px).toFixed(1)},${yOf(c.expiryPnl).toFixed(1)}`),
           `${lastX.toFixed(1)},${zeroY.toFixed(1)}`
         ].join(' ');
-        profitAreaSvg = `<polygon points="${areaPoints}" fill="url(#profitGrad)" fill-opacity="0.25" />`;
+        profitAreaSvg = `<polygon points="${areaPoints}" fill="url(#profitGradV1)" fill-opacity="0.22" />`;
       }
 
-      const xSpot = xOf(spotPx);
-      const xPutBe = xOf(putBreakeven);
-      const xCallBe = xOf(callBreakeven);
-      const livePnlAtSpot = calcExpiryPayoffAt(spotPx);
-      const ySpotPnl = yOf(livePnlAtSpot);
-
+      // Horizontal Y-Gridlines
       const yTicks = [maxPnl, maxPnl * 0.5, 0, minPnl * 0.5, minPnl];
       const yGridSvg = yTicks.map(val => {
         const y = yOf(val);
-        const isZero = Math.abs(val) < 0.001;
-        const color = isZero ? '#94a3b8' : '#334155';
-        const strokeW = isZero ? 1.5 : 0.8;
-        const dash = isZero ? '' : 'stroke-dasharray="3 3"';
+        const isZero = Math.abs(val) < 0.01;
         return `
-          <line x1="${padLeft}" y1="${y.toFixed(1)}" x2="${W - padRight}" y2="${y.toFixed(1)}" stroke="${color}" stroke-width="${strokeW}" ${dash} />
-          <text x="${padLeft - 8}" y="${(y + 3).toFixed(1)}" text-anchor="end" fill="${isZero ? '#cbd5e1' : '#64748b'}" font-size="10" font-family="monospace">
-            ${formatAnalyticsMoney(val, false)}
+          <line x1="${padLeft}" y1="${y.toFixed(1)}" x2="${W - padRight}" y2="${y.toFixed(1)}"
+            stroke="${isZero ? '#64748B' : '#1E293B'}" stroke-width="${isZero ? '1.5' : '0.8'}" ${isZero ? '' : 'stroke-dasharray="3 3"'} />
+          <text x="${padLeft - 8}" y="${(y + 3.5).toFixed(1)}" text-anchor="end" fill="${isZero ? '#E2E8F0' : (val > 0 ? '#10B981' : '#F43F5E')}" font-size="9.5" font-family="monospace">
+            ${formatAnalyticsMoney(val, true)}
           </text>
         `;
       }).join('');
 
-      const strikePinsSvg = allStrikes.map(k => {
-        const x = xOf(k);
-        const isCall = calls.some(c => c.parsed.strike === k);
-        const col = isCall ? '#c084fc' : '#818cf8';
-        const tag = isCall ? `C ${Math.round(k / 1000)}k` : `P ${Math.round(k / 1000)}k`;
+      // Vertical X-Gridlines ($1,000 increments)
+      const xTickValues = [];
+      const firstTick = Math.ceil(minDomain / 1000) * 1000;
+      for (let tk = firstTick; tk <= maxDomain; tk += 1000) {
+        xTickValues.push(tk);
+      }
+      const xGridSvg = xTickValues.map(tk => {
+        const x = xOf(tk);
         return `
-          <line x1="${x.toFixed(1)}" y1="${padTop}" x2="${x.toFixed(1)}" y2="${H - padBottom}" stroke="${col}" stroke-width="1.2" stroke-dasharray="2 2" stroke-opacity="0.6" />
-          <text x="${x.toFixed(1)}" y="${H - padBottom + 14}" text-anchor="middle" fill="${col}" font-size="10" font-family="monospace">
-            ${tag}
+          <line x1="${x.toFixed(1)}" y1="${padTop}" x2="${x.toFixed(1)}" y2="${H - padBottom}" stroke="#1E293B" stroke-width="0.8" stroke-dasharray="2 3" />
+          <text x="${x.toFixed(1)}" y="${H - padBottom + 14}" text-anchor="middle" fill="#94A3B8" font-size="9.5" font-family="monospace">
+            $${(tk / 1000).toFixed(0)}k
           </text>
         `;
       }).join('');
+
+      // Markers: Put & Call Strikes
+      const xPut = xOf(nearestPutStrike);
+      const xCall = xOf(nearestCallStrike);
+      const xPutBe = xOf(putBreakeven);
+      const xCallBe = xOf(callBreakeven);
+
+      const xLive = xOf(spotPx);
+      const livePnlAtSpot = calcLivePayoff(spotPx);
+      const yLiveSpot = yOf(livePnlAtSpot);
+
+      const xSim = xOf(evalSpot);
+      const isSimulating = whatIfSpotOverride !== null;
+      const simPnlAtEval = calcLivePayoff(evalSpot);
+      const ySimSpot = yOf(simPnlAtEval);
 
       container.innerHTML = `
         <svg id="payoff-svg-canvas" viewBox="0 0 ${W} ${H}" class="w-full h-full cursor-crosshair overflow-visible">
           <defs>
-            <linearGradient id="profitGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stop-color="#10b981" stop-opacity="0.6" />
-              <stop offset="100%" stop-color="#10b981" stop-opacity="0.0" />
-            </linearGradient>
-            <linearGradient id="lossGrad" x1="0%" y1="100%" x2="0%" y2="0%">
-              <stop offset="0%" stop-color="#f43f5e" stop-opacity="0.4" />
-              <stop offset="100%" stop-color="#f43f5e" stop-opacity="0.0" />
+            <linearGradient id="profitGradV1" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#10B981" stop-opacity="0.55" />
+              <stop offset="100%" stop-color="#10B981" stop-opacity="0.0" />
             </linearGradient>
           </defs>
 
+          <!-- Axes Grid & Tick Labels -->
           ${yGridSvg}
+          ${xGridSvg}
+
+          <!-- Axis Titles -->
+          <text x="${padLeft + plotW / 2}" y="${H - 5}" text-anchor="middle" fill="#94A3B8" font-size="10.5" font-weight="600" font-family="sans-serif">
+            BTC Spot Price ($ USD)
+          </text>
+          <text transform="rotate(-90)" x="${-(padTop + plotH / 2)}" y="16" text-anchor="middle" fill="#94A3B8" font-size="10" font-weight="600" font-family="monospace">
+            P&amp;L ($ USD)
+          </text>
+          <text x="${padLeft + 8}" y="${(zeroY - 5).toFixed(1)}" fill="#10B981" font-size="8.5" font-weight="bold" font-family="monospace" opacity="0.8">▲ PROFIT</text>
+          <text x="${padLeft + 8}" y="${(zeroY + 13).toFixed(1)}" fill="#F43F5E" font-size="8.5" font-weight="bold" font-family="monospace" opacity="0.8">▼ LOSS</text>
+
+          <!-- Shaded Expiry Profit Region -->
           ${profitAreaSvg}
 
-          <polyline points="${uncappedPoly}" fill="none" stroke="#f43f5e" stroke-width="1.5" stroke-dasharray="3 3" opacity="0.6" />
-          <polyline points="${cappedPoly}" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linejoin="round" />
+          <!-- Expected at Expiry Curve (Green Piecewise Tent) -->
+          <polyline points="${expiryPoly}" fill="none" stroke="#10B981" stroke-width="2.5" stroke-linejoin="round" />
 
-          ${strikePinsSvg}
+          <!-- Live Theoretical (T+0) Curve (Cyan Smooth Arch) -->
+          <polyline points="${livePoly}" fill="none" stroke="#38BDF8" stroke-width="2.2" stroke-linejoin="round" />
 
-          <line x1="${xPutBe.toFixed(1)}" y1="${padTop}" x2="${xPutBe.toFixed(1)}" y2="${H - padBottom}" stroke="#a5b4fc" stroke-width="1.5" stroke-dasharray="4 2" />
-          <rect x="${(xPutBe - 32).toFixed(1)}" y="${padTop - 14}" width="64" height="14" rx="3" fill="#312e81" fill-opacity="0.9" />
-          <text x="${xPutBe.toFixed(1)}" y="${padTop - 4}" text-anchor="middle" fill="#c7d2fe" font-size="9" font-family="monospace">BE $${Math.round(putBreakeven / 1000)}k</text>
+          <!-- Strike Markers -->
+          <line x1="${xPut.toFixed(1)}" y1="${padTop}" x2="${xPut.toFixed(1)}" y2="${H - padBottom}" stroke="#A855F7" stroke-width="1.3" stroke-dasharray="3 3" />
+          <rect x="${(xPut - 28).toFixed(1)}" y="${padTop - 18}" width="56" height="15" rx="3" fill="#3B0764" stroke="#A855F7" stroke-width="1" />
+          <text x="${xPut.toFixed(1)}" y="${padTop - 7}" text-anchor="middle" fill="#E9D5FF" font-size="9" font-family="monospace" font-weight="bold">P $${(nearestPutStrike/1000).toFixed(1)}k</text>
 
-          <line x1="${xCallBe.toFixed(1)}" y1="${padTop}" x2="${xCallBe.toFixed(1)}" y2="${H - padBottom}" stroke="#d8b4fe" stroke-width="1.5" stroke-dasharray="4 2" />
-          <rect x="${(xCallBe - 32).toFixed(1)}" y="${padTop - 14}" width="64" height="14" rx="3" fill="#581c87" fill-opacity="0.9" />
-          <text x="${xCallBe.toFixed(1)}" y="${padTop - 4}" text-anchor="middle" fill="#e9d5ff" font-size="9" font-family="monospace">BE $${Math.round(callBreakeven / 1000)}k</text>
+          <line x1="${xCall.toFixed(1)}" y1="${padTop}" x2="${xCall.toFixed(1)}" y2="${H - padBottom}" stroke="#F43F5E" stroke-width="1.3" stroke-dasharray="3 3" />
+          <rect x="${(xCall - 28).toFixed(1)}" y="${padTop - 18}" width="56" height="15" rx="3" fill="#4C0519" stroke="#F43F5E" stroke-width="1" />
+          <text x="${xCall.toFixed(1)}" y="${padTop - 7}" text-anchor="middle" fill="#FFE4E6" font-size="9" font-family="monospace" font-weight="bold">C $${(nearestCallStrike/1000).toFixed(1)}k</text>
 
-          <line x1="${xSpot.toFixed(1)}" y1="${padTop - 4}" x2="${xSpot.toFixed(1)}" y2="${H - padBottom + 6}" stroke="#fbbf24" stroke-width="2.2" />
-          <circle cx="${xSpot.toFixed(1)}" cy="${ySpotPnl.toFixed(1)}" r="5.5" fill="#fbbf24" stroke="#0f172a" stroke-width="2" />
-          <circle cx="${xSpot.toFixed(1)}" cy="${ySpotPnl.toFixed(1)}" r="9" fill="#fbbf24" fill-opacity="0.25" class="animate-ping" />
-          <rect x="${(xSpot - 38).toFixed(1)}" y="${H - padBottom + 18}" width="76" height="16" rx="4" fill="#78350f" fill-opacity="0.95" stroke="#f59e0b" stroke-width="1" />
-          <text x="${xSpot.toFixed(1)}" y="${H - padBottom + 30}" text-anchor="middle" fill="#fde68a" font-size="10" font-weight="bold" font-family="monospace">
+          <!-- Breakeven Indicators -->
+          <line x1="${xPutBe.toFixed(1)}" y1="${padTop + 4}" x2="${xPutBe.toFixed(1)}" y2="${H - padBottom}" stroke="#818CF8" stroke-width="1.2" stroke-dasharray="4 2" />
+          <text x="${xPutBe.toFixed(1)}" y="${H - padBottom + 26}" text-anchor="middle" fill="#A5B4FC" font-size="8.5" font-family="monospace">BE $${(putBreakeven/1000).toFixed(1)}k</text>
+
+          <line x1="${xCallBe.toFixed(1)}" y1="${padTop + 4}" x2="${xCallBe.toFixed(1)}" y2="${H - padBottom}" stroke="#C084FC" stroke-width="1.2" stroke-dasharray="4 2" />
+          <text x="${xCallBe.toFixed(1)}" y="${H - padBottom + 26}" text-anchor="middle" fill="#E9D5FF" font-size="8.5" font-family="monospace">BE $${(callBreakeven/1000).toFixed(1)}k</text>
+
+          <!-- Live Spot Pin (Amber Dot on Live Curve) -->
+          <line x1="${xLive.toFixed(1)}" y1="${padTop - 4}" x2="${xLive.toFixed(1)}" y2="${H - padBottom + 6}" stroke="#F59E0B" stroke-width="2" />
+          <circle cx="${xLive.toFixed(1)}" cy="${yLiveSpot.toFixed(1)}" r="9" fill="#F59E0B" fill-opacity="0.25" class="animate-ping" />
+          <circle cx="${xLive.toFixed(1)}" cy="${yLiveSpot.toFixed(1)}" r="5" fill="#F59E0B" stroke="#0B0F17" stroke-width="2" />
+          <rect x="${(xLive - 36).toFixed(1)}" y="${padTop - 28}" width="72" height="16" rx="4" fill="#78350F" stroke="#F59E0B" stroke-width="1" />
+          <text x="${xLive.toFixed(1)}" y="${padTop - 16}" text-anchor="middle" fill="#FEF3C7" font-size="9.5" font-weight="bold" font-family="monospace">
             ₿ $${Math.round(spotPx).toLocaleString()}
           </text>
 
+          <!-- Simulated Spot Pin (if active) -->
+          ${isSimulating ? `
+            <line x1="${xSim.toFixed(1)}" y1="${padTop}" x2="${xSim.toFixed(1)}" y2="${H - padBottom}" stroke="#38BDF8" stroke-width="2" stroke-dasharray="3 3" />
+            <circle cx="${xSim.toFixed(1)}" cy="${ySimSpot.toFixed(1)}" r="5.5" fill="#38BDF8" stroke="#FFFFFF" stroke-width="2" />
+          ` : ''}
+
+          <!-- Interactive Hover Crosshair -->
           <g id="vis-crosshair-group" class="hidden">
-            <line id="vis-crosshair-x" x1="0" y1="${padTop}" x2="0" y2="${H - padBottom}" stroke="#38bdf8" stroke-width="1.2" stroke-dasharray="2 2" />
-            <circle id="vis-crosshair-dot" cx="0" cy="0" r="4.5" fill="#38bdf8" stroke="#0f172a" stroke-width="1.5" />
+            <line id="vis-crosshair-line" x1="0" y1="${padTop}" x2="0" y2="${H - padBottom}" stroke="#94A3B8" stroke-width="1.2" stroke-dasharray="2 2" />
+            <circle id="vis-crosshair-live-dot" cx="0" cy="0" r="4.5" fill="#38BDF8" stroke="#0B0F17" stroke-width="1.5" />
+            <circle id="vis-crosshair-expiry-dot" cx="0" cy="0" r="4.5" fill="#10B981" stroke="#0B0F17" stroke-width="1.5" />
           </g>
         </svg>
       `;
 
+      // Set up Interactive Hover Crosshair & Tooltip Events
       const svgEl = document.getElementById('payoff-svg-canvas');
       const crosshairGroup = document.getElementById('vis-crosshair-group');
-      const crosshairLine = document.getElementById('vis-crosshair-x');
-      const crosshairDot = document.getElementById('vis-crosshair-dot');
+      const crosshairLine = document.getElementById('vis-crosshair-line');
+      const liveDot = document.getElementById('vis-crosshair-live-dot');
+      const expiryDot = document.getElementById('vis-crosshair-expiry-dot');
 
       if (svgEl && crosshairGroup && tooltip) {
         svgEl.addEventListener('mousemove', (e) => {
@@ -2513,41 +2733,66 @@
           }
 
           const hoverSpot = minDomain + ((svgX - padLeft) / plotW) * domainSpan;
-          const hoverPnl = calcCappedExpiryPayoffAt(hoverSpot);
-          const hoverY = yOf(hoverPnl);
+          const hoverExpiryPnl = calcExpiryPayoff(hoverSpot);
+          const hoverLivePnl = calcLivePayoff(hoverSpot);
+          const thetaGap = hoverExpiryPnl - hoverLivePnl;
+          const hoverDelta = calcNetDelta(hoverSpot);
+
+          const yExp = yOf(hoverExpiryPnl);
+          const yLiv = yOf(hoverLivePnl);
 
           crosshairGroup.classList.remove('hidden');
           if (crosshairLine) {
             crosshairLine.setAttribute('x1', svgX.toFixed(1));
             crosshairLine.setAttribute('x2', svgX.toFixed(1));
           }
-          if (crosshairDot) {
-            crosshairDot.setAttribute('cx', svgX.toFixed(1));
-            crosshairDot.setAttribute('cy', hoverY.toFixed(1));
+          if (liveDot) {
+            liveDot.setAttribute('cx', svgX.toFixed(1));
+            liveDot.setAttribute('cy', yLiv.toFixed(1));
+          }
+          if (expiryDot) {
+            expiryDot.setAttribute('cx', svgX.toFixed(1));
+            expiryDot.setAttribute('cy', yExp.toFixed(1));
           }
 
           const distUsd = hoverSpot - spotPx;
           const distPct = spotPx > 0 ? (distUsd / spotPx) * 100 : 0;
-          const isSafe = hoverPnl >= 0;
+          const isSafe = hoverExpiryPnl >= 0;
 
           tooltip.classList.remove('hidden');
-          tooltip.style.left = `${Math.min(rect.width - 180, Math.max(10, mouseX + 15))}px`;
-          tooltip.style.top = `${Math.min(rect.height - 70, Math.max(10, mouseY - 55))}px`;
+          tooltip.style.left = `${Math.min(rect.width - 230, Math.max(10, mouseX + 15))}px`;
+          tooltip.style.top = `${Math.min(rect.height - 110, Math.max(10, mouseY - 65))}px`;
           tooltip.innerHTML = `
-            <div class="font-bold text-white flex items-center justify-between gap-3">
+            <div class="font-bold text-white flex items-center justify-between gap-3 border-b border-slate-800 pb-1">
               <span>₿ $${Math.round(hoverSpot).toLocaleString()}</span>
-              <span class="${distPct >= 0 ? 'text-amber-300' : 'text-indigo-300'} font-normal text-[10px]">
-                ${distPct >= 0 ? '+' : ''}${distPct.toFixed(2)}%
+              <span class="${distPct >= 0 ? 'text-amber-400' : 'text-indigo-400'} font-normal text-[10px]">
+                ${distPct >= 0 ? '+' : ''}${distPct.toFixed(2)}% vs Live
               </span>
             </div>
-            <div class="mt-1 flex items-center justify-between gap-3 text-[11px]">
-              <span class="text-slate-400">Projected Expiry:</span>
-              <span class="${hoverPnl >= 0 ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}">
-                ${formatAnalyticsMoney(hoverPnl, true)}
-              </span>
+            <div class="mt-1.5 space-y-1 text-[11px]">
+              <div class="flex items-center justify-between gap-4">
+                <span class="text-slate-400 flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-[#10B981]"></span> At Expiry (5:30 PM):</span>
+                <span class="${hoverExpiryPnl >= 0 ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}">
+                  ${formatAnalyticsMoney(hoverExpiryPnl, true)}
+                </span>
+              </div>
+              <div class="flex items-center justify-between gap-4">
+                <span class="text-slate-400 flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-[#38BDF8]"></span> Live Curve (T+0):</span>
+                <span class="${hoverLivePnl >= 0 ? 'text-sky-300 font-semibold' : 'text-rose-300 font-semibold'}">
+                  ${formatAnalyticsMoney(hoverLivePnl, true)}
+                </span>
+              </div>
+              <div class="flex items-center justify-between gap-4 pt-1 border-t border-slate-800 text-[10px]">
+                <span class="text-slate-500">Remaining Theta Decay:</span>
+                <span class="text-emerald-400 font-mono">+${formatAnalyticsMoney(Math.max(0, thetaGap), false)}</span>
+              </div>
+              <div class="flex items-center justify-between gap-4 text-[10px]">
+                <span class="text-slate-500">Position Delta (&Delta;):</span>
+                <span class="text-slate-300 font-mono">${hoverDelta >= 0 ? '+' : ''}${hoverDelta.toFixed(3)} BTC</span>
+              </div>
             </div>
-            <div class="text-[9px] mt-0.5 text-slate-500">
-              ${isSafe ? '🟢 Inside Safe Profit Zone' : '🔴 Tail Risk Capped at 2.0x SL'}
+            <div class="text-[9px] mt-1.5 pt-1 border-t border-slate-800 text-slate-500">
+              ${isSafe ? '🟢 Inside Safe Corridor' : '🔴 Tail Risk Capped at 2.0x SL'}
             </div>
           `;
         });
