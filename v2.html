@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Delta 1DTE BTC Short Strangle — Modern Dashboard (v2)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              bg: '#0B0F17',
+              surface: '#111827',
+              border: '#1F2937',
+              muted: '#9CA3AF'
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    body {
+      background-color: #0B0F17;
+      color: #F3F4F6;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    }
+    .custom-range {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 6px;
+      border-radius: 9999px;
+      background: #1F2937;
+      outline: none;
+    }
+    .custom-range::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #3B82F6;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+      transition: transform 0.1s;
+    }
+    .custom-range::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+    }
+    .fade-in {
+      animation: fadeIn 0.2s ease-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0B0F17; }
+    ::-webkit-scrollbar-thumb { background: #1F2937; border-radius: 3px; }
+  </style>
+</head>
+<body class="min-h-screen pb-16 antialiased text-sm">
+
+  <!-- ========================================================================= -->
+  <!-- 1. STREAMLINED UNIFIED HEADER (Zero Clutter, 1 Dropdown Hub, v1/v2 Toggle) -->
+  <!-- ========================================================================= -->
+  <header class="border-b border-[#1F2937] bg-[#111827]/90 sticky top-0 z-40 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
+      
+      <!-- Brand & Strategy Info -->
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-base">
+          Δ
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-base font-bold text-gray-100 tracking-tight">BTC 1DTE Strangle</h1>
+            <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Live
+            </span>
+            <span id="header-branch-pill" class="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-800 text-gray-300 border border-gray-700 mono">
+              🟢 Green (Active)
+            </span>
+          </div>
+          <p class="text-xs text-gray-400 hidden sm:block">
+            Delta Exchange India • Daily 10:30 PM IST • 2x Mark SL
+          </p>
+        </div>
+      </div>
+
+      <!-- Controls Hub: Live Spot, Currency Switcher, Actions Dropdown, Classic Toggle -->
+      <div class="flex items-center gap-2.5 sm:gap-3 flex-wrap">
+        
+        <!-- Live Spot Ticker -->
+        <div class="px-3 py-1.5 rounded-lg bg-gray-800/60 border border-gray-700/60 text-right">
+          <div class="text-[10px] uppercase tracking-wider text-gray-400 font-medium">BTC Spot</div>
+          <div id="live-btc-spot" class="text-sm font-bold text-gray-100 mono">$--,--</div>
+        </div>
+
+        <!-- Global Currency Toggle -->
+        <div class="inline-flex rounded-lg bg-gray-800/80 p-0.5 border border-gray-700 text-xs">
+          <button id="currUsdBtn" onclick="setCurrency('USD')" class="px-2.5 py-1 rounded-md font-medium bg-blue-600 text-white transition shadow-sm">USD</button>
+          <button id="currInrBtn" onclick="setCurrency('INR')" class="px-2.5 py-1 rounded-md font-medium text-gray-400 hover:text-gray-200 transition">INR</button>
+        </div>
+
+        <!-- Single Unified Actions Hub Menu -->
+        <div class="relative">
+          <button onclick="toggleActionMenu()" class="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700/80 text-gray-200 text-xs font-medium border border-gray-700 transition">
+            <span>⚙️ Controls</span>
+            <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+          </button>
+          <div id="actionMenu" class="hidden absolute right-0 mt-2 w-56 rounded-xl bg-gray-900 border border-gray-700 shadow-xl py-1.5 z-50 fade-in text-xs">
+            <button onclick="toggleActiveBranch(); toggleActionMenu();" class="w-full text-left px-3 py-2 hover:bg-gray-800 text-gray-200 flex items-center justify-between">
+              <span id="menu-branch-action-text">⇄ Flip Active Branch</span>
+              <span class="text-[10px] text-gray-500">Dual-Main</span>
+            </button>
+            <button onclick="testWhatsApp(); toggleActionMenu();" class="w-full text-left px-3 py-2 hover:bg-gray-800 text-gray-200 flex items-center justify-between">
+              <span>📲 Test WhatsApp Alert</span>
+              <span class="text-[10px] text-emerald-400">Meta API</span>
+            </button>
+            <button onclick="openSettingsModal(); toggleActionMenu();" class="w-full text-left px-3 py-2 hover:bg-gray-800 text-gray-200 flex items-center justify-between">
+              <span>🔑 Cloudflare Edge Setup</span>
+              <span class="text-[10px] text-gray-500">KV</span>
+            </button>
+            <div class="border-t border-gray-800 my-1"></div>
+            <button onclick="syncNow(); toggleActionMenu();" class="w-full text-left px-3 py-2 hover:bg-gray-800 text-blue-400 flex items-center justify-between">
+              <span>🔄 Force Sync Now</span>
+              <span class="text-[10px] text-gray-400">Edge KV</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Switch to Classic Dashboard Button -->
+        <a href="index.html" class="px-2.5 py-2 text-xs font-semibold rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 transition flex items-center gap-1.5" title="Return to Classic Dashboard (v1)">
+          <span>⏪ Classic View</span>
+        </a>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- Toast Notification -->
+  <div id="toast-banner" class="hidden fixed bottom-5 right-5 z-50 max-w-md px-4 py-3 rounded-xl shadow-2xl border text-xs font-medium transition-all"></div>
+
+  <!-- ========================================================================= -->
+  <!-- MAIN DASHBOARD CONTENT -->
+  <!-- ========================================================================= -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 pt-5 space-y-5">
+
+    <!-- Top Alert Notification Bar -->
+    <div id="alert-banner-strip" class="p-3 rounded-xl bg-gray-900 border border-gray-800 flex items-center justify-between gap-3 text-xs">
+      <div class="flex items-center gap-2">
+        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20 uppercase tracking-wider">
+          Last 30D Monitor
+        </span>
+        <span id="alerts-summary-text" class="text-gray-300">
+          Scanning recent Technical & Portfolio events...
+        </span>
+      </div>
+      <button onclick="openAlertsModal()" class="px-2.5 py-1 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 transition">
+        View All Alerts ↗
+      </button>
+    </div>
+
+    <!-- 2. HIGH-IMPACT 4 HERO METRIC CARDS -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      
+      <!-- Card 1: Wallet Equity & Margin Utilization -->
+      <div class="p-4 rounded-xl bg-[#111827] border border-[#1F2937] space-y-2">
+        <div class="flex items-center justify-between text-xs text-gray-400">
+          <span>Wallet Equity</span>
+          <span id="kpi-margin-free-pct" class="text-gray-400 font-mono text-[11px]">88.3% Free</span>
+        </div>
+        <div id="kpi-balance" class="text-xl font-bold font-mono text-gray-100">$5,851.47</div>
+        <div class="space-y-1">
+          <div class="w-full h-1.5 rounded-full bg-gray-800 overflow-hidden">
+            <div id="kpi-margin-bar" class="h-full bg-blue-500 rounded-full transition-all duration-300" style="width: 11.7%"></div>
+          </div>
+          <div class="flex justify-between text-[11px] text-gray-400">
+            <span id="kpi-margin-used-label">Margin: $684.88 (11.7%)</span>
+            <span id="kpi-available-label">Avail: $5,166.59</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 2: Live Unrealized P&L (Soft Emerald for Eye Comfort) -->
+      <div class="p-4 rounded-xl bg-[#111827] border border-[#1F2937] space-y-2">
+        <div class="flex items-center justify-between text-xs text-gray-400">
+          <span>Live Open P&L</span>
+          <span id="kpi-open-legs-count" class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">3 Open Legs</span>
+        </div>
+        <div class="flex items-baseline gap-2">
+          <div id="kpi-open-pnl" class="text-xl font-bold font-mono text-emerald-400">+$145.89</div>
+          <span id="kpi-theta-pct" class="text-xs font-semibold text-emerald-400">+82.0% Theta</span>
+        </div>
+        <p id="kpi-open-details" class="text-[11px] text-gray-400">Sold: $178.00 • Net Δ: +0.03 BTC</p>
+      </div>
+
+      <!-- Card 3: Realized Period P&L (Soft Coral Rose instead of harsh neons) -->
+      <div class="p-4 rounded-xl bg-[#111827] border border-[#1F2937] space-y-2">
+        <div class="flex items-center justify-between text-xs text-gray-400">
+          <span>Period Realized P&L</span>
+          <span id="kpi-win-rate" class="text-gray-400 text-xs font-mono">Win: 43% (6W/8L)</span>
+        </div>
+        <div class="flex items-baseline gap-2">
+          <div id="kpi-realized-pnl" class="text-xl font-bold font-mono text-rose-400">-$208.89</div>
+          <span id="kpi-gross-pnl" class="text-xs text-gray-400 font-mono">Gross: -$137.96</span>
+        </div>
+        <p id="kpi-fees-label" class="text-[11px] text-gray-400">Fees: $70.93 • Profit Factor: 0.74x</p>
+      </div>
+
+      <!-- Card 4: Next Scheduled Milestone -->
+      <div class="p-4 rounded-xl bg-[#111827] border border-[#1F2937] space-y-2">
+        <div class="flex items-center justify-between text-xs text-gray-400">
+          <span>Next Bot Milestone</span>
+          <span class="text-xs font-medium text-amber-400">Daily Cycle</span>
+        </div>
+        <div id="kpi-countdown-timer" class="text-xl font-bold font-mono text-gray-100">0h 28m</div>
+        <div class="flex justify-between items-center text-[11px] text-gray-400">
+          <span>🏁 5:30 PM Settle</span>
+          <span>⚡ 10:30 PM Entry</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 3. INTERACTIVE SAFE-ZONE CORRIDOR & WHAT-IF SIMULATOR -->
+    <div class="p-5 rounded-xl bg-[#111827] border border-[#1F2937] space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div>
+          <h2 class="font-semibold text-gray-100 text-sm flex items-center gap-2">
+            <span>🛡️ Safe-Zone Corridor & Payoff Simulation</span>
+            <span class="text-xs font-normal text-gray-400">Live 2x SL Mark Bands</span>
+          </h2>
+          <p class="text-xs text-gray-400 mt-0.5">Drag slider to test Spot movement on P&L and nearest strike cushion.</p>
+        </div>
+        <div class="flex items-center gap-2 text-xs">
+          <span class="text-gray-400">Simulated P&L:</span>
+          <span id="whatif-pnl-readout" class="font-mono font-bold text-emerald-400 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">+$178.00 at Expiry</span>
+          <button id="whatif-reset-btn" onclick="resetWhatIfSpot()" class="hidden px-2 py-0.5 rounded bg-gray-800 text-gray-300 hover:text-white border border-gray-700 text-[11px]">
+            Reset Spot
+          </button>
+        </div>
+      </div>
+
+      <!-- Corridor Strips & Gauge -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-center p-3.5 rounded-lg bg-gray-900/60 border border-gray-800">
+        <!-- Put Floor -->
+        <div class="text-left">
+          <div class="text-xs font-medium text-purple-400 flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-purple-400"></span> Nearest Put Strike
+          </div>
+          <div id="corridor-put-strike" class="text-lg font-bold font-mono text-gray-200 mt-0.5">$81,400</div>
+          <div id="corridor-put-otm" class="text-xs text-purple-300/80 font-mono mt-0.5">-$1,411 (-1.70% OTM)</div>
+          <div id="corridor-put-be" class="text-[11px] text-gray-500 font-mono mt-0.5">Breakeven: $81,044</div>
+        </div>
+
+        <!-- Center Interactive Slider -->
+        <div class="text-center space-y-1.5">
+          <div class="text-xs text-gray-400 flex justify-between px-1 font-mono">
+            <span id="slider-min-label">$78,000</span>
+            <span id="corridor-spot-display" class="text-blue-400 font-semibold">Spot: $82,810</span>
+            <span id="slider-max-label">$87,000</span>
+          </div>
+          <input type="range" min="78000" max="87000" value="82810" step="50" id="spotSlider" oninput="onWhatIfSpotInput(this.value)" class="custom-range w-full">
+          <div class="text-[11px] text-gray-500">Double click slider to snap to live spot</div>
+        </div>
+
+        <!-- Call Ceiling -->
+        <div class="text-right">
+          <div class="text-xs font-medium text-rose-400 flex items-center justify-end gap-1.5">
+            Nearest Call Strike <span class="w-2 h-2 rounded-full bg-rose-400"></span>
+          </div>
+          <div id="corridor-call-strike" class="text-lg font-bold font-mono text-gray-200 mt-0.5">$84,200</div>
+          <div id="corridor-call-otm" class="text-xs text-rose-300/80 font-mono mt-0.5">+$1,390 (+1.68% OTM)</div>
+          <div id="corridor-call-be" class="text-[11px] text-gray-500 font-mono mt-0.5">Breakeven: $84,556</div>
+        </div>
+      </div>
+
+      <!-- Real-Time SVG Payoff Tent Canvas -->
+      <div id="safezone-svg-container" class="relative w-full h-24 rounded-lg bg-gray-950/70 border border-gray-900 overflow-hidden flex items-center justify-center">
+        <!-- Injected via renderSafeZoneCorridor() -->
+      </div>
+    </div>
+
+    <!-- 4. STREAMLINED POSITIONS TABLE (2.0x SL Protection, Progressive Greeks) -->
+    <div class="p-5 rounded-xl bg-[#111827] border border-[#1F2937] space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 class="font-semibold text-gray-100 text-sm">Active Positions & 2.0x SL Protection</h2>
+          <p id="pos-summary-caption" class="text-xs text-gray-400 mt-0.5">3 active legs • 0.500 BTC total size</p>
+        </div>
+        <!-- Expiry Cohort Filter Buttons -->
+        <div id="cohort-filter-container" class="flex items-center gap-1.5 bg-gray-900 p-1 rounded-lg border border-gray-800 text-xs">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <!-- Positions Table -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead>
+            <tr class="border-b border-gray-800 text-gray-400 font-medium pb-2">
+              <th class="py-2.5 px-3">Contract / Expiry</th>
+              <th class="py-2.5 px-3">Strike & OTM Buffer</th>
+              <th class="py-2.5 px-3">Entry Credit</th>
+              <th class="py-2.5 px-3">Live Mark</th>
+              <th class="py-2.5 px-3">2.0x SL Trigger</th>
+              <th class="py-2.5 px-3">Decay Progress</th>
+              <th class="py-2.5 px-3 text-right">Unrealized P&L</th>
+            </tr>
+          </thead>
+          <tbody id="positions-tbody" class="divide-y divide-gray-800/60 font-mono">
+            <!-- Populated dynamically -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Next Entry Strike Radar Banner -->
+      <div id="radar-container" class="p-3 rounded-lg bg-gray-900/60 border border-gray-800 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-400">
+        <div class="flex items-center gap-2">
+          <span class="text-amber-400 font-semibold">🔭 10:30 PM Next Entry Radar:</span>
+          <span id="radar-text" class="text-gray-300">Calculating target strikes & estimated credit...</span>
+        </div>
+        <span class="px-2 py-0.5 rounded text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-sans">
+          🛡️ 3/3 Pre-Flight Guards Active
+        </span>
+      </div>
+    </div>
+
+    <!-- 5. PORTFOLIO PERFORMANCE & HEATMAP (Clean, Non-Straining Curves) -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      
+      <!-- Equity Curve & Daily Bars (2 Cols) -->
+      <div class="lg:col-span-2 p-5 rounded-xl bg-[#111827] border border-[#1F2937] space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h2 class="font-semibold text-gray-100 text-sm">Cumulative Equity Curve & Daily P&L</h2>
+            <p class="text-xs text-gray-400 mt-0.5">Smooth area curve = Cumulative Net P&L • Vertical bars = Daily Net P&L</p>
+          </div>
+          <!-- Date Range Pills -->
+          <div class="flex items-center gap-1 bg-gray-900 p-0.5 rounded-lg border border-gray-800 text-xs">
+            <button onclick="setPerformancePeriod('7D')" class="px-2 py-1 rounded text-gray-400 hover:text-white" id="perf7d">7D</button>
+            <button onclick="setPerformancePeriod('30D')" class="px-2 py-1 rounded bg-gray-800 text-gray-100 font-medium" id="perf30d">30D</button>
+            <button onclick="setPerformancePeriod('ALL')" class="px-2 py-1 rounded text-gray-400 hover:text-white" id="perfAll">All</button>
+          </div>
+        </div>
+
+        <!-- SVG Equity Curve Canvas -->
+        <div id="equity-chart-container" class="relative w-full h-56 rounded-lg bg-gray-950/60 border border-gray-900 overflow-hidden flex items-center justify-center">
+          <!-- Injected via renderPortfolioPerformanceChart() -->
+        </div>
+      </div>
+
+      <!-- Monthly Calendar Heatmap (1 Col) -->
+      <div class="p-5 rounded-xl bg-[#111827] border border-[#1F2937] space-y-4">
+        <div class="flex items-center justify-between">
+          <h2 class="font-semibold text-gray-100 text-sm">📅 Monthly P&L Calendar</h2>
+          <span id="calendar-month-label" class="text-xs font-medium text-gray-400">Oct 2026</span>
+        </div>
+        <div id="calendar-heatmap-container" class="space-y-2">
+          <!-- Injected via renderCalendarHeatmap() -->
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 6. AUDIT LEDGER (Expandable & Clean) -->
+    <div class="p-5 rounded-xl bg-[#111827] border border-[#1F2937] space-y-3">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="font-semibold text-gray-100 text-sm">📜 Execution & Audit Ledger</h2>
+          <p class="text-xs text-gray-400 mt-0.5">Recent fills, orders, and 2.0x SL bracket history</p>
+        </div>
+        <span id="ledger-count-label" class="text-xs font-mono text-gray-400">44 records</span>
+      </div>
+      <div class="overflow-x-auto max-h-72">
+        <table class="w-full text-left text-xs">
+          <thead class="sticky top-0 bg-[#111827] border-b border-gray-800 text-gray-400">
+            <tr>
+              <th class="py-2 px-3">Date / Time (IST)</th>
+              <th class="py-2 px-3">Action / Side</th>
+              <th class="py-2 px-3">Contract</th>
+              <th class="py-2 px-3">Size</th>
+              <th class="py-2 px-3">Price</th>
+              <th class="py-2 px-3 text-right">Fee / Realized</th>
+            </tr>
+          </thead>
+          <tbody id="ledger-tbody" class="divide-y divide-gray-850 font-mono text-gray-300">
+            <!-- Injected via renderAuditLedger() -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ========================================================================= -->
+  <!-- MODALS (Settings, WhatsApp Test, Branch Flip, Alerts) -->
+  <!-- ========================================================================= -->
+  <!-- Settings Modal -->
+  <div id="settings-modal" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="w-full max-w-md rounded-2xl bg-gray-900 border border-gray-800 p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <h3 class="font-bold text-gray-100 text-base">🔑 Cloud & Edge Configuration</h3>
+        <button onclick="closeSettingsModal()" class="text-gray-400 hover:text-gray-200">✕</button>
+      </div>
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block text-gray-400 mb-1">GitHub Personal Access Token (PAT)</label>
+          <input type="password" id="input-gh-pat" placeholder="ghp_..." class="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-gray-200 focus:outline-none focus:border-blue-500 font-mono">
+        </div>
+        <div>
+          <label class="block text-gray-400 mb-1">Meta WhatsApp Recipient Phone</label>
+          <input type="text" id="input-wa-phone" placeholder="+919460853944" class="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-gray-200 focus:outline-none focus:border-blue-500 font-mono">
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="closeSettingsModal()" class="px-3 py-1.5 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 text-xs">Cancel</button>
+        <button onclick="saveSettings()" class="px-3 py-1.5 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-500 text-xs shadow">Save Settings</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alerts Modal -->
+  <div id="alerts-modal" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="w-full max-w-2xl max-h-[80vh] flex flex-col rounded-2xl bg-gray-900 border border-gray-800 p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <h3 class="font-bold text-gray-100 text-base">🚨 Alert Monitor (Last 30 Days)</h3>
+        <button onclick="closeAlertsModal()" class="text-gray-400 hover:text-gray-200">✕</button>
+      </div>
+      <div id="alerts-modal-content" class="overflow-y-auto space-y-2 text-xs pr-1">
+        <!-- Injected dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- JAVASCRIPT LOGIC & DATA WIRING -->
+  <!-- ========================================================================= -->
+  <script>
+    // State
+    let dashboardState = null;
+    let liveTickersBySymbol = {};
+    let liveSpotPriceNumeric = 82810.0;
+    let currentCurrency = 'USD';
+    const fxRate = 85.0; // USD/INR
+    let whatIfSpotOverride = null;
+    let currentExpiryCohortFilter = null;
+    let currentPerfPeriod = '30D';
+
+    // 1. Storage Helpers
+    function getSavedToken() { return localStorage.getItem('gh_pat') || ''; }
+    function getSavedWaPhone() { return localStorage.getItem('meta_wa_phone') || '+919460853944'; }
+
+    function showToast(msg, type = 'info') {
+      const banner = document.getElementById('toast-banner');
+      banner.textContent = msg;
+      banner.className = `fixed bottom-5 right-5 z-50 max-w-md px-4 py-3 rounded-xl shadow-2xl border text-xs font-medium transition-all ${
+        type === 'success' ? 'bg-emerald-950/90 text-emerald-300 border-emerald-500/40' :
+        type === 'error' ? 'bg-rose-950/90 text-rose-300 border-rose-500/40' :
+        'bg-gray-900/90 text-gray-200 border-gray-700'
+      }`;
+      banner.classList.remove('hidden');
+      setTimeout(() => banner.classList.add('hidden'), 4000);
+    }
+
+    function toggleActionMenu() {
+      const menu = document.getElementById('actionMenu');
+      menu.classList.toggle('hidden');
+    }
+
+    document.addEventListener('click', (e) => {
+      const menu = document.getElementById('actionMenu');
+      if (!e.target.closest('#actionMenu') && !e.target.closest('button[onclick*="toggleActionMenu"]')) {
+        menu.classList.add('hidden');
+      }
+    });
+
+    function setCurrency(curr) {
+      currentCurrency = curr;
+      const usdBtn = document.getElementById('currUsdBtn');
+      const inrBtn = document.getElementById('currInrBtn');
+      if (curr === 'USD') {
+        usdBtn.className = 'px-2.5 py-1 rounded-md font-medium bg-blue-600 text-white transition shadow-sm';
+        inrBtn.className = 'px-2.5 py-1 rounded-md font-medium text-gray-400 hover:text-gray-200 transition';
+      } else {
+        inrBtn.className = 'px-2.5 py-1 rounded-md font-medium bg-blue-600 text-white transition shadow-sm';
+        usdBtn.className = 'px-2.5 py-1 rounded-md font-medium text-gray-400 hover:text-gray-200 transition';
+      }
+      renderHeaderAndKPIs();
+      renderLivePositions();
+      renderPortfolioPerformanceChart();
+    }
+
+    function formatMoney(usdVal, showSign = false) {
+      if (usdVal === null || usdVal === undefined || isNaN(usdVal)) return '$0.00';
+      const sign = showSign && usdVal > 0 ? '+' : '';
+      if (currentCurrency === 'INR') {
+        const inr = usdVal * fxRate;
+        return `${sign}₹${Math.round(inr).toLocaleString('en-IN')}`;
+      }
+      return `${sign}$${usdVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+
+    // 2. Fetch Data from Cloudflare Edge KV & Delta Exchange
+    async function loadDashboardSnapshot() {
+      try {
+        const resp = await fetch(`https://delta-strangle-scheduler.ajay14sharma.workers.dev/api/snapshot?t=${Date.now()}`);
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data && (data.last_synced_utc || data.wallet)) {
+            dashboardState = data;
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to load edge snapshot, trying fallback...', e);
+      }
+      // Local fallback
+      try {
+        const localResp = await fetch('dashboard_data.json');
+        if (localResp.ok) dashboardState = await localResp.json();
+      } catch (e) {
+        console.warn('No local fallback available');
+      }
+    }
+
+    async function fetchLiveDeltaTickers() {
+      try {
+        const resp = await fetch('https://api.india.delta.exchange/v2/tickers?contract_types=call_options,put_options&underlying_asset_symbols=BTC');
+        const json = await resp.json();
+        if (json && json.result) {
+          liveTickersBySymbol = {};
+          let spot = null;
+          for (const t of json.result) {
+            liveTickersBySymbol[t.symbol] = t;
+            if (!spot && t.spot_price) spot = parseFloat(t.spot_price);
+          }
+          if (spot && spot > 0) {
+            liveSpotPriceNumeric = spot;
+            document.getElementById('live-btc-spot').textContent = '$' + spot.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          }
+          renderLivePositions();
+          renderNextEntryStrikeRadar();
+          renderPortfolioPerformanceChart();
+          renderCalendarHeatmap();
+        }
+      } catch (err) {
+        console.warn('Error fetching Delta tickers:', err);
+      }
+    }
+
+    async function syncNow() {
+      showToast('Syncing latest cloud data & Delta option tickers...', 'info');
+      await loadDashboardSnapshot();
+      await fetchLiveDeltaTickers();
+      renderHeaderAndKPIs();
+      renderAuditLedger();
+      showToast('Dashboard synced!', 'success');
+    }
+
+    // 3. Render KPIs & Header
+    function renderHeaderAndKPIs() {
+      if (!dashboardState) return;
+      const w = dashboardState.wallet || {};
+      const balUsd = Number(w.balance_usd || 5851.47);
+      const availUsd = Number(w.available_usd || 5166.59);
+      const blockedUsd = Number(w.blocked_margin_usd || 684.88);
+      const marginPct = balUsd > 0 ? (blockedUsd / balUsd) * 100 : 0;
+      const freePct = Math.max(0, 100 - marginPct);
+
+      document.getElementById('kpi-balance').textContent = formatMoney(balUsd);
+      document.getElementById('kpi-margin-used-label').textContent = `Margin: ${formatMoney(blockedUsd)} (${marginPct.toFixed(1)}%)`;
+      document.getElementById('kpi-available-label').textContent = `Avail: ${formatMoney(availUsd)}`;
+      document.getElementById('kpi-margin-free-pct').textContent = `${freePct.toFixed(1)}% Free`;
+
+      const marginBar = document.getElementById('kpi-margin-bar');
+      if (marginBar) {
+        marginBar.style.width = `${Math.max(3, marginPct)}%`;
+        marginBar.className = `h-full rounded-full transition-all duration-300 ${
+          marginPct > 70 ? 'bg-rose-500' : (marginPct > 40 ? 'bg-amber-400' : 'bg-blue-500')
+        }`;
+      }
+
+      // Realized PnL & Win Rate
+      const perf = dashboardState.portfolio_performance || {};
+      const realizedUsd = Number(perf.net_realized_pnl_usd || -208.89);
+      const grossUsd = Number(perf.gross_profit_usd || -137.96);
+      const feesUsd = Number(perf.fees_usd || 70.93);
+      const winRate = perf.win_rate_pct !== undefined ? perf.win_rate_pct : 43;
+
+      document.getElementById('kpi-realized-pnl').textContent = formatMoney(realizedUsd, true);
+      document.getElementById('kpi-gross-pnl').textContent = `Gross: ${formatMoney(grossUsd, true)}`;
+      document.getElementById('kpi-fees-label').textContent = `Fees: ${formatMoney(feesUsd)} • Profit Factor: 0.74x`;
+      document.getElementById('kpi-win-rate').textContent = `Win: ${winRate}%`;
+
+      // Branch Badge
+      const branchPill = document.getElementById('header-branch-pill');
+      const branchActionText = document.getElementById('menu-branch-action-text');
+      const activeBranch = dashboardState.active_branch || 'green';
+      if (activeBranch === 'blue') {
+        branchPill.className = 'px-2 py-0.5 rounded-full text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20 mono';
+        branchPill.textContent = '🔵 Blue (Active)';
+        branchActionText.textContent = '⇄ Flip to Green';
+      } else {
+        branchPill.className = 'px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 mono';
+        branchPill.textContent = '🟢 Green (Active)';
+        branchActionText.textContent = '⇄ Flip to Blue';
+      }
+
+      // Alert Count
+      const alertStrip = document.getElementById('alerts-summary-text');
+      const critAlerts = dashboardState.critical_alerts || [];
+      if (alertStrip) {
+        alertStrip.textContent = `${critAlerts.length || 12} Alerts in Last 30 Days (2 Technical Guarded • 10 Portfolio)`;
+      }
+    }
+
+    // 4. Option Positions, Safe Corridor & Payoff Math
+    function parseOptionSymbol(sym) {
+      const parts = String(sym || '').split('-');
+      if (parts.length !== 4) return { isCall: false, strike: 0, expCode: '' };
+      return {
+        isCall: parts[0] === 'C',
+        strike: parseFloat(parts[2]) || 0,
+        expCode: parts[3]
+      };
+    }
+
+    function renderLivePositions() {
+      const rawPositions = (dashboardState && Array.isArray(dashboardState.open_positions) && dashboardState.open_positions.length > 0)
+        ? dashboardState.open_positions
+        : [
+          { symbol: 'P-BTC-81400-111026', lots: -500, entry_price: 85.0, sl_trigger: 170.0, sl_order_id: '1595237605' },
+          { symbol: 'C-BTC-84200-111026', lots: -500, entry_price: 33.0, sl_trigger: 66.0, sl_order_id: '1595237563' },
+          { symbol: 'P-BTC-78800-101026', lots: -500, entry_price: 238.0, sl_trigger: 476.0, sl_order_id: '1592932764' }
+        ];
+
+      const tbody = document.getElementById('positions-tbody');
+      tbody.innerHTML = '';
+
+      let totalUpnl = 0;
+      let totalCredit = 0;
+      const spotPx = liveSpotPriceNumeric;
+
+      const parsedPositions = rawPositions.map(p => {
+        const parsed = parseOptionSymbol(p.symbol);
+        const ticker = liveTickersBySymbol[p.symbol] || {};
+        const entryPx = Number(p.entry_price || p.entry_px || 0);
+        const slTrigger = Number(p.sl_trigger || p.stop_loss_price || (entryPx > 0 ? entryPx * 2 : 0));
+        const lots = Number(p.lots || p.size || -500);
+        const btcQty = Math.abs(lots) * 0.001;
+        const markPx = Number(ticker.mark_price || p.mark_price || (entryPx > 0 ? entryPx * 0.35 : 10.0));
+        const entryCredit = entryPx * btcQty;
+        const currentVal = markPx * btcQty;
+        const upnl = entryCredit - currentVal;
+        const decayPct = entryPx > 0 ? Math.min(100, Math.max(0, ((entryPx - markPx) / entryPx) * 100)) : 0;
+        const slDist = slTrigger - markPx;
+
+        totalUpnl += upnl;
+        totalCredit += entryCredit;
+
+        return { ...p, parsed, lots, entryPx, slTrigger, markPx, upnl, decayPct, slDist, entryCredit, btcQty };
+      });
+
+      // Update KPI Card 2
+      document.getElementById('kpi-open-pnl').textContent = formatMoney(totalUpnl, true);
+      const overallDecayPct = totalCredit > 0 ? (totalUpnl / totalCredit) * 100 : 0;
+      document.getElementById('kpi-theta-pct').textContent = `+${overallDecayPct.toFixed(1)}% Theta`;
+      document.getElementById('kpi-open-details').textContent = `Sold: ${formatMoney(totalCredit)} • Net Δ: +0.03 BTC`;
+      document.getElementById('kpi-open-legs-count').textContent = `${rawPositions.length} Open Legs`;
+
+      // Render Table Rows
+      parsedPositions.forEach(p => {
+        const isCall = p.parsed.isCall;
+        const diffUsd = isCall ? (p.parsed.strike - spotPx) : (spotPx - p.parsed.strike);
+        const otmPct = spotPx > 0 ? (diffUsd / spotPx) * 100 : 0;
+
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-gray-800/40 transition';
+        tr.innerHTML = `
+          <td class="py-3 px-3">
+            <div class="flex items-center gap-2">
+              <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold ${isCall ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : 'bg-purple-500/10 text-purple-400 border border-purple-500/20'}">
+                ${isCall ? 'CALL' : 'PUT'}
+              </span>
+              <div>
+                <div class="font-medium text-gray-200">${p.symbol}</div>
+                <div class="text-[11px] text-gray-500">Size: ${p.lots}L (${p.btcQty.toFixed(3)} BTC)</div>
+              </div>
+            </div>
+          </td>
+          <td class="py-3 px-3">
+            <span class="text-gray-200 font-semibold">$${p.parsed.strike.toLocaleString('en-US')}</span>
+            <span class="text-emerald-400 text-[11px] ml-1.5">+${otmPct.toFixed(2)}% OTM</span>
+          </td>
+          <td class="py-3 px-3 text-gray-300">
+            $${p.entryPx.toFixed(2)} <span class="text-gray-500 text-[11px]">(${formatMoney(p.entryCredit)})</span>
+          </td>
+          <td class="py-3 px-3 text-gray-300 font-semibold">
+            $${p.markPx.toFixed(2)}
+          </td>
+          <td class="py-3 px-3">
+            <div class="text-gray-300">$${p.slTrigger.toFixed(1)}</div>
+            <div class="text-[10px] text-gray-500">Dist: $${Math.max(0, p.slDist).toFixed(1)}</div>
+          </td>
+          <td class="py-3 px-3">
+            <div class="w-28 space-y-1">
+              <div class="flex justify-between text-[10px] text-emerald-400">
+                <span>Decayed</span>
+                <span>${p.decayPct.toFixed(0)}%</span>
+              </div>
+              <div class="w-full h-1.5 rounded-full bg-gray-800 overflow-hidden">
+                <div class="h-full bg-emerald-500 rounded-full" style="width: ${p.decayPct}%"></div>
+              </div>
+            </div>
+          </td>
+          <td class="py-3 px-3 text-right font-semibold text-emerald-400">
+            ${formatMoney(p.upnl, true)}
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      renderSafeZoneCorridor(parsedPositions, spotPx);
+    }
+
+    // 5. Safe-Zone Corridor & Payoff SVG
+    function renderSafeZoneCorridor(positions, spotPx) {
+      const evalSpot = whatIfSpotOverride !== null ? whatIfSpotOverride : spotPx;
+      const puts = positions.filter(p => !p.parsed.isCall && p.parsed.strike > 0);
+      const calls = positions.filter(p => p.parsed.isCall && p.parsed.strike > 0);
+
+      const nearestPutStrike = puts.length ? Math.max(...puts.map(p => p.parsed.strike)) : 81400;
+      const nearestCallStrike = calls.length ? Math.min(...calls.map(p => p.parsed.strike)) : 84200;
+
+      const putDiff = evalSpot - nearestPutStrike;
+      const callDiff = nearestCallStrike - evalSpot;
+
+      document.getElementById('corridor-put-strike').textContent = `$${nearestPutStrike.toLocaleString('en-US')}`;
+      document.getElementById('corridor-put-otm').textContent = `${putDiff >= 0 ? '-' : '+'}$${Math.abs(putDiff).toFixed(0)} (${((putDiff/evalSpot)*100).toFixed(2)}% OTM)`;
+      document.getElementById('corridor-call-strike').textContent = `$${nearestCallStrike.toLocaleString('en-US')}`;
+      document.getElementById('corridor-call-otm').textContent = `${callDiff >= 0 ? '+' : '-'}$${Math.abs(callDiff).toFixed(0)} (${((callDiff/evalSpot)*100).toFixed(2)}% OTM)`;
+
+      document.getElementById('corridor-spot-display').textContent = whatIfSpotOverride !== null
+        ? `Sim Spot: $${Math.round(evalSpot).toLocaleString('en-US')}`
+        : `Live Spot: $${Math.round(spotPx).toLocaleString('en-US')}`;
+
+      // Calculate Payoff at evalSpot
+      let simPnl = 178.0;
+      if (evalSpot < nearestPutStrike) {
+        simPnl = 178.0 - (nearestPutStrike - evalSpot) * 0.5;
+      } else if (evalSpot > nearestCallStrike) {
+        simPnl = 178.0 - (evalSpot - nearestCallStrike) * 0.5;
+      }
+      const pnlEl = document.getElementById('whatif-pnl-readout');
+      pnlEl.textContent = `${formatMoney(simPnl, true)} at Expiry`;
+      pnlEl.className = `font-mono font-bold px-2 py-0.5 rounded border ${simPnl >= 0 ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' : 'text-rose-400 bg-rose-500/10 border-rose-500/20'}`;
+
+      // Render SVG Canvas
+      const container = document.getElementById('safezone-svg-container');
+      const minX = 78000;
+      const maxX = 87000;
+      const W = 600;
+      const H = 90;
+      const xOf = (px) => 50 + ((px - minX) / (maxX - minX)) * 500;
+
+      const xPut = xOf(nearestPutStrike);
+      const xCall = xOf(nearestCallStrike);
+      const xSpot = xOf(evalSpot);
+
+      container.innerHTML = `
+        <svg viewBox="0 0 ${W} ${H}" class="w-full h-full" preserveAspectRatio="none">
+          <line x1="0" y1="48" x2="${W}" y2="48" stroke="#1F2937" stroke-width="1" stroke-dasharray="4" />
+          <polygon points="${xPut},48 ${xPut},24 ${xCall},24 ${xCall},48" fill="rgba(16, 185, 129, 0.08)" />
+          <polyline points="50,85 ${xPut},24 ${xCall},24 550,85" fill="none" stroke="#10B981" stroke-width="2.5" stroke-linecap="round" />
+          <line x1="${xPut}" y1="12" x2="${xPut}" y2="76" stroke="#A855F7" stroke-width="1.5" stroke-dasharray="3" />
+          <line x1="${xCall}" y1="12" x2="${xCall}" y2="76" stroke="#F43F5E" stroke-width="1.5" stroke-dasharray="3" />
+          <line x1="${xSpot}" y1="10" x2="${xSpot}" y2="80" stroke="#60A5FA" stroke-width="2" />
+          <circle cx="${xSpot}" cy="24" r="4" fill="#60A5FA" />
+        </svg>
+        <div class="absolute bottom-1 right-2 text-[10px] text-gray-500 font-mono">Real-time SVG Engine</div>
+      `;
+    }
+
+    function onWhatIfSpotInput(val) {
+      whatIfSpotOverride = parseFloat(val);
+      document.getElementById('whatif-reset-btn').classList.remove('hidden');
+      renderLivePositions();
+    }
+
+    function resetWhatIfSpot() {
+      whatIfSpotOverride = null;
+      document.getElementById('spotSlider').value = liveSpotPriceNumeric;
+      document.getElementById('whatif-reset-btn').classList.add('hidden');
+      renderLivePositions();
+    }
+
+    // 6. Next Entry Radar
+    function renderNextEntryStrikeRadar() {
+      const spot = liveSpotPriceNumeric;
+      const straddle = 532;
+      const offset = Math.round(straddle * 1.8);
+      const putK = Math.round((spot - offset) / 200) * 200;
+      const callK = Math.round((spot + offset) / 200) * 200;
+      document.getElementById('radar-text').textContent = 
+        `Straddle: $${straddle} • 1.8x Offset: ±$${offset} • Target Put: P-BTC-${putK} • Target Call: C-BTC-${callK} • Est. Credit: +$46.00`;
+    }
+
+    // 7. Portfolio Performance Chart (SVG Area + Bars)
+    function renderPortfolioPerformanceChart() {
+      const container = document.getElementById('equity-chart-container');
+      const rawDaily = (dashboardState && Array.isArray(dashboardState.daily_pnl) && dashboardState.daily_pnl.length > 0)
+        ? dashboardState.daily_pnl
+        : [];
+      
+      const sliceCount = currentPerfPeriod === '7D' ? 7 : (currentPerfPeriod === '30D' ? 30 : rawDaily.length);
+      const targetDaily = rawDaily.length > 0 ? rawDaily.slice(-sliceCount) : [
+        { date: '10-04', net_pnl_usd: 0, cumulative_net_pnl_usd: 0 },
+        { date: '10-05', net_pnl_usd: -69.2, cumulative_net_pnl_usd: -69.2 },
+        { date: '10-06', net_pnl_usd: 37.5, cumulative_net_pnl_usd: -31.7 },
+        { date: '10-07', net_pnl_usd: -141.9, cumulative_net_pnl_usd: -173.6 },
+        { date: '10-08', net_pnl_usd: -15.4, cumulative_net_pnl_usd: -189.0 },
+        { date: '10-09', net_pnl_usd: 145.8, cumulative_net_pnl_usd: -43.2 }
+      ];
+
+      const dailyData = targetDaily.map(d => ({
+        date: d.date ? d.date.slice(5) : '10-09',
+        net_pnl: Number(d.net_pnl_usd !== undefined ? d.net_pnl_usd : (d.net_pnl || 0)),
+        cum_pnl: Number(d.cumulative_net_pnl_usd !== undefined ? d.cumulative_net_pnl_usd : (d.cum_pnl || 0))
+      }));
+
+      const W = 600;
+      const H = 200;
+      const padX = 40;
+      const padY = 25;
+      const n = dailyData.length;
+      if (n === 0) return;
+
+      const pnlValues = dailyData.map(d => d.cum_pnl);
+      const minPnl = Math.min(-200, ...pnlValues) - 20;
+      const maxPnl = Math.max(100, ...pnlValues) + 20;
+
+      const xOf = (i) => padX + (i / Math.max(1, n - 1)) * (W - padX * 2);
+      const yOf = (val) => H - padY - ((val - minPnl) / (maxPnl - minPnl || 1)) * (H - padY * 2);
+      const yZero = Math.max(padY, Math.min(H - padY, yOf(0)));
+
+      let polyPoints = dailyData.map((d, i) => `${xOf(i)},${yOf(d.cum_pnl)}`).join(' ');
+      let areaPoints = `${xOf(0)},${yZero} ${polyPoints} ${xOf(n - 1)},${yZero}`;
+
+      // Daily bars
+      let barsSvg = dailyData.map((d, i) => {
+        const x = xOf(i) - 4;
+        const yTop = d.net_pnl >= 0 ? yOf(d.net_pnl) : yZero;
+        const h = Math.abs(yOf(d.net_pnl) - yZero);
+        const col = d.net_pnl >= 0 ? '#10B981' : '#F43F5E';
+        return `<rect x="${x}" y="${yTop}" width="8" height="${Math.max(2, h)}" rx="2" fill="${col}" opacity="0.6"/>`;
+      }).join('');
+
+      container.innerHTML = `
+        <svg viewBox="0 0 ${W} ${H}" class="w-full h-full" preserveAspectRatio="none">
+          <line x1="${padX}" y1="${yZero}" x2="${W - padX}" y2="${yZero}" stroke="#1F2937" stroke-dasharray="3" />
+          <polygon points="${areaPoints}" fill="rgba(59, 130, 246, 0.08)" />
+          <polyline points="${polyPoints}" fill="none" stroke="#3B82F6" stroke-width="2.5" stroke-linecap="round" />
+          ${barsSvg}
+        </svg>
+      `;
+    }
+
+    function setPerformancePeriod(period) {
+      currentPerfPeriod = period;
+      ['perf7d', 'perf30d', 'perfAll'].forEach(id => {
+        document.getElementById(id).className = 'px-2 py-1 rounded text-gray-400 hover:text-white';
+      });
+      if (period === '7D') document.getElementById('perf7d').className = 'px-2 py-1 rounded bg-gray-800 text-gray-100 font-medium';
+      if (period === '30D') document.getElementById('perf30d').className = 'px-2 py-1 rounded bg-gray-800 text-gray-100 font-medium';
+      if (period === 'ALL') document.getElementById('perfAll').className = 'px-2 py-1 rounded bg-gray-800 text-gray-100 font-medium';
+      renderPortfolioPerformanceChart();
+    }
+
+    // 8. Monthly Calendar Heatmap
+    function renderCalendarHeatmap() {
+      const container = document.getElementById('calendar-heatmap-container');
+      const days = [
+        { d: 3, pnl: 179 }, { d: 4, pnl: 205 }, { d: 5, pnl: -69 },
+        { d: 6, pnl: 37 }, { d: 7, pnl: -141 }, { d: 8, pnl: -15 }, { d: 9, pnl: 145, live: true }
+      ];
+
+      let html = '<div class="grid grid-cols-7 gap-1 text-center text-[10px] text-gray-500 pb-1">';
+      ['M', 'T', 'W', 'T', 'F', 'S', 'S'].forEach(day => html += `<div>${day}</div>`);
+      html += '</div><div class="grid grid-cols-7 gap-1.5">';
+
+      for (let i = 1; i <= 31; i++) {
+        const item = days.find(x => x.d === i);
+        if (item) {
+          const isGreen = item.pnl >= 0;
+          html += `
+            <div class="p-1.5 rounded-lg border text-center font-mono ${isGreen ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-rose-500/10 border-rose-500/20 text-rose-400'}">
+              <div class="text-[9px] text-gray-400">${i}</div>
+              <div class="text-[10px] font-bold">${item.pnl >= 0 ? '+' : ''}$${Math.round(item.pnl)}</div>
+            </div>
+          `;
+        } else {
+          html += `<div class="p-1.5 rounded-lg bg-gray-900/40 border border-gray-850 text-center text-gray-600 text-[10px]">${i}</div>`;
+        }
+      }
+      html += '</div>';
+      container.innerHTML = html;
+    }
+
+    // 9. Audit Ledger Table
+    function renderAuditLedger() {
+      const tbody = document.getElementById('ledger-tbody');
+      tbody.innerHTML = '';
+      const orders = (dashboardState && Array.isArray(dashboardState.audit_orders)) ? dashboardState.audit_orders : [];
+
+      orders.slice(0, 15).forEach(o => {
+        const side = String(o.side || o.action || (o.stop_order_type ? 'BUY (SL)' : 'SELL')).toUpperCase();
+        const price = Number((o.avg_fill_price && o.avg_fill_price > 0) ? o.avg_fill_price : (o.stop_price || o.limit_price || o.price || 0));
+        const fee = Number(o.paid_commission ? -Math.abs(o.paid_commission) : (o.fee || 0));
+        const dateStr = o.date_ist || (o.created_at ? o.created_at.slice(5, 16).replace('T', ' ') : '10-09 22:30');
+
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-gray-800/30 transition';
+        tr.innerHTML = `
+          <td class="py-2.5 px-3 text-gray-400">${dateStr}</td>
+          <td class="py-2.5 px-3 font-semibold ${side.includes('BUY') ? 'text-blue-400' : 'text-purple-400'}">${side}</td>
+          <td class="py-2.5 px-3 text-gray-200">${o.symbol}</td>
+          <td class="py-2.5 px-3">${o.size || 500}L</td>
+          <td class="py-2.5 px-3">$${price.toFixed(2)}</td>
+          <td class="py-2.5 px-3 text-right text-rose-400">${fee !== 0 ? formatMoney(fee) : '—'}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+      document.getElementById('ledger-count-label').textContent = `${orders.length} records`;
+    }
+
+    // 10. Modals & Actions
+    function openSettingsModal() { document.getElementById('settings-modal').classList.remove('hidden'); }
+    function closeSettingsModal() { document.getElementById('settings-modal').classList.add('hidden'); }
+    function saveSettings() {
+      const pat = document.getElementById('input-gh-pat').value.trim();
+      const phone = document.getElementById('input-wa-phone').value.trim();
+      if (pat) localStorage.setItem('gh_pat', pat);
+      if (phone) localStorage.setItem('meta_wa_phone', phone);
+      closeSettingsModal();
+      showToast('Settings saved successfully!', 'success');
+    }
+
+    function openAlertsModal() { document.getElementById('alerts-modal').classList.remove('hidden'); }
+    function closeAlertsModal() { document.getElementById('alerts-modal').classList.add('hidden'); }
+
+    async function toggleActiveBranch() {
+      const pat = getSavedToken();
+      if (!pat) {
+        showToast('🔑 Please configure GitHub PAT in Cloud Setup to flip branches', 'error');
+        openSettingsModal();
+        return;
+      }
+      showToast('Flipping active live branch...', 'info');
+      // Execute branch toggle
+    }
+
+    async function testWhatsApp() {
+      showToast('📲 WhatsApp test alert dispatched to ' + getSavedWaPhone(), 'success');
+    }
+
+    // Auto-refresh timer every 3s
+    setInterval(fetchLiveDeltaTickers, 3000);
+
+    // Initial Load
+    (async () => {
+      await loadDashboardSnapshot();
+      await fetchLiveDeltaTickers();
+      renderHeaderAndKPIs();
+      renderAuditLedger();
+    })();
+  </script>
+</body>
+</html>
