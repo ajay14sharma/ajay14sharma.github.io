@@ -1,0 +1,2718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Delta Multi-Strategy Bot — Advanced Derivatives Dashboard (v3)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              bg: '#0B0F17',
+              surface: '#111827',
+              border: '#1F2937',
+              muted: '#9CA3AF'
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    body {
+      background-color: #0B0F17;
+      color: #F3F4F6;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    }
+    .custom-range {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 6px;
+      border-radius: 9999px;
+      background: #1F2937;
+      outline: none;
+    }
+    .custom-range::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #3B82F6;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+      transition: transform 0.1s;
+    }
+    .custom-range::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+    }
+    .fade-in {
+      animation: fadeIn 0.2s ease-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0B0F17; }
+    ::-webkit-scrollbar-thumb { background: #1F2937; border-radius: 3px; }
+  </style>
+</head>
+<body class="min-h-screen pb-16 antialiased text-sm">
+
+  <!-- ========================================================================= -->
+  <!-- 1. STREAMLINED UNIFIED HEADER -->
+  <!-- ========================================================================= -->
+  <header class="border-b border-[#1F2937] bg-[#111827]/90 sticky top-0 z-40 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
+      
+      <!-- Brand & Strategy Info -->
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-base shadow-sm">
+          Δ
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 id="header-strategy-title" class="text-base font-bold text-gray-100 tracking-tight">Delta Multi-Strategy Bot</h1>
+            <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Live
+            </span>
+            <button id="header-branch-pill" onclick="toggleActiveBranch()" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 mono transition flex items-center gap-1 cursor-pointer shadow-sm" title="Click to flip active live branch">
+              <span id="header-branch-dot" class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span id="header-branch-text">🟢 Green (Active)</span>
+              <span class="text-[10px] text-gray-400 ml-0.5">⇄</span>
+            </button>
+          </div>
+          <p class="text-xs text-gray-400 hidden sm:block">
+            Delta Exchange India • Multi-Strategy Options Engine • 2x SL Brackets
+          </p>
+        </div>
+      </div>
+
+      <!-- Controls Hub: Live Spot, Currency Switcher, Actions Dropdown, Classic Toggle -->
+      <div class="flex items-center gap-2.5 sm:gap-3 flex-wrap">
+        
+        <!-- Live Spot Ticker: BTC & ETH -->
+        <div class="px-3 py-1.5 rounded-lg bg-gray-800/60 border border-gray-700/60 flex items-center gap-3">
+          <div class="text-right">
+            <div class="text-[9px] uppercase tracking-wider text-amber-400 font-semibold">BTC Spot</div>
+            <div id="live-btc-spot" class="text-xs sm:text-sm font-bold text-gray-100 mono">$--,--</div>
+          </div>
+          <div class="border-l border-gray-700/80 pl-3 text-right">
+            <div class="text-[9px] uppercase tracking-wider text-purple-400 font-semibold">ETH Spot</div>
+            <div id="live-eth-spot" class="text-xs sm:text-sm font-bold text-gray-100 mono">$--,--</div>
+          </div>
+        </div>
+
+        <!-- Global Currency Toggle -->
+        <div class="inline-flex rounded-lg bg-gray-800/80 p-0.5 border border-gray-700 text-xs">
+          <button id="currUsdBtn" onclick="setCurrency('USD')" class="px-2.5 py-1 rounded-md font-medium bg-blue-600 text-white transition shadow-sm">USD</button>
+          <button id="currInrBtn" onclick="setCurrency('INR')" class="px-2.5 py-1 rounded-md font-medium text-gray-400 hover:text-gray-200 transition">INR</button>
+        </div>
+
+        <!-- Single Unified Actions Hub Menu -->
+        <div class="relative">
+          <button onclick="toggleActionMenu()" class="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700/80 text-gray-200 text-xs font-medium border border-gray-700 transition">
+            <span>⚙️ Controls</span>
+            <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+          </button>
+          <div id="actionMenu" class="hidden absolute right-0 mt-2 w-64 rounded-xl bg-gray-900 border border-gray-700 shadow-2xl py-2 z-50 fade-in text-xs divide-y divide-gray-800">
+            <div class="px-3 py-1.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+              Quick Orchestrator
+            </div>
+            <div class="py-1">
+              <button onclick="toggleActiveBranch(); toggleActionMenu();" class="w-full text-left px-3 py-2 hover:bg-gray-800 text-gray-200 flex items-center justify-between">
+                <span id="menu-branch-action-text">⇄ Flip Active Branch</span>
+                <span class="text-[10px] text-gray-400 mono">Dual-Main</span>
+              </button>
+              <button onclick="testWhatsApp(); toggleActionMenu();" class="w-full text-left px-3 py-2 hover:bg-gray-800 text-gray-200 flex items-center justify-between">
+                <span>📲 Test WhatsApp Alert</span>
+                <span class="text-[10px] text-emerald-400 font-medium">Meta API</span>
+              </button>
+              <button onclick="pingCloudflareWorkerHealth(); toggleActionMenu();" class="w-full text-left px-3 py-2 hover:bg-gray-800 text-gray-200 flex items-center justify-between">
+                <span>📡 Ping Worker Health</span>
+                <span class="text-[10px] text-blue-400" id="cf-menu-status">Edge KV</span>
+              </button>
+              <button onclick="openSettingsModal(); toggleActionMenu();" class="w-full text-left px-3 py-2 hover:bg-gray-800 text-gray-200 flex items-center justify-between">
+                <span>🔑 Cloud & Edge Setup</span>
+                <span class="text-[10px] text-gray-500">Tokens</span>
+              </button>
+            </div>
+            <div class="py-1">
+              <button onclick="syncNow(); toggleActionMenu();" class="w-full text-left px-3 py-2 hover:bg-gray-800 text-blue-400 font-semibold flex items-center justify-between">
+                <span>🔄 Force Sync Snapshot</span>
+                <span class="text-[10px] text-gray-400">Read KV</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dashboard Version Switchers -->
+        <div class="flex items-center gap-1 bg-gray-800/80 p-0.5 rounded-lg border border-gray-700 text-xs">
+          <a href="index.html" class="px-2 py-1 rounded-md font-medium text-gray-400 hover:text-gray-200 transition" title="Classic Dashboard (v1)">v1 Classic</a>
+          <a href="v2.html" class="px-2 py-1 rounded-md font-medium text-gray-400 hover:text-gray-200 transition" title="Modern Dashboard (v2)">v2 Modern</a>
+          <span class="px-2 py-1 rounded-md font-bold bg-indigo-600 text-white shadow-sm" title="Multi-Strategy Dashboard (v3)">v3 Multi</span>
+        </div>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- Toast Notification -->
+  <div id="toast-banner" class="hidden fixed bottom-5 right-5 z-50 max-w-md px-4 py-3 rounded-xl shadow-2xl border text-xs font-medium transition-all"></div>
+
+  <!-- ========================================================================= -->
+  <!-- MAIN DASHBOARD CONTENT -->
+  <!-- ========================================================================= -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 pt-5 space-y-5">
+
+    <!-- 1. Strategy Switcher Pill Bar -->
+    <div class="flex items-center justify-between gap-3 flex-wrap bg-gray-900/90 border border-gray-800 rounded-xl p-2 sm:p-2.5">
+      <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap" id="strategy-pill-group">
+        <button onclick="setStrategyTab('all')" id="strat-pill-all" class="strat-pill px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 text-white shadow-sm transition">
+          🌐 All Strategies
+        </button>
+        <button onclick="setStrategyTab('btc_1dte')" id="strat-pill-btc_1dte" class="strat-pill px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700/60 transition">
+          ₿ BTC 1DTE Strangle
+        </button>
+        <button onclick="setStrategyTab('eth_1dte')" id="strat-pill-eth_1dte" class="strat-pill px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700/60 transition">
+          ⟠ ETH 1DTE Strangle
+        </button>
+        <button onclick="setStrategyTab('btc_condor')" id="strat-pill-btc_condor" class="strat-pill px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700/60 transition">
+          🛡️ BTC Iron Condor
+        </button>
+        <button onclick="setStrategyTab('btc_0dte')" id="strat-pill-btc_0dte" class="strat-pill px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700/60 transition">
+          ⚡ BTC 0DTE Intraday
+        </button>
+      </div>
+      <div class="hidden sm:flex items-center gap-2 text-xs text-gray-400">
+        <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span id="active-strategy-desc" class="font-mono text-[11px] text-gray-400">Aggregated Portfolio (BTC &amp; ETH)</span>
+      </div>
+    </div>
+
+    <!-- 1b. Selected Strategy Description & Parameter Specifications Card -->
+    <div id="strategy-detail-card" class="p-3.5 sm:p-4 rounded-xl bg-gray-900/80 border border-gray-800 transition-all space-y-2.5">
+      <div class="flex items-start sm:items-center justify-between gap-2 flex-col sm:flex-row">
+        <div class="flex items-center gap-2.5">
+          <span id="strat-card-icon" class="text-xl sm:text-2xl">🌐</span>
+          <div>
+            <h2 id="strat-card-title" class="text-xs sm:text-sm font-bold text-gray-100 flex items-center gap-2">
+              All Strategies (Unified Portfolio)
+            </h2>
+            <div id="strat-card-tagline" class="text-[11px] text-gray-400">
+              Aggregated view of all open algorithmic positions across BTC and ETH derivatives.
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap text-[10px] mono">
+          <span id="strat-card-status-badge" class="px-2 py-0.5 rounded font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+            Unified Portfolio
+          </span>
+          <span id="strat-card-risk-badge" class="px-2 py-0.5 rounded font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            2.0x SL Active
+          </span>
+        </div>
+      </div>
+      
+      <!-- Key Parameters Grid -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 pt-1 border-t border-gray-800/80 text-[11px]">
+        <div class="p-2 rounded-lg bg-gray-950/60 border border-gray-800/60">
+          <div class="text-[9px] uppercase tracking-wider text-gray-500 font-medium">Underlying Asset</div>
+          <div id="strat-param-underlying" class="font-bold text-gray-200 mono">BTC &amp; ETH</div>
+        </div>
+        <div class="p-2 rounded-lg bg-gray-950/60 border border-gray-800/60">
+          <div class="text-[9px] uppercase tracking-wider text-gray-500 font-medium">Entry Schedule</div>
+          <div id="strat-param-entry" class="font-bold text-gray-200 mono">10:30 PM &amp; 9:30 AM</div>
+        </div>
+        <div class="p-2 rounded-lg bg-gray-950/60 border border-gray-800/60">
+          <div class="text-[9px] uppercase tracking-wider text-gray-500 font-medium">Target Expiry</div>
+          <div id="strat-param-expiry" class="font-bold text-gray-200 mono">T+2 &amp; T+0 Expiring</div>
+        </div>
+        <div class="p-2 rounded-lg bg-gray-950/60 border border-gray-800/60">
+          <div class="text-[9px] uppercase tracking-wider text-gray-500 font-medium">Risk Control</div>
+          <div id="strat-param-risk" class="font-bold text-emerald-400 mono">2.0x SL &amp; Wings</div>
+        </div>
+        <div class="p-2 rounded-lg bg-gray-950/60 border border-gray-800/60">
+          <div class="text-[9px] uppercase tracking-wider text-gray-500 font-medium">Default Sizing</div>
+          <div id="strat-param-size" class="font-bold text-gray-200 mono">500L BTC / 250L ETH</div>
+        </div>
+        <div class="p-2 rounded-lg bg-gray-950/60 border border-gray-800/60">
+          <div class="text-[9px] uppercase tracking-wider text-gray-500 font-medium">Strike Selection</div>
+          <div id="strat-param-strikes" class="font-bold text-gray-200 mono">1.8x Straddle Move</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top Alert Notification Bar -->
+    <div id="alert-banner-strip" class="p-3 rounded-xl bg-gray-900 border border-gray-800 flex items-center justify-between gap-3 text-xs">
+      <div class="flex items-center gap-2">
+        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20 uppercase tracking-wider">
+          Last 30D Monitor
+        </span>
+        <span id="alerts-summary-text" class="text-gray-300">
+          Scanning recent Technical & Portfolio events...
+        </span>
+      </div>
+      <button onclick="openAlertsModal()" class="px-2.5 py-1 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 transition font-medium">
+        View All Alerts ↗
+      </button>
+    </div>
+
+    <!-- 2. HIGH-IMPACT 4 HERO METRIC CARDS -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      
+      <!-- Card 1: Wallet Equity & Margin Utilization -->
+      <div class="p-4 rounded-xl bg-[#111827] border border-[#1F2937] space-y-2">
+        <div class="flex items-center justify-between text-xs text-gray-400">
+          <span>Wallet Equity</span>
+          <span id="kpi-margin-free-pct" class="text-gray-400 font-mono text-[11px]">88.3% Free</span>
+        </div>
+        <div id="kpi-balance" class="text-xl font-bold font-mono text-gray-100">$5,851.47</div>
+        <div class="space-y-1">
+          <div class="w-full h-1.5 rounded-full bg-gray-800 overflow-hidden">
+            <div id="kpi-margin-bar" class="h-full bg-blue-500 rounded-full transition-all duration-300" style="width: 11.7%"></div>
+          </div>
+          <div class="flex justify-between text-[11px] text-gray-400">
+            <span id="kpi-margin-used-label">Margin: $684.88 (11.7%)</span>
+            <span id="kpi-available-label">Avail: $5,166.59</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 2: Live Unrealized P&L -->
+      <div class="p-4 rounded-xl bg-[#111827] border border-[#1F2937] space-y-2">
+        <div class="flex items-center justify-between text-xs text-gray-400">
+          <span>Live Open P&L</span>
+          <span id="kpi-open-legs-count" class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">3 Open Legs</span>
+        </div>
+        <div class="flex items-baseline gap-2">
+          <div id="kpi-open-pnl" class="text-xl font-bold font-mono text-emerald-400">+$145.89</div>
+          <span id="kpi-theta-pct" class="text-xs font-semibold text-emerald-400">+82.0% Theta</span>
+        </div>
+        <p id="kpi-open-details" class="text-[11px] text-gray-400">Sold: $178.00 • Net Δ: +0.03 BTC</p>
+      </div>
+
+      <!-- Card 3: Realized Period P&L -->
+      <div class="p-4 rounded-xl bg-[#111827] border border-[#1F2937] space-y-2">
+        <div class="flex items-center justify-between text-xs text-gray-400">
+          <span>Period Realized P&L</span>
+          <span id="kpi-win-rate" class="text-gray-400 text-xs font-mono">Win: 43%</span>
+        </div>
+        <div class="flex items-baseline gap-2">
+          <div id="kpi-realized-pnl" class="text-xl font-bold font-mono text-rose-400">-$208.89</div>
+          <span id="kpi-gross-pnl" class="text-xs text-gray-400 font-mono">Gross: -$137.96</span>
+        </div>
+        <p id="kpi-fees-label" class="text-[11px] text-gray-400">Fees: $70.93 • Profit Factor: 0.74x</p>
+      </div>
+
+      <!-- Card 4: Next Scheduled Milestone -->
+      <div class="p-4 rounded-xl bg-[#111827] border border-[#1F2937] space-y-2">
+        <div class="flex items-center justify-between text-xs text-gray-400">
+          <span>Next Bot Milestone</span>
+          <span class="text-xs font-medium text-amber-400">Daily Cycle</span>
+        </div>
+        <div id="kpi-countdown-timer" class="text-xl font-bold font-mono text-gray-100">0h 28m</div>
+        <div class="flex justify-between items-center text-[11px] text-gray-400">
+          <span id="kpi-settle-sub">🏁 5:30 PM Settle</span>
+          <span>⚡ 10:30 PM Entry</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 3. INTERACTIVE SAFE-ZONE CORRIDOR & WHAT-IF SIMULATOR -->
+    <div class="p-5 rounded-xl bg-[#111827] border border-[#1F2937] space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div>
+          <h2 class="font-semibold text-gray-100 text-sm flex items-center gap-2">
+            <span>🛡️ Safe-Zone Corridor & Payoff Simulation</span>
+            <span class="text-xs font-normal text-gray-400">Live 2x SL Mark Bands</span>
+          </h2>
+          <p class="text-xs text-gray-400 mt-0.5">Drag slider or hover chart to inspect Spot movement, Live (T+0) curve vs Expiry tent, and 2x SL cushion.</p>
+        </div>
+        <div class="flex items-center gap-2 text-xs">
+          <span class="text-gray-400">Simulated P&L:</span>
+          <span id="whatif-pnl-readout" class="font-mono font-bold text-emerald-400 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">+$59.00 at Expiry</span>
+          <button id="whatif-reset-btn" onclick="resetWhatIfSpot()" class="hidden px-2 py-0.5 rounded bg-gray-800 text-gray-300 hover:text-white border border-gray-700 text-[11px]">
+            Reset Spot
+          </button>
+        </div>
+      </div>
+
+      <!-- Scenario Simulation Controls & Snap Shortcuts -->
+      <div class="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-lg bg-gray-900/60 border border-gray-800 text-xs">
+        <!-- Snap shortcuts -->
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <span class="text-[11px] text-gray-400 font-semibold mr-1">🎯 Snap Spot:</span>
+          <button onclick="snapSpotTo('live')" class="px-2 py-0.5 rounded bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/40 text-[11px] font-mono">Live Spot</button>
+          <button onclick="snapSpotTo('put')" class="px-2 py-0.5 rounded bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/40 text-[11px] font-mono">Put Strike</button>
+          <button onclick="snapSpotTo('call')" class="px-2 py-0.5 rounded bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/40 text-[11px] font-mono">Call Strike</button>
+          <button onclick="snapSpotTo('lowerBe')" class="px-2 py-0.5 rounded bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 text-[11px] font-mono">Lower BE</button>
+          <button onclick="snapSpotTo('upperBe')" class="px-2 py-0.5 rounded bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/40 text-[11px] font-mono">Upper BE</button>
+        </div>
+
+        <!-- Time Decay Scenario & IV Shock -->
+        <div class="flex items-center gap-2 flex-wrap">
+          <div class="flex items-center gap-1 bg-gray-950 p-0.5 rounded-md border border-gray-800 text-[11px]">
+            <span class="text-gray-500 px-1.5">⏳ Time:</span>
+            <button id="btn-decay-live" onclick="setTimeDecayScenario(null)" class="px-2 py-0.5 rounded bg-blue-600 text-white font-semibold">Live</button>
+            <button id="btn-decay-12h" onclick="setTimeDecayScenario(12)" class="px-2 py-0.5 rounded text-gray-400 hover:text-white">12h</button>
+            <button id="btn-decay-6h" onclick="setTimeDecayScenario(6)" class="px-2 py-0.5 rounded text-gray-400 hover:text-white">6h</button>
+            <button id="btn-decay-expiry" onclick="setTimeDecayScenario(0)" class="px-2 py-0.5 rounded text-gray-400 hover:text-white">Expiry</button>
+          </div>
+
+          <div class="flex items-center gap-1 bg-gray-950 p-0.5 rounded-md border border-gray-800 text-[11px]">
+            <span class="text-gray-500 px-1.5">⚡ IV:</span>
+            <button id="btn-iv-crush" onclick="setIvShockScenario(-5)" class="px-1.5 py-0.5 rounded text-gray-400 hover:text-white">-5%</button>
+            <button id="btn-iv-base" onclick="setIvShockScenario(0)" class="px-1.5 py-0.5 rounded bg-gray-800 text-white font-semibold border border-gray-700">Live</button>
+            <button id="btn-iv-spike" onclick="setIvShockScenario(5)" class="px-1.5 py-0.5 rounded text-gray-400 hover:text-white">+5%</button>
+          </div>
+
+          <button id="btn-toggle-sl-cap" onclick="toggleSlCap()" class="px-2 py-0.5 rounded bg-gray-800 text-gray-300 border border-gray-700 text-[11px] font-medium" title="Toggle 2.0x SL bracket cutoff in simulation">
+            2x SL Capped: OFF
+          </button>
+        </div>
+      </div>
+
+      <!-- Spot Slider & What-If Input -->
+      <div class="space-y-1.5 bg-gray-900/40 p-3 rounded-lg border border-gray-850">
+        <div class="flex justify-between items-center text-xs">
+          <span class="text-gray-400 flex items-center gap-1.5">
+            <span>Simulate Spot Shift:</span>
+            <input type="number" id="whatif-spot-input" onchange="onWhatIfSpotInput(this.value)" class="w-24 px-1.5 py-0.5 rounded bg-gray-950 border border-gray-800 text-gray-100 mono text-xs font-bold" />
+          </span>
+          <div class="flex items-center gap-3 text-[11px] mono">
+            <span class="text-purple-400 font-semibold" id="label-put-strike">PUT: $81,400</span>
+            <span class="text-blue-400 font-bold" id="label-live-spot">SPOT: $82,810</span>
+            <span class="text-rose-400 font-semibold" id="label-call-strike">CALL: $84,200</span>
+          </div>
+        </div>
+        <input type="range" id="spotSlider" min="78000" max="87000" step="50" value="82810" class="w-full custom-range cursor-pointer" oninput="onWhatIfSpotInput(this.value)" />
+        <div class="flex justify-between text-[10px] text-gray-500 mono">
+          <span id="slider-min-label">-5% ($78,600)</span>
+          <span class="text-gray-400">Current Breakeven Safe Corridor: <strong class="text-gray-200" id="corridor-summary-text">$81,282.10 → $84,317.90 (3,035 pts / 3.7%)</strong></span>
+          <span id="slider-max-label">+5% ($87,000)</span>
+        </div>
+      </div>
+
+      <!-- Live Theoretical Greeks Ribbon -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
+        <div class="p-2 rounded-lg bg-gray-950/60 border border-gray-900">
+          <div class="text-[10px] text-gray-500">Portfolio Delta (Δ)</div>
+          <div id="greek-delta" class="text-sm font-bold text-gray-200 mt-0.5">+0.002 BTC</div>
+        </div>
+        <div class="p-2 rounded-lg bg-gray-950/60 border border-gray-900">
+          <div class="text-[10px] text-gray-500">Gamma (Γ)</div>
+          <div id="greek-gamma" class="text-sm font-bold text-gray-200 mt-0.5">-0.0001 / $</div>
+        </div>
+        <div class="p-2 rounded-lg bg-gray-950/60 border border-gray-900">
+          <div class="text-[10px] text-gray-500">Theta (Θ Decay / Day)</div>
+          <div id="greek-theta" class="text-sm font-bold text-emerald-400 mt-0.5">+$42.50 / day</div>
+        </div>
+        <div class="p-2 rounded-lg bg-gray-950/60 border border-gray-900">
+          <div class="text-[10px] text-gray-500">Vega (ν Risk / 1% IV)</div>
+          <div id="greek-vega" class="text-sm font-bold text-rose-400 mt-0.5">-$3.80 / %</div>
+        </div>
+      </div>
+
+      <!-- SVG Corridors & P&L Curve Canvas -->
+      <div id="corridor-chart-container" class="relative w-full h-72 rounded-lg bg-gray-950/80 border border-gray-900 overflow-hidden">
+        <div id="safezone-chart-tooltip" class="hidden absolute pointer-events-none z-30 p-2.5 rounded-lg bg-gray-900/95 border border-gray-700 shadow-xl text-xs font-mono space-y-1"></div>
+        <!-- SVG Generated via renderSafeZoneCorridor() -->
+      </div>
+    </div>
+
+    <!-- 4. ACTIVE STRANGLE POSITION CARDS & STRIKE RADAR -->
+    <div class="p-5 rounded-xl bg-[#111827] border border-[#1F2937] space-y-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="font-semibold text-gray-100 text-sm">⚡ Active Strangle Cohort Positions</h2>
+          <p class="text-xs text-gray-400 mt-0.5">Live Option legs margined on Delta Exchange with 2x Stop Loss bracket orders</p>
+        </div>
+        <span class="text-xs font-mono px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
+          1DTE Options
+        </span>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead class="bg-gray-900/60 text-gray-400 border-b border-gray-800">
+            <tr>
+              <th class="py-2.5 px-3 font-medium">Contract Leg</th>
+              <th class="py-2.5 px-3 font-medium">Entry Price</th>
+              <th class="py-2.5 px-3 font-medium">Mark Price</th>
+              <th class="py-2.5 px-3 font-medium">2.0x SL Trigger</th>
+              <th class="py-2.5 px-3 font-medium">Theta Decay</th>
+              <th class="py-2.5 px-3 font-medium text-right">Live Unrealized P&L</th>
+            </tr>
+          </thead>
+          <tbody id="positions-tbody" class="divide-y divide-gray-850 font-mono">
+            <!-- Injected dynamically via renderLivePositions() -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Next Entry Strike Radar Banner -->
+      <div class="p-3 rounded-lg bg-blue-950/20 border border-blue-900/40 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+        <div class="flex items-center gap-2">
+          <span class="text-blue-400 font-bold text-sm">🎯 Next Entry Radar (22:30 IST):</span>
+          <span id="radar-text" class="text-gray-300 font-mono">Loading dynamic strikes...</span>
+        </div>
+        <div class="text-[11px] text-gray-400">
+          Target ~0.10 Delta • 1.8x Straddle Offset
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. PORTFOLIO PERFORMANCE & MONTHLY CALENDAR -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      
+      <!-- Portfolio Performance Curve (2 Cols) -->
+      <div class="lg:col-span-2 p-5 rounded-xl bg-[#111827] border border-[#1F2937] space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h2 class="font-semibold text-gray-100 text-sm">📈 Cumulative Performance & Drawdown</h2>
+            <p class="text-xs text-gray-400 mt-0.5">Realized Equity Curve and Daily Returns</p>
+          </div>
+          <!-- Date Range Pills -->
+          <div class="flex items-center gap-1 bg-gray-900 p-0.5 rounded-lg border border-gray-800 text-xs">
+            <button onclick="setPerformancePeriod('7D')" class="px-2.5 py-1 rounded text-gray-400 hover:text-white transition" id="perf7d">7D</button>
+            <button onclick="setPerformancePeriod('30D')" class="px-2.5 py-1 rounded bg-gray-800 text-gray-100 font-semibold shadow-sm" id="perf30d">30D</button>
+            <button onclick="setPerformancePeriod('ALL')" class="px-2.5 py-1 rounded text-gray-400 hover:text-white transition" id="perfAll">All</button>
+          </div>
+        </div>
+
+        <!-- SVG Equity Curve Canvas -->
+        <div id="equity-chart-container" class="relative w-full h-56 rounded-lg bg-gray-950/60 border border-gray-900 overflow-hidden flex items-center justify-center">
+          <!-- Injected via renderPortfolioPerformanceChart() -->
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-xs font-mono">
+          <div class="p-2 rounded-lg bg-gray-950/40 border border-gray-900 text-center">
+            <div class="text-[10px] text-gray-500">Period P&L</div>
+            <div id="perf-kpi-net" class="font-bold text-gray-200 mt-0.5">$--.--</div>
+          </div>
+          <div class="p-2 rounded-lg bg-gray-950/40 border border-gray-900 text-center">
+            <div class="text-[10px] text-gray-500">Win Rate</div>
+            <div id="perf-kpi-winrate" class="font-bold text-emerald-400 mt-0.5">--%</div>
+          </div>
+          <div class="p-2 rounded-lg bg-gray-950/40 border border-gray-900 text-center">
+            <div class="text-[10px] text-gray-500">Profit Factor</div>
+            <div id="perf-kpi-pf" class="font-bold text-gray-200 mt-0.5">--</div>
+          </div>
+          <div class="p-2 rounded-lg bg-gray-950/40 border border-gray-900 text-center">
+            <div class="text-[10px] text-gray-500">Max Drawdown</div>
+            <div id="perf-kpi-dd" class="font-bold text-rose-400 mt-0.5">$--.--</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Monthly Calendar Heatmap (1 Col) -->
+      <div class="p-5 rounded-xl bg-[#111827] border border-[#1F2937] space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="font-semibold text-gray-100 text-sm">📅 Monthly P&L Calendar</h2>
+            <p class="text-xs text-gray-400 mt-0.5">Daily realized gains & theta decay</p>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="changeCalendarMonth(-1)" class="w-6 h-6 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 flex items-center justify-center text-xs">◀</button>
+            <select id="calendar-month-select" onchange="onCalendarMonthSelect()" class="bg-gray-900 border border-gray-800 text-gray-200 text-xs rounded px-1.5 py-0.5 font-mono"></select>
+            <button onclick="changeCalendarMonth(1)" class="w-6 h-6 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 flex items-center justify-center text-xs">▶</button>
+          </div>
+        </div>
+        <div class="flex justify-between items-center text-xs">
+          <span class="text-gray-400">Month Net Realized:</span>
+          <span id="calendar-month-label" class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">+$0.00</span>
+        </div>
+        <div id="calendar-heatmap-container" class="space-y-2">
+          <!-- Injected via renderCalendarHeatmap() -->
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- 6. CLOUD AUTOMATION & STRATEGY ORCHESTRATOR PANEL -->
+    <!-- ========================================================================= -->
+    <div class="p-5 rounded-xl bg-[#111827] border border-[#1F2937] space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-800 pb-3">
+        <div>
+          <h2 class="font-semibold text-gray-100 text-sm flex items-center gap-2">
+            <span>⚡ Strategy Orchestrator & Cloud Automation Hub</span>
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 uppercase tracking-wider">Zero-Commit Edge</span>
+          </h2>
+          <p class="text-xs text-gray-400 mt-0.5">Dispatch workflows, manage dual-main release branches, toggle live execution, and inspect edge scheduler health.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <span id="orchestrator-bot-mode-badge" class="px-2.5 py-1 rounded-md text-xs font-bold mono bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+            BOT_MODE: LIVE
+          </span>
+          <span id="orchestrator-branch-badge" class="px-2.5 py-1 rounded-md text-xs font-bold mono bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+            🟢 Green
+          </span>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+        
+        <!-- Column 1: Workflow Dispatcher -->
+        <div class="p-3.5 rounded-lg bg-gray-900/60 border border-gray-800 space-y-3">
+          <div class="font-semibold text-gray-200 flex items-center justify-between">
+            <span>⚡ Workflow Dispatcher</span>
+            <span class="text-[10px] text-gray-500 mono">daily_strangle.yml</span>
+          </div>
+          <div class="space-y-2">
+            <div>
+              <label class="block text-[11px] text-gray-400 mb-1">Target Strategy</label>
+              <select id="dispatch-strategy-select" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-2.5 py-1.5 text-xs text-gray-200 mono">
+                <option value="btc_1dte" selected>btc_1dte (BTC 1DTE Strangle)</option>
+                <option value="eth_1dte">eth_1dte (ETH 1DTE Strangle)</option>
+                <option value="btc_condor">btc_condor (BTC Iron Condor)</option>
+                <option value="btc_0dte">btc_0dte (BTC 0DTE Intraday)</option>
+                <option value="all">all (Run All Active)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] text-gray-400 mb-1">Execution Mode</label>
+              <select id="dispatch-mode-select" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-2.5 py-1.5 text-xs text-gray-200 mono">
+                <option value="sync-dashboard">sync-dashboard (Safe Cloud P&L Sync)</option>
+                <option value="test-whatsapp">test-whatsapp (Send WhatsApp Status)</option>
+                <option value="check-sl">check-sl (Intraday 2.0x SL Check)</option>
+                <option value="dry-run">dry-run (Preview Strikes Without Orders)</option>
+                <option value="verify-auth">verify-auth (Test Delta API & Proxy)</option>
+                <option value="attach-sl-only">attach-sl-only (Ensure 2x Bracket SL)</option>
+                <option value="live">live (Execute Real-Money Strangle)</option>
+              </select>
+            </div>
+            <button onclick="triggerWorkflowDispatch()" class="w-full py-2 px-3 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold transition flex items-center justify-center gap-1.5 shadow-sm">
+              <span>⚡ Dispatch Workflow</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Column 2: Bot Execution Mode & Sizing -->
+        <div class="p-3.5 rounded-lg bg-gray-900/60 border border-gray-800 space-y-3">
+          <div class="font-semibold text-gray-200 flex items-center justify-between">
+            <span>🛡️ Execution State & Lots</span>
+            <span class="text-[10px] text-gray-500">Repository Variables</span>
+          </div>
+          <div class="space-y-2">
+            <div>
+              <label class="block text-[11px] text-gray-400 mb-1">Pause / Resume Bot (BOT_MODE)</label>
+              <div class="grid grid-cols-2 gap-2">
+                <button onclick="updateBotMode('dry-run')" class="py-1.5 px-2 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 font-medium transition text-center">
+                  ⏸ Pause: Dry-Run
+                </button>
+                <button onclick="updateBotMode('live')" class="py-1.5 px-2 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 font-medium transition text-center">
+                  ▶ Resume: Live
+                </button>
+              </div>
+            </div>
+            <div>
+              <label class="block text-[11px] text-gray-400 mb-1">Lot Sizing (BOT_LOTS)</label>
+              <div class="flex items-center gap-1.5">
+                <input type="number" id="bot-lots-input" value="500" step="50" class="w-20 bg-gray-950 border border-gray-800 rounded-lg px-2 py-1 text-gray-100 mono text-xs font-bold" />
+                <button onclick="quickSetLots(250)" class="px-2 py-1 rounded bg-gray-800 text-gray-300 hover:text-white border border-gray-700 text-[10px]">250</button>
+                <button onclick="quickSetLots(500)" class="px-2 py-1 rounded bg-blue-600/20 text-blue-300 border border-blue-500/40 text-[10px] font-bold">500</button>
+                <button onclick="quickSetLots(750)" class="px-2 py-1 rounded bg-gray-800 text-gray-300 hover:text-white border border-gray-700 text-[10px]">750</button>
+                <button onclick="quickSetLots(1000)" class="px-2 py-1 rounded bg-gray-800 text-gray-300 hover:text-white border border-gray-700 text-[10px]">1k</button>
+                <button onclick="updateBotLotsFromDashboard()" class="px-2 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white font-semibold text-[10px]">Save</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Column 3: Dual-Main Release Branch & Diagnostics -->
+        <div class="p-3.5 rounded-lg bg-gray-900/60 border border-gray-800 space-y-3">
+          <div class="font-semibold text-gray-200 flex items-center justify-between">
+            <span>🌿 Dual-Main Branch & Health</span>
+            <span class="text-[10px] text-gray-500">Governance</span>
+          </div>
+          <div class="space-y-2">
+            <div>
+              <label class="block text-[11px] text-gray-400 mb-1">Active Automated Branch</label>
+              <button onclick="toggleActiveBranch()" class="w-full py-1.5 px-3 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 font-medium transition flex items-center justify-between">
+                <span id="orchestrator-flip-label">⇄ Flip to Inactive Branch</span>
+                <span class="text-[10px] text-blue-400 mono">Zero-Downtime</span>
+              </button>
+            </div>
+            <div class="pt-1 flex items-center gap-2">
+              <button onclick="pingCloudflareWorkerHealth()" id="btn-ping-cf-worker" class="flex-1 py-1.5 px-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 transition font-medium text-center">
+                📡 Ping Worker
+              </button>
+              <button onclick="testWhatsApp()" class="flex-1 py-1.5 px-2 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 transition font-medium text-center">
+                📲 Test WA
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- 7. AUDIT LEDGER (Expandable, Filterable & Clean) -->
+    <div class="p-5 rounded-xl bg-[#111827] border border-[#1F2937] space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 class="font-semibold text-gray-100 text-sm">📜 Execution & Audit Ledger</h2>
+          <p class="text-xs text-gray-400 mt-0.5">Comprehensive audit trail of fills, orders, and 2.0x SL bracket status</p>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap">
+          <span id="ledger-count-label" class="text-xs font-mono text-gray-400 bg-gray-900 px-2 py-1 rounded border border-gray-800">0 records</span>
+          <button onclick="exportAuditCSV()" class="px-2.5 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 text-xs font-medium transition flex items-center gap-1 shadow-sm">
+            <span>⬇ Export CSV</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Filters Toolbar -->
+      <div class="flex flex-wrap items-center justify-between gap-2.5 p-2.5 rounded-lg bg-gray-900/60 border border-gray-800 text-xs">
+        <!-- Status Tabs -->
+        <div class="inline-flex rounded-lg bg-gray-950 p-0.5 border border-gray-800">
+          <button id="audit-tab-ALL" onclick="setAuditStatusTab('ALL')" class="px-2.5 py-1 rounded-md text-xs font-semibold bg-blue-600 text-white shadow-sm">ALL</button>
+          <button id="audit-tab-SUCCESS" onclick="setAuditStatusTab('SUCCESS')" class="px-2.5 py-1 rounded-md text-xs font-medium text-gray-400 hover:text-gray-200 transition">SUCCESS</button>
+          <button id="audit-tab-PENDING_SL" onclick="setAuditStatusTab('PENDING_SL')" class="px-2.5 py-1 rounded-md text-xs font-medium text-gray-400 hover:text-gray-200 transition">PENDING SL</button>
+          <button id="audit-tab-CANCELLED" onclick="setAuditStatusTab('CANCELLED')" class="px-2.5 py-1 rounded-md text-xs font-medium text-gray-400 hover:text-gray-200 transition">CANCELLED</button>
+          <button id="audit-tab-FAILED" onclick="setAuditStatusTab('FAILED')" class="px-2.5 py-1 rounded-md text-xs font-medium text-gray-400 hover:text-gray-200 transition">FAILED</button>
+        </div>
+
+        <!-- Cohort Pills -->
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <span class="text-gray-500 text-[11px] font-medium">Cohort:</span>
+          <div id="audit-cohort-pills" class="flex items-center gap-1 flex-wrap">
+            <button onclick="setAuditCohortFilter('ALL')" class="px-2 py-0.5 rounded text-[11px] font-mono bg-blue-600 text-white font-semibold">ALL</button>
+          </div>
+        </div>
+
+        <!-- Search Box -->
+        <div class="w-full sm:w-56">
+          <input type="text" id="audit-search-input" oninput="onAuditSearch(this.value)" placeholder="Search symbol, side, status..." class="w-full bg-gray-950 border border-gray-800 rounded-lg px-2.5 py-1 text-xs text-gray-200 focus:outline-none focus:border-blue-500 font-mono" />
+        </div>
+      </div>
+
+      <!-- Ledger Table -->
+      <div class="overflow-x-auto max-h-96 rounded-lg border border-gray-800">
+        <table class="w-full text-left text-xs">
+          <thead class="sticky top-0 bg-[#111827] border-b border-gray-800 text-gray-400 shadow-sm">
+            <tr>
+              <th class="py-2.5 px-3">Date / Time (IST)</th>
+              <th class="py-2.5 px-3">Action / Side</th>
+              <th class="py-2.5 px-3">Contract</th>
+              <th class="py-2.5 px-3">Size</th>
+              <th class="py-2.5 px-3">Price</th>
+              <th class="py-2.5 px-3 text-right">Fee / Realized</th>
+              <th class="py-2.5 px-3 text-right">Status & Reason</th>
+            </tr>
+          </thead>
+          <tbody id="ledger-tbody" class="divide-y divide-gray-850 font-mono text-gray-300">
+            <!-- Injected via renderAuditLedger() -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ========================================================================= -->
+  <!-- MODALS -->
+  <!-- ========================================================================= -->
+  <!-- Settings Modal -->
+  <div id="settings-modal" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="w-full max-w-lg rounded-2xl bg-gray-900 border border-gray-800 p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-gray-800 pb-3">
+        <h3 class="font-bold text-gray-100 text-base">🔑 Cloud & Edge Configuration</h3>
+        <button onclick="closeSettingsModal()" class="text-gray-400 hover:text-gray-200 text-lg">✕</button>
+      </div>
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block text-gray-300 font-medium mb-1">GitHub Personal Access Token (PAT)</label>
+          <input type="password" id="input-gh-pat" placeholder="ghp_..." class="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-gray-100 focus:outline-none focus:border-blue-500 font-mono text-xs">
+          <p class="text-[11px] text-gray-500 mt-0.5">Required for triggering workflows & flipping active release branches (needs Actions & Variables permissions).</p>
+        </div>
+        <div>
+          <label class="block text-gray-300 font-medium mb-1">Meta WhatsApp Recipient Phone</label>
+          <input type="text" id="input-wa-phone" placeholder="+919460853944" class="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-gray-100 focus:outline-none focus:border-blue-500 font-mono text-xs">
+        </div>
+        <div>
+          <label class="block text-gray-300 font-medium mb-1">Meta WhatsApp Cloud Access Token</label>
+          <input type="password" id="input-meta-wa-token" placeholder="EAA..." class="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-gray-100 focus:outline-none focus:border-blue-500 font-mono text-xs">
+        </div>
+        <div>
+          <label class="block text-gray-300 font-medium mb-1">Meta Phone Number ID</label>
+          <input type="text" id="input-meta-phone-id" placeholder="105432..." class="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-gray-100 focus:outline-none focus:border-blue-500 font-mono text-xs">
+        </div>
+      </div>
+      <div class="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-gray-800">
+        <div class="flex items-center gap-1.5">
+          <button onclick="copyBookmarkUrl()" class="px-2.5 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs border border-gray-700 font-medium transition" title="Copy 1-Click Bookmark URL with tokens embedded">
+            🔗 Bookmark URL
+          </button>
+          <button onclick="clearSavedSettings()" class="px-2.5 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs border border-rose-500/30 transition">
+            Clear
+          </button>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="closeSettingsModal()" class="px-3 py-1.5 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 text-xs font-medium">Cancel</button>
+          <button onclick="saveSettings()" class="px-4 py-1.5 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-500 text-xs shadow">Save Settings</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alerts Modal -->
+  <div id="alerts-modal" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="w-full max-w-2xl max-h-[85vh] flex flex-col rounded-2xl bg-gray-900 border border-gray-800 p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-gray-800 pb-3">
+        <div>
+          <h3 class="font-bold text-gray-100 text-base">🚨 Alert Monitor (Last 30 Days)</h3>
+          <p class="text-xs text-gray-400 mt-0.5">Automated technical safeguards & portfolio risk events</p>
+        </div>
+        <button onclick="closeAlertsModal()" class="text-gray-400 hover:text-gray-200 text-lg">✕</button>
+      </div>
+
+      <!-- Category Filter Tabs -->
+      <div class="flex items-center justify-between gap-2">
+        <div class="inline-flex rounded-lg bg-gray-950 p-0.5 border border-gray-800 text-xs">
+          <button id="alert-tab-all" onclick="setAlertCategoryFilter('all')" class="px-2.5 py-1 rounded-md font-semibold bg-blue-600 text-white shadow-sm">All</button>
+          <button id="alert-tab-technical" onclick="setAlertCategoryFilter('technical')" class="px-2.5 py-1 rounded-md font-medium text-gray-400 hover:text-gray-200">Technical</button>
+          <button id="alert-tab-portfolio" onclick="setAlertCategoryFilter('portfolio')" class="px-2.5 py-1 rounded-md font-medium text-gray-400 hover:text-gray-200">Portfolio</button>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <button onclick="quickRunModeFromAlert('check-sl')" class="px-2 py-1 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[11px] font-medium hover:bg-amber-500/25">
+            ⚡ Check SL
+          </button>
+          <button onclick="quickRunModeFromAlert('attach-sl-only')" class="px-2 py-1 rounded bg-blue-500/15 text-blue-300 border border-blue-500/30 text-[11px] font-medium hover:bg-blue-500/25">
+            🛡️ Attach 2x SL
+          </button>
+        </div>
+      </div>
+
+      <div id="alerts-modal-content" class="overflow-y-auto space-y-2 text-xs pr-1 flex-1">
+        <!-- Injected dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- JAVASCRIPT LOGIC & DATA WIRING -->
+  <!-- ========================================================================= -->
+  <script>
+    // Constants & Storage Keys (Aligned 1:1 with v1)
+    const REPO_SLUG = 'ajay14sharma/delta-strangle-bot';
+    const WORKFLOW_FILE = 'daily_strangle.yml';
+    const STORAGE_TOKEN_KEY = 'delta_strangle_gh_pat';
+    const STORAGE_ACTIVE_BRANCH_KEY = 'delta_strangle_active_branch';
+    const STORAGE_WA_PHONE_KEY = 'delta_strangle_wa_phone';
+    const STORAGE_META_PHONE_ID_KEY = 'delta_strangle_meta_phone_id';
+    const STORAGE_META_TOKEN_KEY = 'delta_strangle_meta_wa_token';
+
+    // State
+    let dashboardState = null;
+    let currentStrategy = 'all'; // 'all', 'btc_1dte', 'eth_1dte', 'btc_condor', 'btc_0dte'
+    let liveTickersBySymbol = {};
+    let liveSpotPriceNumeric = 82810.0;
+    let liveEthSpotPriceNumeric = 2500.0;
+    let currentCurrency = 'USD';
+    const fxRate = 85.0; // USD/INR
+    let whatIfSpotOverride = null;
+    let currentPerfPeriod = '30D';
+    let currentCalendarMonth = '';
+    let availableMonths = [];
+    let currentAuditStatusTab = 'ALL';
+    let currentAuditCohort = 'ALL';
+    let currentAuditSearch = '';
+    let currentAlertCategory = 'all';
+
+    // 1. Storage Helpers & Hash Bookmark Parsing
+    (function checkHashToken() {
+      if (window.location.hash && (window.location.hash.includes('token=') || window.location.hash.includes('waphone='))) {
+        const params = new URLSearchParams(window.location.hash.slice(1));
+        const tok = params.get('token');
+        const waPhone = params.get('waphone');
+        const metaPid = params.get('metapid');
+        const metaTok = params.get('metatok');
+        if (tok) {
+          localStorage.setItem(STORAGE_TOKEN_KEY, tok.trim());
+          localStorage.setItem('gh_pat', tok.trim());
+        }
+        if (waPhone) {
+          localStorage.setItem(STORAGE_WA_PHONE_KEY, waPhone.trim());
+          localStorage.setItem('meta_wa_phone', waPhone.trim());
+        }
+        if (metaPid) localStorage.setItem(STORAGE_META_PHONE_ID_KEY, metaPid.replace(/\D+/g, ''));
+        if (metaTok) localStorage.setItem(STORAGE_META_TOKEN_KEY, metaTok.trim());
+        history.replaceState(null, '', window.location.pathname + window.location.search);
+      }
+    })();
+
+    function getSavedToken() {
+      return localStorage.getItem(STORAGE_TOKEN_KEY) || localStorage.getItem('gh_pat') || '';
+    }
+    function getSavedWaPhone() {
+      return localStorage.getItem(STORAGE_WA_PHONE_KEY) || localStorage.getItem('meta_wa_phone') || '+919460853944';
+    }
+    function getSavedMetaPhoneId() {
+      return localStorage.getItem(STORAGE_META_PHONE_ID_KEY) || '';
+    }
+    function getSavedMetaToken() {
+      return localStorage.getItem(STORAGE_META_TOKEN_KEY) || '';
+    }
+    function getActiveBranch() {
+      const gh = (dashboardState && dashboardState.github_actions) || {};
+      return (gh.active_branch || localStorage.getItem(STORAGE_ACTIVE_BRANCH_KEY) || 'green').toLowerCase();
+    }
+    function getActiveBotLots() {
+      const el = document.getElementById('bot-lots-input');
+      const val = el ? parseInt(el.value, 10) : NaN;
+      if (!isNaN(val) && val > 0) return val;
+      const gh = (dashboardState && dashboardState.github_actions) || {};
+      return parseInt(gh.bot_lots || 500, 10) || 500;
+    }
+
+    function showToast(msg, type = 'info') {
+      const banner = document.getElementById('toast-banner');
+      banner.textContent = msg;
+      banner.className = `fixed bottom-5 right-5 z-50 max-w-md px-4 py-3 rounded-xl shadow-2xl border text-xs font-medium transition-all ${
+        type === 'success' ? 'bg-emerald-950/90 text-emerald-300 border-emerald-500/40' :
+        type === 'error' ? 'bg-rose-950/90 text-rose-300 border-rose-500/40' :
+        'bg-gray-900/90 text-gray-200 border-gray-700'
+      }`;
+      banner.classList.remove('hidden');
+      setTimeout(() => banner.classList.add('hidden'), 4500);
+    }
+
+    function toggleActionMenu() {
+      const menu = document.getElementById('actionMenu');
+      menu.classList.toggle('hidden');
+    }
+
+    document.addEventListener('click', (e) => {
+      const menu = document.getElementById('actionMenu');
+      if (!e.target.closest('#actionMenu') && !e.target.closest('button[onclick*="toggleActionMenu"]')) {
+        menu.classList.add('hidden');
+      }
+    });
+
+    function setStrategyTab(stratId) {
+      currentStrategy = stratId;
+      const stratPills = ['all', 'btc_1dte', 'eth_1dte', 'btc_condor', 'btc_0dte'];
+      stratPills.forEach(s => {
+        const btn = document.getElementById(`strat-pill-${s}`);
+        if (!btn) return;
+        if (s === stratId) {
+          btn.className = 'strat-pill px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 text-white shadow-sm transition';
+        } else {
+          btn.className = 'strat-pill px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700/60 transition';
+        }
+      });
+      const descEl = document.getElementById('active-strategy-desc');
+      const titleEl = document.getElementById('header-strategy-title');
+      const descMap = {
+        all: 'Aggregated Portfolio (BTC & ETH Multi-Strategy)',
+        btc_1dte: 'BTC 1DTE Short Strangle (10:30 PM IST • T+2 Expiry)',
+        eth_1dte: 'ETH 1DTE Short Strangle (10:30 PM IST • T+2 Expiry)',
+        btc_condor: 'BTC Iron Condor (10:30 PM IST • Defined Risk Wings)',
+        btc_0dte: 'BTC 0DTE Intraday Strangle (9:30 AM IST • Same-Day Expiry)'
+      };
+      const titleMap = {
+        all: 'Delta Multi-Strategy Bot',
+        btc_1dte: 'BTC 1DTE Short Strangle',
+        eth_1dte: 'ETH 1DTE Short Strangle',
+        btc_condor: 'BTC Iron Condor',
+        btc_0dte: 'BTC 0DTE Intraday Strangle'
+      };
+      if (descEl) descEl.textContent = descMap[stratId] || descMap.all;
+      if (titleEl) titleEl.textContent = titleMap[stratId] || titleMap.all;
+
+      const dispatchStrat = document.getElementById('dispatch-strategy-select');
+      if (dispatchStrat) dispatchStrat.value = stratId;
+
+      renderStrategyDetailCard(stratId);
+      renderLivePositions();
+      renderAuditLedger();
+    }
+
+    function renderStrategyDetailCard(stratId) {
+      const details = {
+        all: {
+          icon: '🌐',
+          title: 'All Strategies (Unified Portfolio)',
+          tagline: 'Aggregated view of all open algorithmic positions across BTC and ETH derivatives.',
+          statusText: 'Unified Portfolio',
+          statusClass: 'bg-blue-500/10 text-blue-400 border border-blue-500/20',
+          riskText: '2.0x SL Active',
+          riskClass: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20',
+          underlying: 'BTC & ETH',
+          entry: '10:30 PM & 9:30 AM',
+          expiry: 'T+2 & T+0 Expiring',
+          risk: '2.0x SL & Wings',
+          size: 'Portfolio Aggregation',
+          strikes: 'Multi-Strategy Mix'
+        },
+        btc_1dte: {
+          icon: '₿',
+          title: 'BTC 1DTE Short Strangle',
+          tagline: 'Daily non-directional premium harvesting bot selling OTM Call & Put ~10-15 Delta contracts on Bitcoin.',
+          statusText: 'Active Live Baseline',
+          statusClass: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20',
+          riskText: 'Exchange-Native 2.0x SL',
+          riskClass: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20',
+          underlying: 'BTC (Bitcoin)',
+          entry: '10:30 PM IST (17:00 UTC)',
+          expiry: 'T+2 (~43 Hours)',
+          risk: '2.0x SL Bracket Order',
+          size: '500 Lots (0.5 BTC)',
+          strikes: '1.8x Straddle Expected Move'
+        },
+        eth_1dte: {
+          icon: '⟠',
+          title: 'ETH 1DTE Short Strangle',
+          tagline: 'Ethereum short strangle capturing rapid theta decay on ETHUSD options with dedicated 0.01 tick rounding.',
+          statusText: 'New Strategy',
+          statusClass: 'bg-purple-500/10 text-purple-400 border border-purple-500/20',
+          riskText: 'Exchange-Native 2.0x SL',
+          riskClass: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20',
+          underlying: 'ETH (Ethereum)',
+          entry: '10:30 PM IST (17:00 UTC)',
+          expiry: 'T+2 (~43 Hours)',
+          risk: '2.0x SL Bracket Order',
+          size: '250 Lots (2.5 ETH)',
+          strikes: '1.8x Straddle Expected Move'
+        },
+        btc_condor: {
+          icon: '🛡️',
+          title: 'BTC Defined-Risk Iron Condor',
+          tagline: '4-leg structured trade combining a short strangle with outer long protective wings at 2.6x straddle premium to strictly cap maximum risk.',
+          statusText: 'Defined Risk',
+          statusClass: 'bg-amber-500/10 text-amber-400 border border-amber-500/20',
+          riskText: 'Wing-Capped Max Loss',
+          riskClass: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20',
+          underlying: 'BTC (Bitcoin)',
+          entry: '10:30 PM IST (17:00 UTC)',
+          expiry: 'T+2 (~43 Hours)',
+          risk: 'Long Protective Wings + SL',
+          size: '500 Lots (4 Legs)',
+          strikes: '1.8x Short / 2.6x Long Wings'
+        },
+        btc_0dte: {
+          icon: '⚡',
+          title: 'BTC 0DTE Intraday Strangle',
+          tagline: 'Morning intraday strangle exploiting rapid terminal theta collapse on same-day expiring contracts before 5:30 PM IST settlement.',
+          statusText: 'Intraday Scalp',
+          statusClass: 'bg-rose-500/10 text-rose-400 border border-rose-500/20',
+          riskText: 'Intraday 2.0x SL Monitor',
+          riskClass: 'bg-amber-500/10 text-amber-400 border border-amber-500/20',
+          underlying: 'BTC (Bitcoin)',
+          entry: '9:30 AM IST (04:00 UTC)',
+          expiry: 'Same-Day 5:30 PM IST (8 Hours)',
+          risk: '2.0x SL Bracket Order',
+          size: '250 Lots (0.25 BTC)',
+          strikes: '1.8x Straddle Expected Move'
+        }
+      };
+
+      const d = details[stratId] || details.all;
+      const setText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+      setText('strat-card-icon', d.icon);
+      setText('strat-card-title', d.title);
+      setText('strat-card-tagline', d.tagline);
+      setText('strat-param-underlying', d.underlying);
+      setText('strat-param-entry', d.entry);
+      setText('strat-param-expiry', d.expiry);
+      setText('strat-param-risk', d.risk);
+      setText('strat-param-size', d.size);
+      setText('strat-param-strikes', d.strikes);
+
+      const statusBadge = document.getElementById('strat-card-status-badge');
+      if (statusBadge) {
+        statusBadge.textContent = d.statusText;
+        statusBadge.className = `px-2 py-0.5 rounded font-semibold ${d.statusClass}`;
+      }
+      const riskBadge = document.getElementById('strat-card-risk-badge');
+      if (riskBadge) {
+        riskBadge.textContent = d.riskText;
+        riskBadge.className = `px-2 py-0.5 rounded font-semibold ${d.riskClass}`;
+      }
+    }
+
+    function setCurrency(curr) {
+      currentCurrency = curr;
+      const usdBtn = document.getElementById('currUsdBtn');
+      const inrBtn = document.getElementById('currInrBtn');
+      if (curr === 'USD') {
+        usdBtn.className = 'px-2.5 py-1 rounded-md font-medium bg-blue-600 text-white transition shadow-sm';
+        inrBtn.className = 'px-2.5 py-1 rounded-md font-medium text-gray-400 hover:text-gray-200 transition';
+      } else {
+        inrBtn.className = 'px-2.5 py-1 rounded-md font-medium bg-blue-600 text-white transition shadow-sm';
+        usdBtn.className = 'px-2.5 py-1 rounded-md font-medium text-gray-400 hover:text-gray-200 transition';
+      }
+      renderHeaderAndKPIs();
+      renderLivePositions();
+      renderPortfolioPerformanceChart();
+      renderCalendarHeatmap();
+      renderAuditLedger();
+    }
+
+    function formatMoney(usdVal, showSign = false) {
+      if (usdVal === null || usdVal === undefined || isNaN(usdVal)) return '$0.00';
+      const sign = showSign && usdVal > 0 ? '+' : '';
+      if (currentCurrency === 'INR') {
+        const inr = usdVal * fxRate;
+        return `${sign}₹${Math.round(inr).toLocaleString('en-IN')}`;
+      }
+      return `${sign}$${usdVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+
+    // 2. Fetch Data from Cloudflare Edge KV & Delta Exchange
+    async function loadDashboardSnapshot() {
+      try {
+        const resp = await fetch(`https://delta-strangle-scheduler.ajay14sharma.workers.dev/api/snapshot?t=${Date.now()}`);
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data && (data.last_synced_utc || data.wallet)) {
+            dashboardState = data;
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to load edge snapshot, trying fallback...', e);
+      }
+      // Local fallback
+      try {
+        const localResp = await fetch('dashboard_data.json');
+        if (localResp.ok) dashboardState = await localResp.json();
+      } catch (e) {
+        console.warn('No local fallback available');
+      }
+    }
+
+    async function fetchLiveDeltaTickers() {
+      try {
+        const [btcResp, ethResp] = await Promise.all([
+          fetch('https://api.india.delta.exchange/v2/tickers?contract_types=call_options,put_options&underlying_asset_symbols=BTC'),
+          fetch('https://api.india.delta.exchange/v2/tickers?contract_types=call_options,put_options&underlying_asset_symbols=ETH')
+        ]);
+        const [btcJson, ethJson] = await Promise.all([
+          btcResp.ok ? btcResp.json() : null,
+          ethResp.ok ? ethResp.json() : null
+        ]);
+
+        liveTickersBySymbol = {};
+        if (btcJson && btcJson.result) {
+          let spot = null;
+          for (const t of btcJson.result) {
+            liveTickersBySymbol[t.symbol] = t;
+            if (!spot && t.spot_price) spot = parseFloat(t.spot_price);
+          }
+          if (spot && spot > 0) {
+            liveSpotPriceNumeric = spot;
+            const el = document.getElementById('live-btc-spot');
+            if (el) el.textContent = '$' + spot.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          }
+        }
+        if (ethJson && ethJson.result) {
+          let ethSpot = null;
+          for (const t of ethJson.result) {
+            liveTickersBySymbol[t.symbol] = t;
+            if (!ethSpot && t.spot_price) ethSpot = parseFloat(t.spot_price);
+          }
+          if (ethSpot && ethSpot > 0) {
+            liveEthSpotPriceNumeric = ethSpot;
+            const el = document.getElementById('live-eth-spot');
+            if (el) el.textContent = '$' + ethSpot.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          }
+        }
+        renderLivePositions();
+        renderNextEntryStrikeRadar();
+        renderPortfolioPerformanceChart();
+        renderCalendarHeatmap();
+      } catch (err) {
+        console.warn('Error fetching Delta tickers:', err);
+      }
+    }
+
+    async function syncNow() {
+      showToast('Syncing latest cloud data & Delta option tickers...', 'info');
+      await loadDashboardSnapshot();
+      await fetchLiveDeltaTickers();
+      renderHeaderAndKPIs();
+      renderAuditCohortPills();
+      renderAuditLedger();
+      showToast('Dashboard synced!', 'success');
+    }
+
+    // 3. Render KPIs, Header & Milestone Timers
+    function updateMilestoneCountdown() {
+      const now = new Date();
+      const istOffsetMs = (5 * 60 + 30) * 60 * 1000;
+      const nowIst = new Date(now.getTime() + istOffsetMs);
+
+      // 17:30 IST Settlement
+      const targetSettle = new Date(nowIst);
+      targetSettle.setUTCHours(17, 30, 0, 0);
+      if (nowIst >= targetSettle) targetSettle.setUTCDate(targetSettle.getUTCDate() + 1);
+      const sDiff = Math.max(0, Math.floor((targetSettle - nowIst) / 1000));
+      const sh = Math.floor(sDiff / 3600);
+      const sm = Math.floor((sDiff % 3600) / 60);
+
+      // 22:30 IST Entry
+      const targetEntry = new Date(nowIst);
+      targetEntry.setUTCHours(22, 30, 0, 0);
+      if (nowIst >= targetEntry) targetEntry.setUTCDate(targetEntry.getUTCDate() + 1);
+      const eDiff = Math.max(0, Math.floor((targetEntry - nowIst) / 1000));
+      const eh = Math.floor(eDiff / 3600);
+      const em = Math.floor((eDiff % 3600) / 60);
+
+      const el = document.getElementById('kpi-countdown-timer');
+      if (el) el.textContent = `${eh}h ${em}m`;
+      const sub = document.getElementById('kpi-settle-sub');
+      if (sub) sub.textContent = `🏁 Settle: ${sh}h ${sm}m`;
+    }
+
+    function renderHeaderAndKPIs() {
+      if (!dashboardState) return;
+      const w = dashboardState.wallet || {};
+      const balUsd = Number(w.balance_usd || 5851.47);
+      const availUsd = Number(w.available_usd || 5166.59);
+      const blockedUsd = Number(w.blocked_margin_usd || 684.88);
+      const marginPct = balUsd > 0 ? (blockedUsd / balUsd) * 100 : 0;
+      const freePct = Math.max(0, 100 - marginPct);
+
+      document.getElementById('kpi-balance').textContent = formatMoney(balUsd);
+      document.getElementById('kpi-margin-used-label').textContent = `Margin: ${formatMoney(blockedUsd)} (${marginPct.toFixed(1)}%)`;
+      document.getElementById('kpi-available-label').textContent = `Avail: ${formatMoney(availUsd)}`;
+      document.getElementById('kpi-margin-free-pct').textContent = `${freePct.toFixed(1)}% Free`;
+
+      const marginBar = document.getElementById('kpi-margin-bar');
+      if (marginBar) {
+        marginBar.style.width = `${Math.max(3, marginPct)}%`;
+        marginBar.className = `h-full rounded-full transition-all duration-300 ${
+          marginPct > 70 ? 'bg-rose-500' : (marginPct > 40 ? 'bg-amber-400' : 'bg-blue-500')
+        }`;
+      }
+
+      // Realized PnL & Win Rate from Summary
+      const perf = (dashboardState.portfolio_performance && dashboardState.portfolio_performance.summary) || {};
+      const realizedUsd = Number(perf.total_net_pnl_usd || -5034.10);
+      const grossUsd = Number(perf.total_gross_pnl_usd || -4275.25);
+      const feesUsd = Number(perf.total_fees_usd || 758.85);
+      const winRate = perf.day_win_rate_pct !== undefined ? perf.day_win_rate_pct : 30.8;
+
+      document.getElementById('kpi-realized-pnl').textContent = formatMoney(realizedUsd, true);
+      document.getElementById('kpi-gross-pnl').textContent = `Gross: ${formatMoney(grossUsd, true)}`;
+      document.getElementById('kpi-fees-label').textContent = `Fees: ${formatMoney(feesUsd)} • Profit Factor: 0.74x`;
+      document.getElementById('kpi-win-rate').textContent = `Win: ${winRate}%`;
+
+      // Branch Badges
+      const gh = dashboardState.github_actions || {};
+      const activeBranch = getActiveBranch();
+      const branchPill = document.getElementById('header-branch-pill');
+      const branchText = document.getElementById('header-branch-text');
+      const branchDot = document.getElementById('header-branch-dot');
+      const branchActionText = document.getElementById('menu-branch-action-text');
+      const orchBranch = document.getElementById('orchestrator-branch-badge');
+      const orchFlip = document.getElementById('orchestrator-flip-label');
+
+      if (activeBranch === 'blue') {
+        if (branchPill) branchPill.className = 'px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-300 border border-blue-500/30 mono transition flex items-center gap-1 cursor-pointer shadow-sm';
+        if (branchText) branchText.textContent = '🔵 Blue (Active)';
+        if (branchDot) branchDot.className = 'w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse';
+        if (branchActionText) branchActionText.textContent = '⇄ Flip to Green';
+        if (orchBranch) {
+          orchBranch.textContent = '🔵 Blue (Active)';
+          orchBranch.className = 'px-2.5 py-1 rounded-md text-xs font-bold mono bg-blue-500/15 text-blue-300 border border-blue-500/30';
+        }
+        if (orchFlip) orchFlip.textContent = '⇄ Flip to Green (Active)';
+      } else {
+        if (branchPill) branchPill.className = 'px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 mono transition flex items-center gap-1 cursor-pointer shadow-sm';
+        if (branchText) branchText.textContent = '🟢 Green (Active)';
+        if (branchDot) branchDot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse';
+        if (branchActionText) branchActionText.textContent = '⇄ Flip to Blue';
+        if (orchBranch) {
+          orchBranch.textContent = '🟢 Green (Active)';
+          orchBranch.className = 'px-2.5 py-1 rounded-md text-xs font-bold mono bg-emerald-500/15 text-emerald-300 border border-emerald-500/30';
+        }
+        if (orchFlip) orchFlip.textContent = '⇄ Flip to Blue (Active)';
+      }
+
+      // BOT_MODE Badge
+      const botMode = (gh.bot_mode || 'live').toUpperCase();
+      const botModeBadge = document.getElementById('orchestrator-bot-mode-badge');
+      if (botModeBadge) {
+        botModeBadge.textContent = `BOT_MODE: ${botMode}`;
+        botModeBadge.className = `px-2.5 py-1 rounded-md text-xs font-bold mono ${
+          botMode === 'LIVE'
+            ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+            : 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+        }`;
+      }
+
+      // BOT_LOTS Input
+      const botLotsInput = document.getElementById('bot-lots-input');
+      if (botLotsInput && !botLotsInput.dataset.edited) {
+        botLotsInput.value = gh.bot_lots || 500;
+      }
+
+      // Alerts Banner Count
+      const alertStrip = document.getElementById('alerts-summary-text');
+      const critAlerts = dashboardState.critical_alerts || [];
+      const techAlerts = dashboardState.technical_alerts || [];
+      const portAlerts = dashboardState.portfolio_alerts || [];
+      if (alertStrip) {
+        alertStrip.textContent = `${critAlerts.length || 12} Alerts in Last 30 Days (${techAlerts.length || 2} Technical Guarded • ${portAlerts.length || 10} Portfolio)`;
+      }
+
+      updateMilestoneCountdown();
+    }
+
+    // 4. Positions & Corridor Math
+    function parseOptionSymbol(sym) {
+      const parts = String(sym || '').split('-');
+      if (parts.length !== 4) return { isCall: false, strike: 0, expCode: '', underlying: 'BTC' };
+      return {
+        isCall: parts[0] === 'C',
+        underlying: parts[1] || 'BTC',
+        strike: parseFloat(parts[2]) || 0,
+        expCode: parts[3]
+      };
+    }
+
+    function renderLivePositions() {
+      const allPositions = (dashboardState && Array.isArray(dashboardState.open_positions) && dashboardState.open_positions.length > 0)
+        ? dashboardState.open_positions
+        : [
+          { symbol: 'P-BTC-81400-111026', lots: -500, entry_price: 85.0, sl_trigger: 170.0, sl_order_id: '1595237605', strategy_id: 'btc_1dte' },
+          { symbol: 'C-BTC-84200-111026', lots: -500, entry_price: 33.0, sl_trigger: 66.0, sl_order_id: '1595237563', strategy_id: 'btc_1dte' },
+          { symbol: 'P-BTC-78800-101026', lots: -500, entry_price: 238.0, sl_trigger: 476.0, sl_order_id: '1592932764', strategy_id: 'btc_1dte' }
+        ];
+
+      const rawPositions = allPositions.filter(p => {
+        if (currentStrategy === 'all') return true;
+        const sId = p.strategy_id || (p.symbol.includes('-ETH-') ? 'eth_1dte' : 'btc_1dte');
+        return sId === currentStrategy;
+      });
+
+      const tbody = document.getElementById('positions-tbody');
+      tbody.innerHTML = '';
+
+      if (rawPositions.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-gray-500">No open positions for selected strategy (${currentStrategy.toUpperCase()}).</td></tr>`;
+      }
+
+      let totalUpnl = 0;
+      let totalCredit = 0;
+
+      const parsedPositions = rawPositions.map(p => {
+        const parsed = parseOptionSymbol(p.symbol);
+        const ticker = liveTickersBySymbol[p.symbol] || {};
+        const entryPx = Number(p.entry_price || p.entry_px || 0);
+        const slTrigger = Number(p.sl_trigger || p.stop_loss_price || (entryPx > 0 ? entryPx * 2 : 0));
+        const lots = Number(p.lots || p.size || -500);
+        const isLong = lots > 0;
+        const multiplier = p.contract_multiplier || (parsed.underlying === 'ETH' ? 0.01 : 0.001);
+        const assetUnit = parsed.underlying || 'BTC';
+        const cryptoQty = Math.abs(lots) * multiplier;
+        const markPx = Number(ticker.mark_price || p.mark_price || (entryPx > 0 ? entryPx * 0.35 : 10.0));
+        
+        let upnl = 0;
+        let entryCredit = 0;
+        let decayPct = 0;
+        if (isLong) {
+          entryCredit = -(entryPx * cryptoQty);
+          upnl = (markPx - entryPx) * cryptoQty;
+          decayPct = 0;
+        } else {
+          entryCredit = entryPx * cryptoQty;
+          upnl = (entryPx - markPx) * cryptoQty;
+          decayPct = entryPx > 0 ? Math.min(100, Math.max(0, ((entryPx - markPx) / entryPx) * 100)) : 0;
+        }
+        const slDist = slTrigger - markPx;
+
+        totalUpnl += upnl;
+        totalCredit += entryCredit;
+
+        return { ...p, parsed, lots, isLong, multiplier, assetUnit, cryptoQty, entryPx, slTrigger, markPx, upnl, decayPct, slDist, entryCredit, btcQty: cryptoQty };
+      });
+
+      // Update KPI Card 2
+      document.getElementById('kpi-open-pnl').textContent = formatMoney(totalUpnl, true);
+      const overallDecayPct = totalCredit > 0 ? (totalUpnl / totalCredit) * 100 : 0;
+      document.getElementById('kpi-theta-pct').textContent = `${totalCredit > 0 ? '+' : ''}${overallDecayPct.toFixed(1)}% Theta`;
+      document.getElementById('kpi-open-details').textContent = `Credit: ${formatMoney(Math.max(0, totalCredit))} • Active Strategy: ${currentStrategy.toUpperCase()}`;
+      document.getElementById('kpi-open-legs-count').textContent = `${rawPositions.length} Open Legs`;
+
+      // Render Table Rows
+      parsedPositions.forEach(p => {
+        const isCall = p.parsed.isCall;
+        const isLong = p.isLong;
+        const stratBadge = p.strategy_id
+          ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-gray-800 text-gray-400 border border-gray-700">${p.strategy_id}</span>`
+          : '';
+        const legBadge = isLong
+          ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">LONG ${isCall ? 'CALL' : 'PUT'}</span>`
+          : `<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold ${isCall ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : 'bg-purple-500/10 text-purple-400 border border-purple-500/20'}">SELL ${isCall ? 'CALL' : 'PUT'}</span>`;
+
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-gray-800/40 transition';
+        tr.innerHTML = `
+          <td class="py-3 px-3">
+            <div class="flex items-center gap-2">
+              ${legBadge}
+              <div>
+                <div class="font-medium text-gray-200 flex items-center gap-1.5">
+                  <span>${p.symbol}</span>
+                  ${stratBadge}
+                </div>
+                <div class="text-[11px] text-gray-500">Size: ${p.lots}L (${p.cryptoQty.toFixed(3)} ${p.assetUnit})</div>
+              </div>
+            </div>
+          </td>
+          <td class="py-3 px-3 text-gray-300 font-semibold">$${p.entryPx.toFixed(2)}</td>
+          <td class="py-3 px-3 text-gray-200 font-semibold">$${p.markPx.toFixed(2)}</td>
+          <td class="py-3 px-3">
+            <div class="text-gray-300 font-mono">${isLong ? '—' : '$' + p.slTrigger.toFixed(1)}</div>
+            <div class="text-[10px] text-gray-500">${isLong ? 'Defined Wing' : 'Dist: $' + Math.max(0, p.slDist).toFixed(1)}</div>
+          </td>
+          <td class="py-3 px-3">
+            ${isLong ? '<span class="text-[10px] text-emerald-400 font-mono">Protected Wing</span>' : `
+            <div class="w-28 space-y-1">
+              <div class="flex justify-between text-[10px] text-emerald-400">
+                <span>Decayed</span>
+                <span>${p.decayPct.toFixed(0)}%</span>
+              </div>
+              <div class="w-full h-1.5 rounded-full bg-gray-800 overflow-hidden">
+                <div class="h-full bg-emerald-500 rounded-full" style="width: ${p.decayPct}%"></div>
+              </div>
+            </div>`}
+          </td>
+          <td class="py-3 px-3 text-right font-semibold ${p.upnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}">
+            ${formatMoney(p.upnl, true)}
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      const hasEth = parsedPositions.some(p => p.assetUnit === 'ETH');
+      const activeSpotPx = (hasEth && (currentStrategy === 'eth_1dte' || !parsedPositions.some(p => p.assetUnit === 'BTC')))
+        ? liveEthSpotPriceNumeric
+        : liveSpotPriceNumeric;
+
+      renderSafeZoneCorridor(parsedPositions, activeSpotPx);
+    }
+
+    // 4b. Options Math Engine (Black-Scholes Theoretical Pricing & Greeks)
+    function normCdf(x) {
+      const a1 = 0.254829592, a2 = -0.284496736, a3 = 1.421413741;
+      const a4 = -1.453152027, a5 = 1.061405429, p = 0.3275911;
+      const sign = x < 0 ? -1 : 1;
+      const absX = Math.abs(x) / Math.SQRT2;
+      const t = 1.0 / (1.0 + p * absX);
+      const erf = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-absX * absX);
+      return 0.5 * (1.0 + sign * erf);
+    }
+
+    function bsPrice(S, K, sigma, T, isCall) {
+      if (T <= 0.0001 || sigma <= 0.001) {
+        return isCall ? Math.max(0, S - K) : Math.max(0, K - S);
+      }
+      const sT = sigma * Math.sqrt(T);
+      if (sT <= 0.00001) {
+        return isCall ? Math.max(0, S - K) : Math.max(0, K - S);
+      }
+      const d1 = (Math.log(S / K) + 0.5 * sigma * sigma * T) / sT;
+      const d2 = d1 - sT;
+      return isCall ? (S * normCdf(d1) - K * normCdf(d2)) : (K * normCdf(-d2) - S * normCdf(-d1));
+    }
+
+    function bsDelta(S, K, sigma, T, isCall) {
+      if (T <= 0.0001 || sigma <= 0.001) {
+        if (isCall) return S > K ? 1.0 : 0.0;
+        return S < K ? -1.0 : 0.0;
+      }
+      const sT = sigma * Math.sqrt(T);
+      const d1 = (Math.log(S / K) + 0.5 * sigma * sigma * T) / sT;
+      return isCall ? normCdf(d1) : (normCdf(d1) - 1.0);
+    }
+
+    function getLiveHoursToSettlement() {
+      const now = new Date();
+      let target = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 12, 0, 0));
+      if (now.getTime() > target.getTime()) {
+        target.setUTCDate(target.getUTCDate() + 1);
+      }
+      const diffHours = (target.getTime() - now.getTime()) / (1000 * 60 * 60);
+      return Math.max(0.1, Math.min(24, diffHours));
+    }
+
+    // Simulation Scenario Controls
+    let simTimeHoursOverride = null;
+    let simIvOffset = 0.0;
+    let simCapAt2xSl = false;
+    let currentCorridorPositions = [];
+    let currentCorridorPutBe = 81282;
+    let currentCorridorCallBe = 84318;
+
+    function snapSpotTo(target) {
+      const puts = currentCorridorPositions.filter(p => !p.parsed.isCall && p.parsed.strike > 0);
+      const calls = currentCorridorPositions.filter(p => p.parsed.isCall && p.parsed.strike > 0);
+      const nearestPutStrike = puts.length ? Math.max(...puts.map(p => p.parsed.strike)) : 81400;
+      const nearestCallStrike = calls.length ? Math.min(...calls.map(p => p.parsed.strike)) : 84200;
+
+      if (target === 'live') {
+        resetWhatIfSpot();
+        return;
+      } else if (target === 'put') {
+        onWhatIfSpotInput(nearestPutStrike);
+      } else if (target === 'call') {
+        onWhatIfSpotInput(nearestCallStrike);
+      } else if (target === 'lowerBe') {
+        onWhatIfSpotInput(Math.round(currentCorridorPutBe));
+      } else if (target === 'upperBe') {
+        onWhatIfSpotInput(Math.round(currentCorridorCallBe));
+      }
+    }
+
+    function setTimeDecayScenario(hours) {
+      simTimeHoursOverride = hours;
+      ['live', '12h', '6h', 'expiry'].forEach(id => {
+        const btn = document.getElementById(`btn-decay-${id}`);
+        if (btn) btn.className = 'px-2 py-0.5 rounded text-gray-400 hover:text-white';
+      });
+      const activeId = hours === null ? 'live' : (hours === 12 ? '12h' : (hours === 6 ? '6h' : 'expiry'));
+      const activeBtn = document.getElementById(`btn-decay-${activeId}`);
+      if (activeBtn) activeBtn.className = 'px-2 py-0.5 rounded bg-blue-600 text-white font-semibold shadow';
+      renderLivePositions();
+    }
+
+    function setIvShockScenario(offset) {
+      simIvOffset = offset;
+      ['crush', 'base', 'spike'].forEach(id => {
+        const btn = document.getElementById(`btn-iv-${id}`);
+        if (btn) btn.className = 'px-1.5 py-0.5 rounded text-gray-400 hover:text-white';
+      });
+      const activeId = offset === -5 ? 'crush' : (offset === 0 ? 'base' : 'spike');
+      const activeBtn = document.getElementById(`btn-iv-${activeId}`);
+      if (activeBtn) activeBtn.className = 'px-1.5 py-0.5 rounded bg-gray-800 text-white font-semibold shadow border border-gray-700';
+      renderLivePositions();
+    }
+
+    function toggleSlCap() {
+      simCapAt2xSl = !simCapAt2xSl;
+      const btn = document.getElementById('btn-toggle-sl-cap');
+      if (btn) {
+        if (simCapAt2xSl) {
+          btn.className = 'px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[11px] font-medium shadow';
+          btn.textContent = '🛡️ 2x SL Capped (On)';
+        } else {
+          btn.className = 'px-2 py-0.5 rounded bg-gray-800 text-gray-300 border border-gray-700 text-[11px] font-medium';
+          btn.textContent = '🛡️ 2x SL Capped (Off)';
+        }
+      }
+      renderLivePositions();
+    }
+
+    // 5. Safe-Zone Corridor & Dual-Curve SVG Payoff Visualizer
+    function renderSafeZoneCorridor(positions, spotPx) {
+      currentCorridorPositions = positions || [];
+      const evalSpot = whatIfSpotOverride !== null ? whatIfSpotOverride : spotPx;
+      const puts = positions.filter(p => !p.parsed.isCall && p.parsed.strike > 0);
+      const calls = positions.filter(p => p.parsed.isCall && p.parsed.strike > 0);
+
+      const isEth = spotPx < 5000;
+      const nearestPutStrike = puts.length ? Math.max(...puts.map(p => p.parsed.strike)) : (isEth ? 2400 : 81400);
+      const nearestCallStrike = calls.length ? Math.min(...calls.map(p => p.parsed.strike)) : (isEth ? 2600 : 84200);
+
+      const putDiff = evalSpot - nearestPutStrike;
+      const callDiff = nearestCallStrike - evalSpot;
+
+      const totalCollectedCredit = positions.reduce((acc, p) => acc + (p.entryCredit || 0), 0);
+      const putQty = puts.reduce((acc, p) => acc + (p.cryptoQty || p.btcQty || 0), 0);
+      const callQty = calls.reduce((acc, p) => acc + (p.cryptoQty || p.btcQty || 0), 0);
+
+      // Exact analytical strangle breakevens
+      const putBreakeven = putQty > 0 ? (nearestPutStrike - (totalCollectedCredit / putQty)) : (nearestPutStrike - (isEth ? 20 : 120));
+      const callBreakeven = callQty > 0 ? (nearestCallStrike + (totalCollectedCredit / callQty)) : (nearestCallStrike + (isEth ? 20 : 120));
+      currentCorridorPutBe = putBreakeven;
+      currentCorridorCallBe = callBreakeven;
+
+      const setSafeText = (id, txt) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = txt;
+      };
+      setSafeText('corridor-put-strike', `$${nearestPutStrike.toLocaleString('en-US')}`);
+      setSafeText('corridor-put-otm', `${putDiff >= 0 ? '-' : '+'}$${Math.abs(putDiff).toFixed(0)} (${((putDiff/evalSpot)*100).toFixed(2)}% OTM)`);
+      setSafeText('corridor-put-be', `Breakeven: $${Math.round(putBreakeven).toLocaleString('en-US')}`);
+      setSafeText('corridor-call-strike', `$${nearestCallStrike.toLocaleString('en-US')}`);
+      setSafeText('corridor-call-otm', `${callDiff >= 0 ? '+' : '-'}$${Math.abs(callDiff).toFixed(0)} (${((callDiff/evalSpot)*100).toFixed(2)}% OTM)`);
+      setSafeText('corridor-call-be', `Breakeven: $${Math.round(callBreakeven).toLocaleString('en-US')}`);
+      setSafeText('corridor-spot-display', whatIfSpotOverride !== null
+        ? `Sim Spot: $${Math.round(evalSpot).toLocaleString('en-US')}`
+        : `Live Spot: $${Math.round(spotPx).toLocaleString('en-US')}`);
+      setSafeText('label-put-strike', `PUT: $${nearestPutStrike.toLocaleString('en-US')}`);
+      setSafeText('label-call-strike', `CALL: $${nearestCallStrike.toLocaleString('en-US')}`);
+      setSafeText('label-live-spot', `${isEth ? 'ETH' : 'BTC'} SPOT: $${Math.round(spotPx).toLocaleString('en-US')}`);
+      setSafeText('corridor-summary-text', `$${putBreakeven.toFixed(2)} → $${callBreakeven.toFixed(2)} (${Math.round(callBreakeven - putBreakeven).toLocaleString('en-US')} pts / ${(((callBreakeven - putBreakeven)/spotPx)*100).toFixed(1)}%)`);
+
+      // Expiry payoff calculator
+      const calcExpiryPayoff = (S) => {
+        let pnl = 0;
+        for (const p of positions) {
+          const k = p.parsed.strike;
+          const intrinsic = p.parsed.isCall ? Math.max(0, S - k) : Math.max(0, k - S);
+          const isLong = (p.lots || 0) > 0;
+          const qty = p.cryptoQty || p.btcQty || 0.5;
+          const legPnl = isLong ? (intrinsic - p.entryPx) * qty : (p.entryPx - intrinsic) * qty;
+          const maxLoss = -(p.entryPx * qty);
+          pnl += (!isLong && simCapAt2xSl && p.sl_active !== false) ? Math.max(maxLoss, legPnl) : legPnl;
+        }
+        return pnl;
+      };
+
+      // Uncapped expiry payoff for analytical baseline
+      const calcUncappedExpiryPayoff = (S) => {
+        let pnl = 0;
+        for (const p of positions) {
+          const k = p.parsed.strike;
+          const intrinsic = p.parsed.isCall ? Math.max(0, S - k) : Math.max(0, k - S);
+          const isLong = (p.lots || 0) > 0;
+          const qty = p.cryptoQty || p.btcQty || 0.5;
+          pnl += isLong ? (intrinsic - p.entryPx) * qty : (p.entryPx - intrinsic) * qty;
+        }
+        return pnl;
+      };
+
+      // Live Black-Scholes theoretical payoff calculator (T+0)
+      const effectiveHours = simTimeHoursOverride !== null ? simTimeHoursOverride : getLiveHoursToSettlement();
+      const calcLivePayoff = (S) => {
+        const T_years = Math.max(0.0001, effectiveHours / 8760.0);
+        let pnl = 0;
+        for (const p of positions) {
+          const k = p.parsed.strike;
+          const baseIv = (p.ivPct || 22.0) / 100.0;
+          const effectiveIv = Math.max(0.05, Math.min(1.5, baseIv + (simIvOffset / 100.0)));
+          const optVal = bsPrice(S, k, effectiveIv, T_years, p.parsed.isCall);
+          const isLong = (p.lots || 0) > 0;
+          const qty = p.cryptoQty || p.btcQty || 0.5;
+          const legPnl = isLong ? (optVal - p.entryPx) * qty : (p.entryPx - optVal) * qty;
+          const maxLoss = -(p.entryPx * qty);
+          pnl += (!isLong && simCapAt2xSl && p.sl_active !== false) ? Math.max(maxLoss, legPnl) : legPnl;
+        }
+        return pnl;
+      };
+
+      // Net Delta calculator
+      const calcNetDelta = (S) => {
+        const T_years = Math.max(0.0001, effectiveHours / 8760.0);
+        let netDelta = 0;
+        for (const p of positions) {
+          const k = p.parsed.strike;
+          const baseIv = (p.ivPct || 22.0) / 100.0;
+          const effectiveIv = Math.max(0.05, Math.min(1.5, baseIv + (simIvOffset / 100.0)));
+          const legDelta = bsDelta(S, k, effectiveIv, T_years, p.parsed.isCall);
+          const isLong = (p.lots || 0) > 0;
+          const qty = p.cryptoQty || p.btcQty || 0.5;
+          netDelta += (isLong ? legDelta : -legDelta) * qty;
+        }
+        return netDelta;
+      };
+
+      // Update Simulated P&L readout
+      const simExpiryPnl = calcExpiryPayoff(evalSpot);
+      const simLivePnl = calcLivePayoff(evalSpot);
+      const pnlEl = document.getElementById('whatif-pnl-readout');
+      if (pnlEl) {
+        pnlEl.textContent = `${formatMoney(simExpiryPnl, true)} Expiry (${formatMoney(simLivePnl, true)} Live)`;
+        pnlEl.className = `font-mono font-bold px-2 py-0.5 rounded border ${simExpiryPnl >= 0 ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' : 'text-rose-400 bg-rose-500/10 border-rose-500/20'}`;
+      }
+
+      // Render SVG Dual-Curve Payoff Canvas
+      const container = document.getElementById('corridor-chart-container') || document.getElementById('safezone-svg-container');
+      const tooltip = document.getElementById('safezone-chart-tooltip');
+      if (!container) return;
+
+      // Coordinate Scaling & Domain
+      const roundStep = isEth ? 50 : 500;
+      const minSpan = isEth ? 150 : 2200;
+      const spanBeyondStrikes = Math.max(minSpan, Math.round((nearestCallStrike - nearestPutStrike) * 0.75));
+      const minDomain = Math.floor((nearestPutStrike - spanBeyondStrikes) / roundStep) * roundStep;
+      const maxDomain = Math.ceil((nearestCallStrike + spanBeyondStrikes) / roundStep) * roundStep;
+      const domainSpan = Math.max(isEth ? 300 : 3000, maxDomain - minDomain);
+
+      // SVG Dimensions with generous padding for textual axes
+      const W = 820;
+      const H = 260;
+      const padLeft = 68;
+      const padRight = 38;
+      const padTop = 32;
+      const padBottom = 42;
+      const plotW = W - padLeft - padRight;
+      const plotH = H - padTop - padBottom;
+
+      const xOf = (px) => padLeft + Math.max(0, Math.min(1, (px - minDomain) / domainSpan)) * plotW;
+
+      // Generate evaluation points
+      const samples = [];
+      const numSteps = 70;
+      for (let i = 0; i <= numSteps; i++) {
+        samples.push(minDomain + (i / numSteps) * domainSpan);
+      }
+      [nearestPutStrike, nearestCallStrike, putBreakeven, callBreakeven, spotPx, evalSpot].forEach(v => samples.push(v));
+      samples.sort((a, b) => a - b);
+
+      const curveData = samples.map(px => ({
+        px,
+        expiryPnl: calcExpiryPayoff(px),
+        livePnl: calcLivePayoff(px),
+        delta: calcNetDelta(px)
+      }));
+
+      // Vertical Scaling
+      const maxPnl = Math.max(100, Math.round(totalCollectedCredit * 1.5));
+      const edgeLoss = Math.min(calcUncappedExpiryPayoff(minDomain), calcUncappedExpiryPayoff(maxDomain));
+      const minPnl = simCapAt2xSl
+        ? Math.min(-totalCollectedCredit * 1.5, -40)
+        : Math.min(-400, Math.max(-1200, Math.floor(edgeLoss / 100) * 100));
+      const pnlSpan = Math.max(50, maxPnl - minPnl);
+
+      const yOf = (val) => padTop + ((maxPnl - val) / pnlSpan) * plotH;
+      const zeroY = yOf(0);
+
+      const expiryPoly = curveData.map(c => `${xOf(c.px).toFixed(1)},${yOf(c.expiryPnl).toFixed(1)}`).join(' ');
+      const livePoly = curveData.map(c => `${xOf(c.px).toFixed(1)},${yOf(c.livePnl).toFixed(1)}`).join(' ');
+
+      // Shaded green profit area
+      const profitAreaPoints = [
+        `${xOf(putBreakeven).toFixed(1)},${zeroY.toFixed(1)}`,
+        `${xOf(nearestPutStrike).toFixed(1)},${yOf(totalCollectedCredit).toFixed(1)}`,
+        `${xOf(nearestCallStrike).toFixed(1)},${yOf(totalCollectedCredit).toFixed(1)}`,
+        `${xOf(callBreakeven).toFixed(1)},${zeroY.toFixed(1)}`
+      ].join(' ');
+      const profitAreaSvg = `<polygon points="${profitAreaPoints}" fill="url(#profitGradV2)" fill-opacity="0.22" />`;
+
+      // Horizontal Y-Gridlines
+      const yTicks = [maxPnl, 0, Math.round(minPnl * 0.33), Math.round(minPnl * 0.66), minPnl];
+      const yGridSvg = yTicks.map(val => {
+        const y = yOf(val);
+        const isZero = Math.abs(val) < 0.01;
+        return `
+          <line x1="${padLeft}" y1="${y.toFixed(1)}" x2="${W - padRight}" y2="${y.toFixed(1)}"
+            stroke="${isZero ? '#64748B' : '#1E293B'}" stroke-width="${isZero ? '1.5' : '0.8'}" ${isZero ? '' : 'stroke-dasharray="3 3"'} />
+          <text x="${padLeft - 8}" y="${(y + 3.5).toFixed(1)}" text-anchor="end" fill="${isZero ? '#E2E8F0' : (val > 0 ? '#10B981' : '#F43F5E')}" font-size="9.5" font-family="monospace">
+            ${val > 0 ? '+' : ''}$${Math.round(val)}
+          </text>
+        `;
+      }).join('');
+
+      // Vertical X-Gridlines
+      const xTickValues = [];
+      const xStep = isEth ? 100 : 1000;
+      const firstTick = Math.ceil(minDomain / xStep) * xStep;
+      for (let tk = firstTick; tk <= maxDomain; tk += xStep) {
+        xTickValues.push(tk);
+      }
+      const xGridSvg = xTickValues.map(tk => {
+        const x = xOf(tk);
+        const lbl = isEth ? `$${tk}` : `$${(tk / 1000).toFixed(0)}k`;
+        return `
+          <line x1="${x.toFixed(1)}" y1="${padTop}" x2="${x.toFixed(1)}" y2="${H - padBottom}" stroke="#1E293B" stroke-width="0.8" stroke-dasharray="2 3" />
+          <text x="${x.toFixed(1)}" y="${H - padBottom + 14}" text-anchor="middle" fill="#94A3B8" font-size="9.5" font-family="monospace">
+            ${lbl}
+          </text>
+        `;
+      }).join('');
+
+      // Marker Lines: Put & Call Strikes
+      const xPut = xOf(nearestPutStrike);
+      const xCall = xOf(nearestCallStrike);
+      const xPutBe = xOf(putBreakeven);
+      const xCallBe = xOf(callBreakeven);
+
+      const xLive = xOf(spotPx);
+      const livePnlAtSpot = calcLivePayoff(spotPx);
+      const yLiveSpot = yOf(livePnlAtSpot);
+
+      const xSim = xOf(evalSpot);
+      const isSimulating = whatIfSpotOverride !== null;
+      const simPnlAtEval = calcLivePayoff(evalSpot);
+      const ySimSpot = yOf(simPnlAtEval);
+
+      // Stop Loss Bracket Cutoff Spot references
+      const putSlSpot = puts.length ? (nearestPutStrike - puts[0].entryPx * 2.0) : (nearestPutStrike - 170);
+      const callSlSpot = calls.length ? (nearestCallStrike + calls[0].entryPx * 2.0) : (nearestCallStrike + 66);
+      const xPutSl = xOf(putSlSpot);
+      const xCallSl = xOf(callSlSpot);
+
+      container.innerHTML = `
+        <svg id="payoff-svg-canvas" viewBox="0 0 ${W} ${H}" class="w-full h-full cursor-crosshair overflow-visible">
+          <defs>
+            <linearGradient id="profitGradV2" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#10B981" stop-opacity="0.55" />
+              <stop offset="100%" stop-color="#10B981" stop-opacity="0.0" />
+            </linearGradient>
+          </defs>
+
+          <!-- Axes Grid & Tick Labels -->
+          ${yGridSvg}
+          ${xGridSvg}
+
+          <!-- Axis Titles -->
+          <text x="${padLeft + plotW / 2}" y="${H - 5}" text-anchor="middle" fill="#94A3B8" font-size="10.5" font-weight="600" font-family="sans-serif">
+            BTC Spot Price ($ USD)
+          </text>
+          <text transform="rotate(-90)" x="${-(padTop + plotH / 2)}" y="16" text-anchor="middle" fill="#94A3B8" font-size="10" font-weight="600" font-family="monospace">
+            P&amp;L ($ USD)
+          </text>
+          <text x="${padLeft + 8}" y="${(zeroY - 5).toFixed(1)}" fill="#10B981" font-size="8.5" font-weight="bold" font-family="monospace" opacity="0.8">▲ PROFIT</text>
+          <text x="${padLeft + 8}" y="${(zeroY + 13).toFixed(1)}" fill="#F43F5E" font-size="8.5" font-weight="bold" font-family="monospace" opacity="0.8">▼ LOSS</text>
+
+          <!-- Shaded Expiry Profit Region -->
+          ${profitAreaSvg}
+
+          <!-- Expected at Expiry Curve (Green Piecewise Tent) -->
+          <polyline points="${expiryPoly}" fill="none" stroke="#10B981" stroke-width="2.5" stroke-linejoin="round" />
+
+          <!-- Live Theoretical (T+0) Curve (Cyan Smooth Arch, matches Delta Exchange 'On Target Date') -->
+          <polyline points="${livePoly}" fill="none" stroke="#38BDF8" stroke-width="2.2" stroke-linejoin="round" />
+
+          <!-- Strike Markers -->
+          <line x1="${xPut.toFixed(1)}" y1="${padTop}" x2="${xPut.toFixed(1)}" y2="${H - padBottom}" stroke="#A855F7" stroke-width="1.3" stroke-dasharray="3 3" />
+          <rect x="${(xPut - 28).toFixed(1)}" y="${padTop - 18}" width="56" height="15" rx="3" fill="#3B0764" stroke="#A855F7" stroke-width="1" />
+          <text x="${xPut.toFixed(1)}" y="${padTop - 7}" text-anchor="middle" fill="#E9D5FF" font-size="9" font-family="monospace" font-weight="bold">P $${(nearestPutStrike/1000).toFixed(1)}k</text>
+
+          <line x1="${xCall.toFixed(1)}" y1="${padTop}" x2="${xCall.toFixed(1)}" y2="${H - padBottom}" stroke="#F43F5E" stroke-width="1.3" stroke-dasharray="3 3" />
+          <rect x="${(xCall - 28).toFixed(1)}" y="${padTop - 18}" width="56" height="15" rx="3" fill="#4C0519" stroke="#F43F5E" stroke-width="1" />
+          <text x="${xCall.toFixed(1)}" y="${padTop - 7}" text-anchor="middle" fill="#FFE4E6" font-size="9" font-family="monospace" font-weight="bold">C $${(nearestCallStrike/1000).toFixed(1)}k</text>
+
+          <!-- Breakeven Indicators (Matches Delta Exchange: 81282.10 & 84317.90) -->
+          <line x1="${xPutBe.toFixed(1)}" y1="${padTop + 4}" x2="${xPutBe.toFixed(1)}" y2="${H - padBottom}" stroke="#818CF8" stroke-width="1.2" stroke-dasharray="4 2" />
+          <text x="${xPutBe.toFixed(1)}" y="${H - padBottom + 26}" text-anchor="middle" fill="#A5B4FC" font-size="8.5" font-family="monospace">BE $${(putBreakeven/1000).toFixed(1)}k</text>
+
+          <line x1="${xCallBe.toFixed(1)}" y1="${padTop + 4}" x2="${xCallBe.toFixed(1)}" y2="${H - padBottom}" stroke="#C084FC" stroke-width="1.2" stroke-dasharray="4 2" />
+          <text x="${xCallBe.toFixed(1)}" y="${H - padBottom + 26}" text-anchor="middle" fill="#E9D5FF" font-size="8.5" font-family="monospace">BE $${(callBreakeven/1000).toFixed(1)}k</text>
+
+          <!-- 2.0x SL Trigger Guideline Markers -->
+          ${(xPutSl >= padLeft && xPutSl <= W - padRight) ? `
+            <line x1="${xPutSl.toFixed(1)}" y1="${padTop + 10}" x2="${xPutSl.toFixed(1)}" y2="${H - padBottom}" stroke="#F43F5E" stroke-width="1" stroke-dasharray="2 2" stroke-opacity="0.6" />
+            <text x="${xPutSl.toFixed(1)}" y="${H - padBottom + 36}" text-anchor="middle" fill="#FDA4AF" font-size="7.5" font-family="monospace">2xSL $${(putSlSpot/1000).toFixed(1)}k</text>
+          ` : ''}
+          ${(xCallSl >= padLeft && xCallSl <= W - padRight) ? `
+            <line x1="${xCallSl.toFixed(1)}" y1="${padTop + 10}" x2="${xCallSl.toFixed(1)}" y2="${H - padBottom}" stroke="#F43F5E" stroke-width="1" stroke-dasharray="2 2" stroke-opacity="0.6" />
+            <text x="${xCallSl.toFixed(1)}" y="${H - padBottom + 36}" text-anchor="middle" fill="#FDA4AF" font-size="7.5" font-family="monospace">2xSL $${(callSlSpot/1000).toFixed(1)}k</text>
+          ` : ''}
+
+          <!-- Live Spot Pin (Amber Dot on Live Curve) -->
+          <line x1="${xLive.toFixed(1)}" y1="${padTop - 4}" x2="${xLive.toFixed(1)}" y2="${H - padBottom + 6}" stroke="#F59E0B" stroke-width="2" />
+          <circle cx="${xLive.toFixed(1)}" cy="${yLiveSpot.toFixed(1)}" r="9" fill="#F59E0B" fill-opacity="0.25" class="animate-ping" />
+          <circle cx="${xLive.toFixed(1)}" cy="${yLiveSpot.toFixed(1)}" r="5" fill="#F59E0B" stroke="#0B0F17" stroke-width="2" />
+          <rect x="${(xLive - 36).toFixed(1)}" y="${padTop - 28}" width="72" height="16" rx="4" fill="#78350F" stroke="#F59E0B" stroke-width="1" />
+          <text x="${xLive.toFixed(1)}" y="${padTop - 16}" text-anchor="middle" fill="#FEF3C7" font-size="9.5" font-weight="bold" font-family="monospace">
+            ₿ $${Math.round(spotPx).toLocaleString()}
+          </text>
+
+          <!-- Simulated Spot Pin (if actively dragging slider) -->
+          ${isSimulating ? `
+            <line x1="${xSim.toFixed(1)}" y1="${padTop}" x2="${xSim.toFixed(1)}" y2="${H - padBottom}" stroke="#3B82F6" stroke-width="2" stroke-dasharray="3 3" />
+            <circle cx="${xSim.toFixed(1)}" cy="${ySimSpot.toFixed(1)}" r="5.5" fill="#3B82F6" stroke="#FFFFFF" stroke-width="2" />
+          ` : ''}
+
+          <!-- Interactive Hover Crosshair -->
+          <g id="vis-crosshair-group" class="hidden">
+            <line id="vis-crosshair-line" x1="0" y1="${padTop}" x2="0" y2="${H - padBottom}" stroke="#94A3B8" stroke-width="1.2" stroke-dasharray="2 2" />
+            <circle id="vis-crosshair-live-dot" cx="0" cy="0" r="4.5" fill="#38BDF8" stroke="#0B0F17" stroke-width="1.5" />
+            <circle id="vis-crosshair-expiry-dot" cx="0" cy="0" r="4.5" fill="#10B981" stroke="#0B0F17" stroke-width="1.5" />
+          </g>
+        </svg>
+      `;
+
+      // Set up Interactive Hover Crosshair & Tooltip Events
+      const svgEl = document.getElementById('payoff-svg-canvas');
+      const crosshairGroup = document.getElementById('vis-crosshair-group');
+      const crosshairLine = document.getElementById('vis-crosshair-line');
+      const liveDot = document.getElementById('vis-crosshair-live-dot');
+      const expiryDot = document.getElementById('vis-crosshair-expiry-dot');
+
+      if (svgEl && crosshairGroup && tooltip) {
+        svgEl.addEventListener('mousemove', (e) => {
+          const rect = svgEl.getBoundingClientRect();
+          const mouseX = e.clientX - rect.left;
+          const mouseY = e.clientY - rect.top;
+          const svgX = (mouseX / rect.width) * W;
+
+          if (svgX < padLeft || svgX > (W - padRight)) {
+            crosshairGroup.classList.add('hidden');
+            tooltip.classList.add('hidden');
+            return;
+          }
+
+          const hoverSpot = minDomain + ((svgX - padLeft) / plotW) * domainSpan;
+          const hoverExpiryPnl = calcExpiryPayoff(hoverSpot);
+          const hoverLivePnl = calcLivePayoff(hoverSpot);
+          const thetaGap = hoverExpiryPnl - hoverLivePnl;
+          const hoverDelta = calcNetDelta(hoverSpot);
+
+          const yExp = yOf(hoverExpiryPnl);
+          const yLiv = yOf(hoverLivePnl);
+
+          crosshairGroup.classList.remove('hidden');
+          if (crosshairLine) {
+            crosshairLine.setAttribute('x1', svgX.toFixed(1));
+            crosshairLine.setAttribute('x2', svgX.toFixed(1));
+          }
+          if (liveDot) {
+            liveDot.setAttribute('cx', svgX.toFixed(1));
+            liveDot.setAttribute('cy', yLiv.toFixed(1));
+          }
+          if (expiryDot) {
+            expiryDot.setAttribute('cx', svgX.toFixed(1));
+            expiryDot.setAttribute('cy', yExp.toFixed(1));
+          }
+
+          const distUsd = hoverSpot - spotPx;
+          const distPct = spotPx > 0 ? (distUsd / spotPx) * 100 : 0;
+          const isSafe = hoverExpiryPnl >= 0;
+
+          tooltip.classList.remove('hidden');
+          tooltip.style.left = `${Math.min(rect.width - 220, Math.max(10, mouseX + 15))}px`;
+          tooltip.style.top = `${Math.min(rect.height - 110, Math.max(10, mouseY - 65))}px`;
+          tooltip.innerHTML = `
+            <div class="font-bold text-white flex items-center justify-between gap-3 border-b border-gray-800 pb-1">
+              <span>₿ $${Math.round(hoverSpot).toLocaleString()}</span>
+              <span class="${distPct >= 0 ? 'text-amber-400' : 'text-indigo-400'} font-normal text-[10px]">
+                ${distPct >= 0 ? '+' : ''}${distPct.toFixed(2)}% vs Live
+              </span>
+            </div>
+            <div class="mt-1.5 space-y-1 text-[11px]">
+              <div class="flex items-center justify-between gap-4">
+                <span class="text-gray-400 flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-[#10B981]"></span> At Expiry (5:30 PM):</span>
+                <span class="${hoverExpiryPnl >= 0 ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}">
+                  ${formatMoney(hoverExpiryPnl, true)}
+                </span>
+              </div>
+              <div class="flex items-center justify-between gap-4">
+                <span class="text-gray-400 flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-[#38BDF8]"></span> Live Curve (T+0):</span>
+                <span class="${hoverLivePnl >= 0 ? 'text-sky-300 font-semibold' : 'text-rose-300 font-semibold'}">
+                  ${formatMoney(hoverLivePnl, true)}
+                </span>
+              </div>
+              <div class="flex items-center justify-between gap-4 pt-1 border-t border-gray-800 text-[10px]">
+                <span class="text-gray-500">Remaining Theta Decay:</span>
+                <span class="text-emerald-400 font-mono">+${formatMoney(Math.max(0, thetaGap), false)}</span>
+              </div>
+              <div class="flex items-center justify-between gap-4 text-[10px]">
+                <span class="text-gray-500">Position Delta (&Delta;):</span>
+                <span class="text-gray-300 font-mono">${hoverDelta >= 0 ? '+' : ''}${hoverDelta.toFixed(3)} BTC</span>
+              </div>
+            </div>
+            <div class="text-[9px] mt-1.5 pt-1 border-t border-gray-800 text-gray-500">
+              ${isSafe ? '🟢 Inside Safe Corridor' : (simCapAt2xSl ? '🛡️ Protected by 2.0x SL' : '🔴 Unhedged Tail Risk')}
+            </div>
+          `;
+        });
+
+        svgEl.addEventListener('mouseleave', () => {
+          crosshairGroup.classList.add('hidden');
+          tooltip.classList.add('hidden');
+        });
+      }
+    }
+
+    function onWhatIfSpotInput(val) {
+      whatIfSpotOverride = parseFloat(val);
+      document.getElementById('whatif-reset-btn').classList.remove('hidden');
+      renderLivePositions();
+    }
+
+    function resetWhatIfSpot() {
+      whatIfSpotOverride = null;
+      document.getElementById('spotSlider').value = liveSpotPriceNumeric;
+      document.getElementById('whatif-reset-btn').classList.add('hidden');
+      renderLivePositions();
+    }
+
+    // 6. Next Entry Radar
+    function renderNextEntryStrikeRadar() {
+      const spot = liveSpotPriceNumeric;
+      const straddle = 532;
+      const offset = Math.round(straddle * 1.8);
+      const putK = Math.round((spot - offset) / 200) * 200;
+      const callK = Math.round((spot + offset) / 200) * 200;
+      document.getElementById('radar-text').textContent = 
+        `Straddle: $${straddle} • 1.8x Offset: ±$${offset} • Target Put: P-BTC-${putK} • Target Call: C-BTC-${callK} • Est. Credit: +$46.00`;
+    }
+
+    // 7. Portfolio Performance Chart (SVG Area + Bars)
+    function renderPortfolioPerformanceChart() {
+      const container = document.getElementById('equity-chart-container');
+      const rawDaily = (dashboardState && Array.isArray(dashboardState.daily_pnl) && dashboardState.daily_pnl.length > 0)
+        ? dashboardState.daily_pnl
+        : [];
+      
+      const sliceCount = currentPerfPeriod === '7D' ? 7 : (currentPerfPeriod === '30D' ? 30 : rawDaily.length);
+      const targetDaily = rawDaily.length > 0 ? rawDaily.slice(-sliceCount) : [];
+
+      if (!targetDaily.length) {
+        container.innerHTML = '<div class="text-xs text-gray-500">No performance data available</div>';
+        return;
+      }
+
+      let periodNetPnl = 0;
+      let winCount = 0;
+      let totalTrades = 0;
+      let maxDd = 0;
+
+      targetDaily.forEach(d => {
+        const net = Number(d.net_pnl_usd || 0);
+        periodNetPnl += net;
+        if (net > 0) winCount++;
+        if (net !== 0) totalTrades++;
+        const dd = Number(d.drawdown_usd || 0);
+        if (dd < maxDd) maxDd = dd;
+      });
+
+      const winRatePct = totalTrades > 0 ? ((winCount / totalTrades) * 100).toFixed(0) : '--';
+      const kpiNet = document.getElementById('perf-kpi-net');
+      const kpiWin = document.getElementById('perf-kpi-winrate');
+      const kpiPf = document.getElementById('perf-kpi-pf');
+      const kpiDd = document.getElementById('perf-kpi-dd');
+
+      if (kpiNet) {
+        kpiNet.textContent = formatMoney(periodNetPnl, true);
+        kpiNet.className = `font-bold mt-0.5 ${periodNetPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+      }
+      if (kpiWin) kpiWin.textContent = `${winRatePct}% (${winCount}W/${totalTrades - winCount}L)`;
+      if (kpiPf) kpiPf.textContent = '0.74x';
+      if (kpiDd) kpiDd.textContent = formatMoney(maxDd);
+
+      const dailyData = targetDaily.map(d => ({
+        date: d.date ? d.date.slice(5) : '10-09',
+        net_pnl: Number(d.net_pnl_usd !== undefined ? d.net_pnl_usd : 0),
+        cum_pnl: Number(d.cumulative_net_pnl_usd !== undefined ? d.cumulative_net_pnl_usd : 0)
+      }));
+
+      const W = 600;
+      const H = 200;
+      const padX = 40;
+      const padY = 25;
+      const n = dailyData.length;
+      if (n === 0) return;
+
+      const pnlValues = dailyData.map(d => d.cum_pnl);
+      const minPnl = Math.min(-100, ...pnlValues) - 20;
+      const maxPnl = Math.max(100, ...pnlValues) + 20;
+
+      const xOf = (i) => padX + (i / Math.max(1, n - 1)) * (W - padX * 2);
+      const yOf = (val) => H - padY - ((val - minPnl) / (maxPnl - minPnl || 1)) * (H - padY * 2);
+      const yZero = Math.max(padY, Math.min(H - padY, yOf(0)));
+
+      let polyPoints = dailyData.map((d, i) => `${xOf(i)},${yOf(d.cum_pnl)}`).join(' ');
+      let areaPoints = `${xOf(0)},${yZero} ${polyPoints} ${xOf(n - 1)},${yZero}`;
+
+      // Daily bars
+      let barsSvg = dailyData.map((d, i) => {
+        const x = xOf(i) - 4;
+        const yTop = d.net_pnl >= 0 ? yOf(d.net_pnl) : yZero;
+        const h = Math.abs(yOf(d.net_pnl) - yZero);
+        const col = d.net_pnl >= 0 ? '#10B981' : '#F43F5E';
+        return `<rect x="${x}" y="${yTop}" width="8" height="${Math.max(2, h)}" rx="2" fill="${col}" opacity="0.6"/>`;
+      }).join('');
+
+      container.innerHTML = `
+        <svg viewBox="0 0 ${W} ${H}" class="w-full h-full" preserveAspectRatio="none">
+          <line x1="${padX}" y1="${yZero}" x2="${W - padX}" y2="${yZero}" stroke="#1F2937" stroke-dasharray="3" />
+          <polygon points="${areaPoints}" fill="rgba(59, 130, 246, 0.08)" />
+          <polyline points="${polyPoints}" fill="none" stroke="#3B82F6" stroke-width="2.5" stroke-linecap="round" />
+          ${barsSvg}
+        </svg>
+      `;
+    }
+
+    function setPerformancePeriod(period) {
+      currentPerfPeriod = period;
+      ['perf7d', 'perf30d', 'perfAll'].forEach(id => {
+        document.getElementById(id).className = 'px-2.5 py-1 rounded text-gray-400 hover:text-white transition';
+      });
+      if (period === '7D') document.getElementById('perf7d').className = 'px-2.5 py-1 rounded bg-gray-800 text-gray-100 font-semibold shadow-sm';
+      if (period === '30D') document.getElementById('perf30d').className = 'px-2.5 py-1 rounded bg-gray-800 text-gray-100 font-semibold shadow-sm';
+      if (period === 'ALL') document.getElementById('perfAll').className = 'px-2.5 py-1 rounded bg-gray-800 text-gray-100 font-semibold shadow-sm';
+      renderPortfolioPerformanceChart();
+    }
+
+    // 8. Dynamic Monthly Calendar Heatmap
+    function initCalendarMonths() {
+      const daily = (dashboardState && dashboardState.daily_pnl) || [];
+      const monthSet = new Set();
+      for (const d of daily) {
+        if (d.date && d.date.length >= 7) monthSet.add(d.date.slice(0, 7));
+      }
+      const nowMonth = new Date().toISOString().slice(0, 7);
+      monthSet.add(nowMonth);
+      availableMonths = Array.from(monthSet).sort();
+      if (!currentCalendarMonth) {
+        currentCalendarMonth = availableMonths[availableMonths.length - 1] || nowMonth;
+      }
+      const sel = document.getElementById('calendar-month-select');
+      if (sel) {
+        sel.innerHTML = availableMonths.map(m => {
+          const [y, mo] = m.split('-');
+          const label = new Date(Number(y), Number(mo) - 1, 1).toLocaleString('en-US', { month: 'short', year: 'numeric' });
+          return `<option value="${m}" ${m === currentCalendarMonth ? 'selected' : ''}>${label}</option>`;
+        }).join('');
+      }
+    }
+
+    function changeCalendarMonth(delta) {
+      if (!currentCalendarMonth) return;
+      const [y, m] = currentCalendarMonth.split('-').map(Number);
+      const dt = new Date(y, m - 1 + delta, 1);
+      const nextYm = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
+      currentCalendarMonth = nextYm;
+      initCalendarMonths();
+      renderCalendarHeatmap();
+    }
+
+    function onCalendarMonthSelect() {
+      currentCalendarMonth = document.getElementById('calendar-month-select').value;
+      renderCalendarHeatmap();
+    }
+
+    function renderCalendarHeatmap() {
+      initCalendarMonths();
+      const container = document.getElementById('calendar-heatmap-container');
+      if (!container || !currentCalendarMonth) return;
+
+      const [year, month] = currentCalendarMonth.split('-').map(Number);
+      const firstDay = new Date(year, month - 1, 1);
+      const daysInMonth = new Date(year, month, 0).getDate();
+      const startOffset = (firstDay.getDay() + 6) % 7; // Mon = 0
+
+      const dailyMap = {};
+      for (const d of ((dashboardState && dashboardState.daily_pnl) || [])) {
+        dailyMap[d.date] = d;
+      }
+
+      let monthNet = 0;
+      let cells = [];
+
+      for (let i = 0; i < startOffset; i++) {
+        cells.push('<div class="p-1.5 rounded-lg bg-gray-900/30 border border-gray-850/40 text-center text-gray-700 text-[10px]"></div>');
+      }
+
+      const latestSyncDate = ((dashboardState && dashboardState.last_synced_utc) || new Date().toISOString()).slice(0, 10);
+      const hasOpenLegs = (dashboardState && Array.isArray(dashboardState.open_positions) && dashboardState.open_positions.length > 0);
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const info = dailyMap[dateStr];
+        const isLiveDate = dateStr === latestSyncDate && hasOpenLegs;
+
+        if (!info && !isLiveDate) {
+          cells.push(`
+            <div class="p-1.5 rounded-lg bg-gray-900/40 border border-gray-800 text-center text-gray-600 text-[10px] transition hover:border-gray-700">
+              <div class="text-[9px] text-gray-600">${day}</div>
+              <div class="text-[10px] text-gray-600 font-mono">—</div>
+            </div>
+          `);
+        } else {
+          const net = info ? Number(info.net_pnl_usd || 0) : 0;
+          const cf = info ? Number(info.cashflow_usd || 0) : 0;
+          const trades = info ? Number(info.closed_orders_count || 0) : 0;
+          monthNet += net;
+
+          const isGreen = net >= 0;
+          const bgCls = isGreen
+            ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400'
+            : 'bg-rose-500/10 border-rose-500/25 text-rose-400';
+
+          cells.push(`
+            <div class="p-1.5 rounded-lg border text-center font-mono transition hover:scale-105 cursor-pointer ${bgCls}"
+                 title="${dateStr}: Net ${formatMoney(net, true)} | Cashflow ${formatMoney(cf, true)} | ${trades} trades">
+              <div class="flex items-center justify-between text-[9px] text-gray-400">
+                <span>${day}</span>
+                ${isLiveDate ? '<span class="text-[8px] px-1 rounded bg-blue-500/20 text-blue-300 font-bold">LIVE</span>' : (trades > 0 ? `<span class="text-[8px] text-gray-500">${trades}T</span>` : '')}
+              </div>
+              <div class="text-[10px] font-bold mt-0.5">${formatMoney(net, true)}</div>
+            </div>
+          `);
+        }
+      }
+
+      const monthLabel = new Date(year, month - 1, 1).toLocaleString('en-US', { month: 'short', year: 'numeric' });
+      const monthLabelEl = document.getElementById('calendar-month-label');
+      if (monthLabelEl) {
+        monthLabelEl.textContent = `${monthLabel}: ${formatMoney(monthNet, true)}`;
+        monthLabelEl.className = `text-xs font-mono font-bold px-2 py-0.5 rounded border ${monthNet >= 0 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20'}`;
+      }
+
+      let html = '<div class="grid grid-cols-7 gap-1 text-center text-[10px] text-gray-400 pb-1 font-semibold">';
+      ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach(d => html += `<div>${d}</div>`);
+      html += `</div><div class="grid grid-cols-7 gap-1.5">${cells.join('')}</div>`;
+      container.innerHTML = html;
+    }
+
+    // 9. Audit Ledger Table with Filters, Cohorts, Search & CSV Export
+    function setAuditStatusTab(tab) {
+      currentAuditStatusTab = tab;
+      ['ALL', 'SUCCESS', 'PENDING_SL', 'CANCELLED', 'FAILED'].forEach(t => {
+        const el = document.getElementById(`audit-tab-${t}`);
+        if (el) {
+          el.className = t === tab
+            ? 'px-2.5 py-1 rounded-md text-xs font-semibold bg-blue-600 text-white shadow-sm'
+            : 'px-2.5 py-1 rounded-md text-xs font-medium text-gray-400 hover:text-gray-200 transition';
+        }
+      });
+      renderAuditLedger();
+    }
+
+    function setAuditCohortFilter(code) {
+      currentAuditCohort = code;
+      renderAuditCohortPills();
+      renderAuditLedger();
+    }
+
+    function onAuditSearch(val) {
+      currentAuditSearch = (val || '').toLowerCase().trim();
+      renderAuditLedger();
+    }
+
+    function getFilteredAuditOrders() {
+      const orders = (dashboardState && Array.isArray(dashboardState.audit_orders)) ? dashboardState.audit_orders : [];
+      return orders.filter(o => {
+        // 0. Strategy filter
+        if (currentStrategy !== 'all') {
+          const sId = o.strategy_id || (String(o.symbol || '').includes('-ETH-') ? 'eth_1dte' : 'btc_1dte');
+          if (sId !== currentStrategy) return false;
+        }
+        // 1. Status filter
+        if (currentAuditStatusTab !== 'ALL') {
+          const st = String(o.audit_status || o.state || '').toUpperCase();
+          if (currentAuditStatusTab === 'SUCCESS' && !st.includes('SUCCESS') && !st.includes('FILLED') && !st.includes('CLOSED')) return false;
+          if (currentAuditStatusTab === 'PENDING_SL' && !st.includes('PENDING') && !st.includes('SL')) return false;
+          if (currentAuditStatusTab === 'CANCELLED' && !st.includes('CANCEL')) return false;
+          if (currentAuditStatusTab === 'FAILED' && !st.includes('FAIL') && !st.includes('REJECT')) return false;
+        }
+        // 2. Cohort filter
+        if (currentAuditCohort !== 'ALL') {
+          const sym = String(o.symbol || '');
+          if (!sym.includes(currentAuditCohort)) return false;
+        }
+        // 3. Search query
+        if (currentAuditSearch) {
+          const line = `${o.symbol || ''} ${o.side || ''} ${o.id || ''} ${o.reason || ''} ${o.audit_status || ''}`.toLowerCase();
+          if (!line.includes(currentAuditSearch)) return false;
+        }
+        return true;
+      });
+    }
+
+    function renderAuditCohortPills() {
+      const container = document.getElementById('audit-cohort-pills');
+      if (!container) return;
+      const orders = (dashboardState && Array.isArray(dashboardState.audit_orders)) ? dashboardState.audit_orders : [];
+      const cohorts = new Set();
+      orders.forEach(o => {
+        const parts = String(o.symbol || '').split('-');
+        if (parts.length === 4 && parts[3]) cohorts.add(parts[3]);
+      });
+      const list = ['ALL', ...Array.from(cohorts).sort()];
+      container.innerHTML = list.map(c => `
+        <button onclick="setAuditCohortFilter('${c}')"
+          class="px-2 py-0.5 rounded text-[11px] font-mono transition ${
+            c === currentAuditCohort
+              ? 'bg-blue-600 text-white font-semibold shadow-sm'
+              : 'bg-gray-800 text-gray-400 hover:text-white border border-gray-700'
+          }">
+          ${c}
+        </button>
+      `).join('');
+    }
+
+    function exportAuditCSV() {
+      const filtered = getFilteredAuditOrders();
+      if (!filtered.length) {
+        showToast('No orders found to export!', 'error');
+        return;
+      }
+      const headers = ['Date_IST', 'Timestamp_UTC', 'Order_ID', 'Symbol', 'Side', 'Status', 'Size_Lots', 'Avg_Fill_Price', 'Stop_Price', 'Fee_USD', 'Realized_PnL_USD', 'Reason'];
+      const rows = filtered.map(o => [
+        o.date_ist || '',
+        o.created_at || '',
+        o.id || '',
+        o.symbol || '',
+        o.side || '',
+        o.audit_status || o.state || '',
+        o.size || 500,
+        o.avg_fill_price || o.price || 0,
+        o.stop_price || '',
+        o.paid_commission || o.fee || 0,
+        o.pnl_usd || 0,
+        `"${(o.reason || '').replace(/"/g, '""')}"`
+      ]);
+      const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `delta_strangle_audit_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      showToast(`Exported ${filtered.length} records to CSV!`, 'success');
+    }
+
+    function renderAuditLedger() {
+      const tbody = document.getElementById('ledger-tbody');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+      const filtered = getFilteredAuditOrders();
+      const totalCount = ((dashboardState && Array.isArray(dashboardState.audit_orders)) ? dashboardState.audit_orders.length : 0);
+
+      filtered.forEach(o => {
+        const side = String(o.side || o.action || (o.stop_order_type ? 'BUY (SL)' : 'SELL')).toUpperCase();
+        const price = Number((o.avg_fill_price && o.avg_fill_price > 0) ? o.avg_fill_price : (o.stop_price || o.limit_price || o.price || 0));
+        const fee = Number(o.paid_commission ? -Math.abs(o.paid_commission) : (o.fee || 0));
+        const pnl = Number(o.pnl_usd || 0);
+        const dateStr = o.date_ist || (o.created_at ? o.created_at.slice(5, 16).replace('T', ' ') : '10-09 22:30');
+        const lots = o.size || 500;
+        const multiplier = o.contract_multiplier || (String(o.symbol || '').includes('-ETH-') ? 0.01 : 0.001);
+        const assetUnit = String(o.symbol || '').includes('-ETH-') ? 'ETH' : 'BTC';
+        const cryptoQty = (Math.abs(lots) * multiplier).toFixed(3);
+
+        const isBuy = side.includes('BUY');
+        const sideBadge = isBuy
+          ? '<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/15 text-blue-300 border border-blue-500/30">BUY (SL)</span>'
+          : '<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-500/15 text-purple-300 border border-purple-500/30">SELL</span>';
+
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-gray-800/40 transition';
+        tr.innerHTML = `
+          <td class="py-2.5 px-3 text-gray-400 whitespace-nowrap">${dateStr}</td>
+          <td class="py-2.5 px-3">${sideBadge}</td>
+          <td class="py-2.5 px-3 text-gray-200 font-mono font-medium">${o.symbol || '—'}</td>
+          <td class="py-2.5 px-3 text-gray-300 font-mono">${lots}L <span class="text-gray-500 text-[10px]">(${cryptoQty} ${assetUnit})</span></td>
+          <td class="py-2.5 px-3 text-gray-200 font-mono font-semibold">$${price.toFixed(2)}</td>
+          <td class="py-2.5 px-3 text-right font-mono ${pnl !== 0 ? (pnl > 0 ? 'text-emerald-400' : 'text-rose-400') : 'text-gray-400'}">
+            ${pnl !== 0 ? formatMoney(pnl, true) : (fee !== 0 ? formatMoney(fee) : '—')}
+          </td>
+          <td class="py-2.5 px-3 text-right text-gray-400 text-[11px] truncate max-w-xs" title="${o.reason || o.audit_status || ''}">
+            ${o.reason || o.audit_status || 'Executed'}
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      const countLabel = document.getElementById('ledger-count-label');
+      if (countLabel) {
+        countLabel.textContent = `${filtered.length} of ${totalCount} records`;
+      }
+    }
+
+    // 10. Orchestrator GitHub Variable Updaters & Dispatch
+    async function upsertGitHubVariable(token, name, value) {
+      if (!token || !value) return false;
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/vnd.github+json',
+        'Content-Type': 'application/json',
+        'X-GitHub-Api-Version': '2022-11-28'
+      };
+      const patchRes = await fetch(`https://api.github.com/repos/${REPO_SLUG}/actions/variables/${name}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ name, value: String(value) })
+      });
+      if (patchRes.ok || patchRes.status === 204) return true;
+      if (patchRes.status === 404) {
+        const postRes = await fetch(`https://api.github.com/repos/${REPO_SLUG}/actions/variables`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ name, value: String(value) })
+        });
+        return postRes.ok || postRes.status === 201;
+      }
+      return false;
+    }
+
+    async function triggerWorkflowDispatch() {
+      const token = getSavedToken();
+      const mode = document.getElementById('dispatch-mode-select')?.value || 'sync-dashboard';
+      const strat = document.getElementById('dispatch-strategy-select')?.value || 'btc_1dte';
+      const lotsStr = String(getActiveBotLots());
+      if (!token) {
+        openSettingsModal();
+        showToast('🔑 Please configure GitHub PAT with Actions permission first', 'info');
+        return;
+      }
+      if (mode === 'live' && !confirm(`⚠️ Trigger LIVE ${strat} execution (${lotsStr} lots) right now? Real orders will be sent to Delta Exchange!`)) {
+        return;
+      }
+      showToast(`Dispatching workflow to branch '${getActiveBranch()}' (mode: ${mode}, strat: ${strat})...`, 'info');
+      try {
+        const resp = await fetch(`https://api.github.com/repos/${REPO_SLUG}/actions/workflows/${WORKFLOW_FILE}/dispatches`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/vnd.github+json',
+            'Content-Type': 'application/json',
+            'X-GitHub-Api-Version': '2022-11-28'
+          },
+          body: JSON.stringify({
+            ref: getActiveBranch(),
+            inputs: { mode, lots: lotsStr, strategy: strat }
+          })
+        });
+        if (resp.status === 204 || resp.ok) {
+          showToast(`⚡ Dispatched '${mode}' [${strat}] successfully! Cloudflare snapshot will update in ~40s.`, 'success');
+          setTimeout(syncNow, 12000);
+        } else {
+          showToast(`GitHub API ${resp.status}: Check that your PAT has Actions Read & Write permission.`, 'error');
+        }
+      } catch (err) {
+        showToast(`Dispatch failed: ${err.message}`, 'error');
+      }
+    }
+
+    async function toggleActiveBranch() {
+      const token = getSavedToken();
+      if (!token) {
+        openSettingsModal();
+        showToast('🔑 GitHub PAT required to flip active branch. Please save token in settings.', 'info');
+        return;
+      }
+      const current = getActiveBranch();
+      const nextBranch = current === 'blue' ? 'green' : 'blue';
+      const confirmed = confirm(
+        `Flip active live branch from ${current.toUpperCase()} to ${nextBranch.toUpperCase()}?\n\n` +
+        `• ACTIVE_LIVE_BRANCH repository variable will be updated on GitHub.\n` +
+        `• Next automated triggers will execute against '${nextBranch}'.`
+      );
+      if (!confirmed) return;
+      showToast(`Flipping ACTIVE_LIVE_BRANCH to '${nextBranch}'...`, 'info');
+      try {
+        const ok = await upsertGitHubVariable(token, 'ACTIVE_LIVE_BRANCH', nextBranch);
+        if (ok) {
+          if (!dashboardState) dashboardState = {};
+          if (!dashboardState.github_actions) dashboardState.github_actions = {};
+          dashboardState.github_actions.active_branch = nextBranch;
+          localStorage.setItem(STORAGE_ACTIVE_BRANCH_KEY, nextBranch);
+          renderHeaderAndKPIs();
+          showToast(`🎉 Active branch flipped to ${nextBranch.toUpperCase()}!`, 'success');
+        } else {
+          showToast('GitHub API update failed: PAT needs Variables: Read & write permission.', 'error');
+        }
+      } catch (e) {
+        showToast(`Error flipping branch: ${e.message}`, 'error');
+      }
+    }
+
+    async function updateBotMode(targetMode) {
+      const token = getSavedToken();
+      if (!token) {
+        openSettingsModal();
+        showToast('🔑 Please configure GitHub PAT to update BOT_MODE', 'info');
+        return;
+      }
+      showToast(`Updating BOT_MODE to '${targetMode}'...`, 'info');
+      try {
+        const ok = await upsertGitHubVariable(token, 'BOT_MODE', targetMode);
+        if (ok) {
+          if (!dashboardState) dashboardState = {};
+          if (!dashboardState.github_actions) dashboardState.github_actions = {};
+          dashboardState.github_actions.bot_mode = targetMode;
+          renderHeaderAndKPIs();
+          showToast(`BOT_MODE updated to '${targetMode}'!`, 'success');
+        } else {
+          showToast('GitHub API update failed: Check PAT permissions.', 'error');
+        }
+      } catch (e) {
+        showToast(`Error updating BOT_MODE: ${e.message}`, 'error');
+      }
+    }
+
+    async function updateBotLotsFromDashboard() {
+      const token = getSavedToken();
+      const lots = getActiveBotLots();
+      if (!token) {
+        openSettingsModal();
+        showToast('🔑 Please configure GitHub PAT to update BOT_LOTS', 'info');
+        return;
+      }
+      showToast(`Updating BOT_LOTS to ${lots}...`, 'info');
+      try {
+        const ok = await upsertGitHubVariable(token, 'BOT_LOTS', String(lots));
+        if (ok) {
+          if (!dashboardState) dashboardState = {};
+          if (!dashboardState.github_actions) dashboardState.github_actions = {};
+          dashboardState.github_actions.bot_lots = lots;
+          renderHeaderAndKPIs();
+          showToast(`BOT_LOTS updated to ${lots} lots!`, 'success');
+        } else {
+          showToast('GitHub API update failed.', 'error');
+        }
+      } catch (e) {
+        showToast(`Error updating lots: ${e.message}`, 'error');
+      }
+    }
+
+    function quickSetLots(lots) {
+      const el = document.getElementById('bot-lots-input');
+      if (el) {
+        el.value = lots;
+        el.dataset.edited = '1';
+      }
+      updateBotLotsFromDashboard();
+    }
+
+    async function pingCloudflareWorkerHealth() {
+      const btn = document.getElementById('btn-ping-cf-worker');
+      if (btn) btn.textContent = '📡 Pinging...';
+      const start = performance.now();
+      try {
+        const res = await fetch('https://delta-strangle-scheduler.ajay14sharma.workers.dev/health?t=' + Date.now());
+        const ms = Math.round(performance.now() - start);
+        if (res.ok) {
+          const data = await res.json();
+          const statusText = `Healthy (${ms}ms) • KV: ${data.kv_bound ? 'Bound' : 'No KV'} • Next: ${data.schedules?.[0]?.ist || '11:30 AM'}`;
+          showToast(`☁️ Cloudflare Worker: ${statusText}`, 'success');
+          const menuStatus = document.getElementById('cf-menu-status');
+          if (menuStatus) menuStatus.textContent = `${ms}ms`;
+        } else {
+          showToast(`Worker returned HTTP ${res.status}`, 'error');
+        }
+      } catch (e) {
+        showToast(`Worker ping failed: ${e.message}`, 'error');
+      } finally {
+        if (btn) btn.textContent = '📡 Ping Worker';
+      }
+    }
+
+    async function testWhatsApp() {
+      const token = getSavedToken();
+      const phone = getSavedWaPhone();
+      const metaPid = getSavedMetaPhoneId();
+      const metaTok = getSavedMetaToken();
+
+      if (metaPid && metaTok) {
+        showToast(`Sending test alert via Meta Cloud API to ${phone}...`, 'info');
+        try {
+          const url = `https://graph.facebook.com/v21.0/${metaPid}/messages`;
+          const body = {
+            messaging_product: "whatsapp",
+            recipient_type: "individual",
+            to: phone.replace(/\D+/g, ''),
+            type: "template",
+            template: {
+              name: "delta_strangle_alert",
+              language: { code: "en" },
+              components: [
+                {
+                  type: "body",
+                  parameters: [
+                    { type: "text", text: "TEST (Manual Trigger)" },
+                    { type: "text", text: "Dashboard v2 Ping" },
+                    { type: "text", text: `BTC Spot $${liveSpotPriceNumeric.toLocaleString()}` },
+                    { type: "text", text: "+$0.00" },
+                    { type: "text", text: "All systems nominal" }
+                  ]
+                }
+              ]
+            }
+          };
+          const res = await fetch(url, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${metaTok}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(body)
+          });
+          if (res.ok) {
+            showToast(`📲 Meta WhatsApp alert delivered to ${phone}!`, 'success');
+            return;
+          }
+        } catch (e) {
+          console.warn('Meta API direct call failed, trying workflow dispatch...', e);
+        }
+      }
+
+      // Fallback to workflow dispatch
+      if (token) {
+        showToast(`Dispatching 'test-whatsapp' workflow via GitHub Actions...`, 'info');
+        try {
+          const resp = await fetch(`https://api.github.com/repos/${REPO_SLUG}/actions/workflows/${WORKFLOW_FILE}/dispatches`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Accept': 'application/vnd.github+json',
+              'Content-Type': 'application/json',
+              'X-GitHub-Api-Version': '2022-11-28'
+            },
+            body: JSON.stringify({ ref: getActiveBranch(), inputs: { mode: 'test-whatsapp', lots: '500' } })
+          });
+          if (resp.ok || resp.status === 204) {
+            showToast('📲 Dispatched test-whatsapp run to GitHub Actions!', 'success');
+            return;
+          }
+        } catch (e) {
+          console.warn('GitHub dispatch fallback failed', e);
+        }
+      }
+
+      showToast('📲 Please configure Meta Token or GitHub PAT in settings to test WhatsApp.', 'info');
+    }
+
+    // 11. Modals & Settings Management
+    function openSettingsModal() {
+      document.getElementById('input-gh-pat').value = getSavedToken();
+      document.getElementById('input-wa-phone').value = getSavedWaPhone();
+      document.getElementById('input-meta-wa-token').value = getSavedMetaToken();
+      document.getElementById('input-meta-phone-id').value = getSavedMetaPhoneId();
+      document.getElementById('settings-modal').classList.remove('hidden');
+    }
+
+    function closeSettingsModal() {
+      document.getElementById('settings-modal').classList.add('hidden');
+    }
+
+    function saveSettings() {
+      const pat = document.getElementById('input-gh-pat').value.trim();
+      const phone = document.getElementById('input-wa-phone').value.trim();
+      const metaTok = document.getElementById('input-meta-wa-token').value.trim();
+      const metaPid = document.getElementById('input-meta-phone-id').value.trim();
+
+      if (pat) {
+        localStorage.setItem(STORAGE_TOKEN_KEY, pat);
+        localStorage.setItem('gh_pat', pat);
+      }
+      if (phone) {
+        localStorage.setItem(STORAGE_WA_PHONE_KEY, phone);
+        localStorage.setItem('meta_wa_phone', phone);
+      }
+      if (metaTok) localStorage.setItem(STORAGE_META_TOKEN_KEY, metaTok);
+      if (metaPid) localStorage.setItem(STORAGE_META_PHONE_ID_KEY, metaPid.replace(/\D+/g, ''));
+
+      closeSettingsModal();
+      showToast('Settings saved successfully across v1 and v2!', 'success');
+    }
+
+    function clearSavedSettings() {
+      [STORAGE_TOKEN_KEY, 'gh_pat', STORAGE_WA_PHONE_KEY, 'meta_wa_phone', STORAGE_META_TOKEN_KEY, STORAGE_META_PHONE_ID_KEY].forEach(k => localStorage.removeItem(k));
+      document.getElementById('input-gh-pat').value = '';
+      document.getElementById('input-wa-phone').value = '';
+      document.getElementById('input-meta-wa-token').value = '';
+      document.getElementById('input-meta-phone-id').value = '';
+      showToast('Credentials cleared from browser.', 'info');
+    }
+
+    function copyBookmarkUrl() {
+      const pat = document.getElementById('input-gh-pat').value.trim() || getSavedToken();
+      const phone = document.getElementById('input-wa-phone').value.trim() || getSavedWaPhone();
+      const metaPid = document.getElementById('input-meta-phone-id').value.trim() || getSavedMetaPhoneId();
+      const metaTok = document.getElementById('input-meta-wa-token').value.trim() || getSavedMetaToken();
+
+      if (!pat) {
+        showToast('Enter a GitHub PAT first to generate a bookmark URL.', 'error');
+        return;
+      }
+      let hash = `token=${encodeURIComponent(pat)}`;
+      if (phone) hash += `&waphone=${encodeURIComponent(phone)}`;
+      if (metaPid) hash += `&metapid=${encodeURIComponent(metaPid)}`;
+      if (metaTok) hash += `&metatok=${encodeURIComponent(metaTok)}`;
+
+      const url = `${window.location.origin}${window.location.pathname}#${hash}`;
+      navigator.clipboard.writeText(url);
+      showToast('1-Click Bookmark URL copied to clipboard!', 'success');
+    }
+
+    // 12. Alert Monitor Modal
+    function setAlertCategoryFilter(cat) {
+      currentAlertCategory = cat;
+      ['all', 'technical', 'portfolio'].forEach(c => {
+        const el = document.getElementById(`alert-tab-${c}`);
+        if (el) {
+          el.className = c === cat
+            ? 'px-2.5 py-1 rounded-md font-semibold bg-blue-600 text-white shadow-sm'
+            : 'px-2.5 py-1 rounded-md font-medium text-gray-400 hover:text-gray-200';
+        }
+      });
+      renderAlertsList();
+    }
+
+    function openAlertsModal() {
+      renderAlertsList();
+      document.getElementById('alerts-modal').classList.remove('hidden');
+    }
+
+    function closeAlertsModal() {
+      document.getElementById('alerts-modal').classList.add('hidden');
+    }
+
+    function quickRunModeFromAlert(mode) {
+      closeAlertsModal();
+      document.getElementById('dispatch-mode-select').value = mode;
+      triggerWorkflowDispatch();
+    }
+
+    function renderAlertsList() {
+      const container = document.getElementById('alerts-modal-content');
+      if (!container || !dashboardState) return;
+      const techAlerts = dashboardState.technical_alerts || [];
+      const portAlerts = dashboardState.portfolio_alerts || [];
+      let list = [];
+
+      if (currentAlertCategory === 'all') {
+        list = [...techAlerts.map(a => ({ ...a, _cat: 'technical' })), ...portAlerts.map(a => ({ ...a, _cat: 'portfolio' }))];
+      } else if (currentAlertCategory === 'technical') {
+        list = techAlerts.map(a => ({ ...a, _cat: 'technical' }));
+      } else {
+        list = portAlerts.map(a => ({ ...a, _cat: 'portfolio' }));
+      }
+
+      if (!list.length) {
+        container.innerHTML = '<div class="p-6 text-center text-gray-500 font-mono">No alerts found in this category. All systems nominal!</div>';
+        return;
+      }
+
+      container.innerHTML = list.map(a => {
+        const isTech = a._cat === 'technical';
+        const sev = String(a.severity || 'info').toUpperCase();
+        const badgeCls = sev.includes('CRIT') || sev.includes('HIGH') || sev.includes('FAIL')
+          ? 'bg-rose-500/15 text-rose-400 border-rose-500/30'
+          : (sev.includes('WARN') ? 'bg-amber-500/15 text-amber-400 border-amber-500/30' : 'bg-blue-500/15 text-blue-400 border-blue-500/30');
+
+        return `
+          <div class="p-3 rounded-lg bg-gray-950 border border-gray-800 space-y-1.5 transition hover:border-gray-700">
+            <div class="flex items-center justify-between text-[11px]">
+              <div class="flex items-center gap-1.5">
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-bold border ${badgeCls}">${sev}</span>
+                <span class="font-semibold text-gray-200">${a.title || a.type || 'System Event'}</span>
+              </div>
+              <span class="text-gray-500 font-mono text-[10px]">${a.timestamp_ist || a.time_ist || a.date_ist || 'Recent'}</span>
+            </div>
+            <p class="text-gray-300 text-[11px] leading-relaxed">${a.message || a.detail || a.text || ''}</p>
+            ${a.fix ? `<div class="text-[10px] text-emerald-400 font-mono bg-emerald-950/30 p-1.5 rounded border border-emerald-900/40">💡 Fix: ${a.fix}</div>` : ''}
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Auto-refresh timers
+    setInterval(fetchLiveDeltaTickers, 3000);
+    setInterval(updateMilestoneCountdown, 30000);
+
+    // Initial Load Sequence
+    (async () => {
+      await loadDashboardSnapshot();
+      await fetchLiveDeltaTickers();
+      renderHeaderAndKPIs();
+      renderAuditCohortPills();
+      renderAuditLedger();
+    })();
+  </script>
+</body>
+</html>
