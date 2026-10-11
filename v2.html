@@ -192,16 +192,16 @@
       <div class="p-4 rounded-xl bg-[#111827] border border-[#1F2937] space-y-2">
         <div class="flex items-center justify-between text-xs text-gray-400">
           <span>Wallet Equity</span>
-          <span id="kpi-margin-free-pct" class="text-gray-400 font-mono text-[11px]">88.3% Free</span>
+          <span id="kpi-margin-free-pct" class="text-gray-400 font-mono text-[11px]">--% Free</span>
         </div>
-        <div id="kpi-balance" class="text-xl font-bold font-mono text-gray-100">$5,851.47</div>
+        <div id="kpi-balance" class="text-xl font-bold font-mono text-gray-100">$0.00</div>
         <div class="space-y-1">
           <div class="w-full h-1.5 rounded-full bg-gray-800 overflow-hidden">
-            <div id="kpi-margin-bar" class="h-full bg-blue-500 rounded-full transition-all duration-300" style="width: 11.7%"></div>
+            <div id="kpi-margin-bar" class="h-full bg-blue-500 rounded-full transition-all duration-300" style="width: 0%"></div>
           </div>
           <div class="flex justify-between text-[11px] text-gray-400">
-            <span id="kpi-margin-used-label">Margin: $684.88 (11.7%)</span>
-            <span id="kpi-available-label">Avail: $5,166.59</span>
+            <span id="kpi-margin-used-label">Margin: $0.00</span>
+            <span id="kpi-available-label">Avail: $0.00</span>
           </div>
         </div>
       </div>
@@ -210,26 +210,26 @@
       <div class="p-4 rounded-xl bg-[#111827] border border-[#1F2937] space-y-2">
         <div class="flex items-center justify-between text-xs text-gray-400">
           <span>Live Open P&L</span>
-          <span id="kpi-open-legs-count" class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">3 Open Legs</span>
+          <span id="kpi-open-legs-count" class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-800 text-gray-400 border border-gray-700">0 Open Legs</span>
         </div>
         <div class="flex items-baseline gap-2">
-          <div id="kpi-open-pnl" class="text-xl font-bold font-mono text-emerald-400">+$145.89</div>
-          <span id="kpi-theta-pct" class="text-xs font-semibold text-emerald-400">+82.0% Theta</span>
+          <div id="kpi-open-pnl" class="text-xl font-bold font-mono text-gray-300">$0.00</div>
+          <span id="kpi-theta-pct" class="text-xs font-semibold text-gray-400">0.0% Theta</span>
         </div>
-        <p id="kpi-open-details" class="text-[11px] text-gray-400">Sold: $178.00 • Net Δ: +0.03 BTC</p>
+        <p id="kpi-open-details" class="text-[11px] text-gray-400">Sold: $0.00 • Net Δ: +0.00 BTC</p>
       </div>
 
       <!-- Card 3: Realized Period P&L -->
       <div class="p-4 rounded-xl bg-[#111827] border border-[#1F2937] space-y-2">
         <div class="flex items-center justify-between text-xs text-gray-400">
           <span>Period Realized P&L</span>
-          <span id="kpi-win-rate" class="text-gray-400 text-xs font-mono">Win: 43%</span>
+          <span id="kpi-win-rate" class="text-gray-400 text-xs font-mono">Win: --%</span>
         </div>
         <div class="flex items-baseline gap-2">
-          <div id="kpi-realized-pnl" class="text-xl font-bold font-mono text-rose-400">-$208.89</div>
-          <span id="kpi-gross-pnl" class="text-xs text-gray-400 font-mono">Gross: -$137.96</span>
+          <div id="kpi-realized-pnl" class="text-xl font-bold font-mono text-gray-300">$0.00</div>
+          <span id="kpi-gross-pnl" class="text-xs text-gray-400 font-mono">Gross: $0.00</span>
         </div>
-        <p id="kpi-fees-label" class="text-[11px] text-gray-400">Fees: $70.93 • Profit Factor: 0.74x</p>
+        <p id="kpi-fees-label" class="text-[11px] text-gray-400">Fees: $0.00 • Profit Factor: --</p>
       </div>
 
       <!-- Card 4: Next Scheduled Milestone -->
@@ -238,7 +238,7 @@
           <span>Next Bot Milestone</span>
           <span class="text-xs font-medium text-amber-400">Daily Cycle</span>
         </div>
-        <div id="kpi-countdown-timer" class="text-xl font-bold font-mono text-gray-100">0h 28m</div>
+        <div id="kpi-countdown-timer" class="text-xl font-bold font-mono text-gray-100">--h --m</div>
         <div class="flex justify-between items-center text-[11px] text-gray-400">
           <span id="kpi-settle-sub">🏁 5:30 PM Settle</span>
           <span>⚡ 10:30 PM Entry</span>
@@ -2392,13 +2392,19 @@
     setInterval(fetchLiveDeltaTickers, 3000);
     setInterval(updateMilestoneCountdown, 30000);
 
-    // Initial Load Sequence
+    // Initial Load Sequence (Concurrent Hydration)
     (async () => {
-      await loadDashboardSnapshot();
-      await fetchLiveDeltaTickers();
+      await Promise.allSettled([
+        loadDashboardSnapshot(),
+        fetchLiveDeltaTickers()
+      ]);
       renderHeaderAndKPIs();
+      renderLivePositions();
       renderAuditCohortPills();
       renderAuditLedger();
+      renderNextEntryStrikeRadar();
+      renderPortfolioPerformanceChart();
+      renderCalendarHeatmap();
     })();
   </script>
 </body>

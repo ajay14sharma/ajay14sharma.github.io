@@ -5151,14 +5151,17 @@
       }
     }
 
-    // Boot Dashboard
+    // Boot Dashboard (Concurrent Hydration)
     renderActiveBranchBadges();
-    loadDashboardSnapshot().then(() => {
-      fetchLiveDeltaTickers();
+    (async () => {
+      await Promise.allSettled([
+        loadDashboardSnapshot(),
+        fetchLiveDeltaTickers()
+      ]);
       setInterval(fetchLiveDeltaTickers, 3000);
       setInterval(loadDashboardSnapshot, 60000);
       setInterval(updateNextEntryCountdown, 30000);
-    });
+    })();
   </script>
 </body>
 </html>
