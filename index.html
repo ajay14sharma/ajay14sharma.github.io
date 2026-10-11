@@ -5050,17 +5050,41 @@
             toDigits
           };
         }
-        // Non-auth error (e.g., 24h customer window not open yet): fallback to hello_world template
-        const tplRes = await fetch(metaUrl, {
+        // Non-auth error (e.g., 24h customer window not open yet): fallback to approved delta_strangle_bot_alert or hello_world template
+        let tplRes = await fetch(metaUrl, {
           method: 'POST',
           headers: metaHeaders,
           body: JSON.stringify({
             messaging_product: 'whatsapp',
             to: toDigits,
             type: 'template',
-            template: { name: 'hello_world', language: { code: 'en_US' } }
+            template: {
+              name: 'delta_strangle_bot_alert',
+              language: { code: 'en_US' },
+              components: [
+                {
+                  type: 'body',
+                  parameters: [
+                    { type: 'text', text: msg.slice(0, 500) }
+                  ]
+                }
+              ]
+            }
           })
         });
+        if (!tplRes.ok) {
+          // Fallback to starter hello_world template if custom template fails
+          tplRes = await fetch(metaUrl, {
+            method: 'POST',
+            headers: metaHeaders,
+            body: JSON.stringify({
+              messaging_product: 'whatsapp',
+              to: toDigits,
+              type: 'template',
+              template: { name: 'hello_world', language: { code: 'en_US' } }
+            })
+          });
+        }
         if (tplRes.ok) {
           return { ok: true, mode: 'template', toDigits, textRes, tplRes };
         }
