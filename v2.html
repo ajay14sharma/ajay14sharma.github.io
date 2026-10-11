@@ -2194,17 +2194,13 @@
             to: phone.replace(/\D+/g, ''),
             type: "template",
             template: {
-              name: "delta_strangle_alert",
-              language: { code: "en" },
+              name: "delta_strangle_bot_alert",
+              language: { code: "en_US" },
               components: [
                 {
                   type: "body",
                   parameters: [
-                    { type: "text", text: "TEST (Manual Trigger)" },
-                    { type: "text", text: "Dashboard v2 Ping" },
-                    { type: "text", text: `BTC Spot $${liveSpotPriceNumeric.toLocaleString()}` },
-                    { type: "text", text: "+$0.00" },
-                    { type: "text", text: "All systems nominal" }
+                    { type: "text", text: `⚡ Strangle Bot Test Alert (${new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' })} IST) — BTC Spot: $${Number(liveSpotPriceNumeric || 0).toLocaleString()} • All systems nominal.` }
                   ]
                 }
               ]
