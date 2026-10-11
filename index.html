@@ -914,6 +914,7 @@
             <select id="dispatch-mode-select" class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 mono">
               <option value="sync-dashboard">Mode: sync-dashboard (Safe Sync)</option>
               <option value="test-whatsapp">Mode: test-whatsapp (Send WhatsApp Status)</option>
+              <option value="check-sl">Mode: check-sl (Verify & Monitor SL Bracket)</option>
               <option value="dry-run">Mode: dry-run (Preview Strikes)</option>
               <option value="verify-auth">Mode: verify-auth (Test Proxy & Key)</option>
               <option value="attach-sl-only">Mode: attach-sl-only (Ensure 2x SL)</option>
@@ -1587,7 +1588,6 @@
           const edgeData = await edgeResp.json();
           if (edgeData && (edgeData.last_synced_utc || edgeData.wallet)) {
             dashboardState = edgeData;
-            return;
           }
         }
       } catch (edgeErr) {
@@ -1596,18 +1596,19 @@
 
       // 2. Secondary fallback: local static file (for local development)
       const token = getSavedToken();
-      try {
-        const resp = await fetch(`./dashboard_data.json?t=${Date.now()}`);
-        if (resp.ok) {
-          dashboardState = await resp.json();
-          return;
+      if (!dashboardState) {
+        try {
+          const resp = await fetch(`./dashboard_data.json?t=${Date.now()}`);
+          if (resp.ok) {
+            dashboardState = await resp.json();
+          }
+        } catch (err) {
+          // Ignore file:// CORS fetch error
         }
-      } catch (err) {
-        // Ignore file:// CORS fetch error
       }
 
       // 3. Tertiary fallback: GitHub API
-      if (token) {
+      if (!dashboardState && token) {
         try {
           const activeRef = getActiveBranch();
           let ghResp = await fetch(`https://api.github.com/repos/${REPO_SLUG}/contents/docs/dashboard_data.json?ref=${activeRef}&t=${Date.now()}`, {
@@ -1628,7 +1629,6 @@
           }
           if (ghResp.ok) {
             dashboardState = await ghResp.json();
-            return;
           }
         } catch (err) {
           console.warn('GitHub API snapshot fetch failed:', err);
