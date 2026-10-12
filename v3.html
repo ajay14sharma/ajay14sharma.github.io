@@ -188,6 +188,12 @@
         <button onclick="setStrategyTab('btc_condor')" id="strat-pill-btc_condor" class="strat-pill px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700/60 transition">
           🛡️ BTC Iron Condor
         </button>
+        <button onclick="setStrategyTab('regime_condor')" id="strat-pill-regime_condor" class="strat-pill px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700/60 transition">
+          🎯 BTC Regime Condor
+        </button>
+        <button onclick="setStrategyTab('btc_trend_breakout')" id="strat-pill-btc_trend_breakout" class="strat-pill px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700/60 transition">
+          📈 BTC Trend Breakout
+        </button>
         <button onclick="setStrategyTab('btc_0dte')" id="strat-pill-btc_0dte" class="strat-pill px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700/60 transition">
           ⚡ BTC 0DTE Intraday
         </button>
@@ -576,6 +582,8 @@
                 <option value="btc_1dte" selected>btc_1dte (BTC 1DTE Strangle)</option>
                 <option value="eth_1dte">eth_1dte (ETH 1DTE Strangle)</option>
                 <option value="btc_condor">btc_condor (BTC Iron Condor)</option>
+                <option value="regime_condor">regime_condor (BTC Regime Iron Condor)</option>
+                <option value="btc_trend_breakout">btc_trend_breakout (BTC Trend Breakout)</option>
                 <option value="btc_0dte">btc_0dte (BTC 0DTE Intraday)</option>
                 <option value="all">all (Run All Active)</option>
               </select>
@@ -903,7 +911,7 @@
 
     function setStrategyTab(stratId) {
       currentStrategy = stratId;
-      const stratPills = ['all', 'btc_1dte', 'eth_1dte', 'btc_condor', 'btc_0dte'];
+      const stratPills = ['all', 'btc_1dte', 'eth_1dte', 'btc_condor', 'regime_condor', 'btc_trend_breakout', 'btc_0dte'];
       stratPills.forEach(s => {
         const btn = document.getElementById(`strat-pill-${s}`);
         if (!btn) return;
@@ -920,6 +928,8 @@
         btc_1dte: 'BTC 1DTE Short Strangle (10:30 PM IST • T+2 Expiry)',
         eth_1dte: 'ETH 1DTE Short Strangle (10:30 PM IST • T+2 Expiry)',
         btc_condor: 'BTC Iron Condor (10:30 PM IST • Defined Risk Wings)',
+        regime_condor: 'BTC Regime Iron Condor (IV Rank Gate • 50% Profit Target)',
+        btc_trend_breakout: 'BTC Trend & Vol Breakout (20D Donchian • ATR Trailing Stop)',
         btc_0dte: 'BTC 0DTE Intraday Strangle (9:30 AM IST • Same-Day Expiry)'
       };
       const titleMap = {
@@ -927,6 +937,8 @@
         btc_1dte: 'BTC 1DTE Short Strangle',
         eth_1dte: 'ETH 1DTE Short Strangle',
         btc_condor: 'BTC Iron Condor',
+        regime_condor: 'BTC Regime Iron Condor',
+        btc_trend_breakout: 'BTC Trend & Vol Breakout',
         btc_0dte: 'BTC 0DTE Intraday Strangle'
       };
       if (descEl) descEl.textContent = descMap[stratId] || descMap.all;
@@ -1001,6 +1013,36 @@
           risk: 'Long Protective Wings + SL',
           size: '500 Lots (4 Legs)',
           strikes: '1.8x Short / 2.6x Long Wings'
+        },
+        regime_condor: {
+          icon: '🎯',
+          title: 'BTC Regime-Filtered Iron Condor (Option A)',
+          tagline: 'Institutional options alpha engine selling defined-risk condors ONLY when IV >= 45% and VRP is positive, with automated 50% early profit-taking.',
+          statusText: 'IV-Gated Alpha',
+          statusClass: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20',
+          riskText: 'Wings + 50% TP + 2x SL',
+          riskClass: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20',
+          underlying: 'BTC Options',
+          entry: '10:30 PM IST (Vol Gated)',
+          expiry: 'T+2 (~43 Hours)',
+          risk: '50% Profit Target / 2.0x SL',
+          size: '500 Lots (4 Legs)',
+          strikes: '1.8x Short / 2.6x Long Wings'
+        },
+        btc_trend_breakout: {
+          icon: '📈',
+          title: 'BTC Systematic Trend Following & ATR Breakout (Option 3)',
+          tagline: 'Positive-skew directional engine for BTC Perpetual Futures riding momentum breakouts above 20-period Donchian bands with Chandelier trailing stops.',
+          statusText: 'Positive Skew Trend',
+          statusClass: 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20',
+          riskText: '1% Risk + Chandelier Trail',
+          riskClass: 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20',
+          underlying: 'BTC Perpetual Futures (BTCUSD)',
+          entry: 'Continuous Breakout',
+          expiry: 'Perpetual (Open-ended)',
+          risk: '2.0x ATR Stop / 3.0x ATR Trail',
+          size: 'Dynamic 1% Capital Risk',
+          strikes: '20-Period High/Low Breakout'
         },
         btc_0dte: {
           icon: '⚡',
