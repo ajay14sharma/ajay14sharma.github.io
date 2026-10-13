@@ -4,6 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Delta 1DTE BTC Short Strangle — Modern Dashboard (v2)</title>
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Cdefs%3E%3ClinearGradient%20id='grad'%20x1='0%25'%20y1='0%25'%20x2='100%25'%20y2='100%25'%3E%3Cstop%20offset='0%25'%20stop-color='%231E293B'/%3E%3Cstop%20offset='100%25'%20stop-color='%230F172A'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20width='64'%20height='64'%20rx='16'%20fill='url(%23grad)'/%3E%3Crect%20x='1.5'%20y='1.5'%20width='61'%20height='61'%20rx='14.5'%20fill='none'%20stroke='%233B82F6'%20stroke-width='2.5'%20stroke-opacity='0.4'/%3E%3Ctext%20x='32'%20y='46'%20font-family='-apple-system,%20BlinkMacSystemFont,%20Segoe%20UI,%20Roboto,%20sans-serif'%20font-size='40'%20font-weight='800'%20fill='%2360A5FA'%20text-anchor='middle'%3E%CE%94%3C/text%3E%3C/svg%3E" />
+  <link rel="alternate icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="alternate icon" href="favicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="favicon.png" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -719,6 +724,7 @@
     const WORKFLOW_FILE = 'daily_strangle.yml';
     const STORAGE_TOKEN_KEY = 'delta_strangle_gh_pat';
     const STORAGE_ACTIVE_BRANCH_KEY = 'delta_strangle_active_branch';
+    const STORAGE_BOT_MODE_KEY = 'delta_strangle_bot_mode';
     const STORAGE_WA_PHONE_KEY = 'delta_strangle_wa_phone';
     const STORAGE_META_PHONE_ID_KEY = 'delta_strangle_meta_phone_id';
     const STORAGE_META_TOKEN_KEY = 'delta_strangle_meta_wa_token';
@@ -775,6 +781,10 @@
     function getActiveBranch() {
       const gh = (dashboardState && dashboardState.github_actions) || {};
       return (gh.active_branch || localStorage.getItem(STORAGE_ACTIVE_BRANCH_KEY) || 'green').toLowerCase();
+    }
+    function getActiveBotMode() {
+      const gh = (dashboardState && dashboardState.github_actions) || {};
+      return (gh.bot_mode || localStorage.getItem(STORAGE_BOT_MODE_KEY) || 'dry-run').toLowerCase();
     }
     function getActiveBotLots() {
       const el = document.getElementById('bot-lots-input');
@@ -888,6 +898,10 @@
       showToast('Syncing latest cloud data & Delta option tickers...', 'info');
       await loadDashboardSnapshot();
       await fetchLiveDeltaTickers();
+      const token = getSavedToken();
+      if (token) {
+        await refreshLiveGitHubVariables(token);
+      }
       renderHeaderAndKPIs();
       renderAuditCohortPills();
       renderAuditLedger();
@@ -989,7 +1003,7 @@
       }
 
       // BOT_MODE Badge
-      const botMode = (gh.bot_mode || 'live').toUpperCase();
+      const botMode = getActiveBotMode().toUpperCase();
       const botModeBadge = document.getElementById('orchestrator-bot-mode-badge');
       if (botModeBadge) {
         botModeBadge.textContent = `BOT_MODE: ${botMode}`;
@@ -2001,6 +2015,50 @@
     }
 
     // 10. Orchestrator GitHub Variable Updaters & Dispatch
+    async function refreshLiveGitHubVariables(token) {
+      if (!token) return;
+      try {
+        const headers = {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28'
+        };
+        const [modeResp, lotsResp, branchResp] = await Promise.allSettled([
+          fetch(`https://api.github.com/repos/${REPO_SLUG}/actions/variables/BOT_MODE`, { headers }),
+          fetch(`https://api.github.com/repos/${REPO_SLUG}/actions/variables/BOT_LOTS`, { headers }),
+          fetch(`https://api.github.com/repos/${REPO_SLUG}/actions/variables/ACTIVE_LIVE_BRANCH`, { headers })
+        ]);
+        if (!dashboardState) dashboardState = {};
+        if (!dashboardState.github_actions) dashboardState.github_actions = {};
+
+        if (modeResp.status === 'fulfilled' && modeResp.value.ok) {
+          const d = await modeResp.value.json();
+          if (d && d.value) {
+            const m = d.value.toLowerCase().trim();
+            dashboardState.github_actions.bot_mode = m;
+            localStorage.setItem(STORAGE_BOT_MODE_KEY, m);
+          }
+        }
+        if (lotsResp.status === 'fulfilled' && lotsResp.value.ok) {
+          const d = await lotsResp.value.json();
+          if (d && d.value) {
+            dashboardState.github_actions.bot_lots = parseInt(d.value, 10) || 500;
+          }
+        }
+        if (branchResp.status === 'fulfilled' && branchResp.value.ok) {
+          const d = await branchResp.value.json();
+          if (d && d.value) {
+            const b = d.value.toLowerCase().trim();
+            dashboardState.github_actions.active_branch = b;
+            localStorage.setItem(STORAGE_ACTIVE_BRANCH_KEY, b);
+          }
+        }
+        renderHeaderAndKPIs();
+      } catch (err) {
+        console.warn('Could not refresh live GitHub variables:', err);
+      }
+    }
+
     async function upsertGitHubVariable(token, name, value) {
       if (!token || !value) return false;
       const headers = {
@@ -2108,6 +2166,7 @@
       try {
         const ok = await upsertGitHubVariable(token, 'BOT_MODE', targetMode);
         if (ok) {
+          localStorage.setItem(STORAGE_BOT_MODE_KEY, targetMode);
           if (!dashboardState) dashboardState = {};
           if (!dashboardState.github_actions) dashboardState.github_actions = {};
           dashboardState.github_actions.bot_mode = targetMode;
@@ -2395,6 +2454,10 @@
         fetchLiveDeltaTickers()
       ]);
       renderHeaderAndKPIs();
+      const token = getSavedToken();
+      if (token) {
+        refreshLiveGitHubVariables(token);
+      }
       renderLivePositions();
       renderAuditCohortPills();
       renderAuditLedger();
