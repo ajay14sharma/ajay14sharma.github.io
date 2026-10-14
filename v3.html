@@ -2786,9 +2786,9 @@
       let blockedUsd = Number(w.blocked_margin_usd || 0);
       let grossCashUsd = Number(w.gross_cash_usd || 0);
 
-      // Reconcile legacy snapshot if account_value_usd was not explicitly present
-      if (!balUsd) {
-        const rawBal = Number(w.balance_usd || 5676.07);
+      // Reconcile legacy snapshot if account_value_usd was not explicitly present or was raw cash ledger
+      if (!balUsd || (balUsd > 8000 && totalShortCredit > 0)) {
+        const rawBal = Number(w.gross_cash_usd || w.balance_usd || balUsd || 5676.07);
         if (rawBal > 8000 && totalShortCredit > 0) {
           grossCashUsd = rawBal;
           balUsd = Math.max(0, rawBal - totalShortCredit + totalUpnl);
