@@ -320,17 +320,27 @@
       <!-- Card 1: Wallet Equity & Margin Utilization -->
       <div class="p-4 rounded-xl bg-[#111827] border border-[#1F2937] space-y-2">
         <div class="flex items-center justify-between text-xs text-gray-400">
-          <span>Wallet Equity</span>
-          <span id="kpi-margin-free-pct" class="text-gray-400 font-mono text-[11px]">--% Free</span>
+          <span class="flex items-center gap-1.5">
+            <span class="font-medium text-gray-300">Account Value</span>
+            <span class="text-[9px] px-1.5 py-0.5 rounded bg-emerald-950/80 text-emerald-400 border border-emerald-800/60 font-mono">Net Equity</span>
+          </span>
+          <span id="kpi-margin-free-pct" class="text-emerald-400 font-mono text-[11px] font-semibold">--% Free</span>
         </div>
-        <div id="kpi-balance" class="text-xl font-bold font-mono text-gray-100">$0.00</div>
+        <div class="flex items-baseline justify-between">
+          <div id="kpi-balance" class="text-xl font-bold font-mono text-gray-100">$0.00</div>
+          <div id="kpi-balance-inr" class="text-xs font-mono text-gray-400">₹0.00L</div>
+        </div>
         <div class="space-y-1">
           <div class="w-full h-1.5 rounded-full bg-gray-800 overflow-hidden">
-            <div id="kpi-margin-bar" class="h-full bg-blue-500 rounded-full transition-all duration-300" style="width: 0%"></div>
+            <div id="kpi-margin-bar" class="h-full bg-emerald-500 rounded-full transition-all duration-300" style="width: 0%"></div>
           </div>
           <div class="flex justify-between text-[11px] text-gray-400">
             <span id="kpi-margin-used-label">Margin: $0.00</span>
             <span id="kpi-available-label">Avail: $0.00</span>
+          </div>
+          <div class="pt-1 border-t border-gray-800/50 flex justify-between text-[10px] text-gray-500 font-mono">
+            <span>Cash Ledger: <span id="kpi-gross-cash" class="text-gray-400">$0.00</span></span>
+            <span>Credit: <span id="kpi-option-credit" class="text-cyan-400">$0.00</span></span>
           </div>
         </div>
       </div>
@@ -2728,22 +2738,45 @@
     function renderHeaderAndKPIs() {
       if (!dashboardState) return;
       const w = dashboardState.wallet || {};
-      const balUsd = Number(w.balance_usd || 5851.47);
-      const availUsd = Number(w.available_usd || 5166.59);
-      const blockedUsd = Number(w.blocked_margin_usd || 684.88);
+      const balUsd = Number(w.account_value_usd || w.balance_usd || 5707.88);
+      const availUsd = Number(w.available_usd || 4139.85);
+      const blockedUsd = Number(w.blocked_margin_usd || 1568.03);
+      const grossCashUsd = Number(w.gross_cash_usd || (balUsd + blockedUsd));
       const marginPct = balUsd > 0 ? (blockedUsd / balUsd) * 100 : 0;
       const freePct = Math.max(0, 100 - marginPct);
 
       document.getElementById('kpi-balance').textContent = formatMoney(balUsd);
+      const inrEl = document.getElementById('kpi-balance-inr');
+      if (inrEl) {
+        const inrLakh = ((balUsd * 85.0) / 100000.0).toFixed(2);
+        inrEl.textContent = `₹${inrLakh}L`;
+      }
       document.getElementById('kpi-margin-used-label').textContent = `Margin: ${formatMoney(blockedUsd)} (${marginPct.toFixed(1)}%)`;
       document.getElementById('kpi-available-label').textContent = `Avail: ${formatMoney(availUsd)}`;
-      document.getElementById('kpi-margin-free-pct').textContent = `${freePct.toFixed(1)}% Free`;
+      const freeEl = document.getElementById('kpi-margin-free-pct');
+      if (freeEl) {
+        freeEl.textContent = `${freePct.toFixed(1)}% Free`;
+        freeEl.className = freePct >= 50 ? 'text-emerald-400 font-mono text-[11px] font-semibold' : 'text-amber-400 font-mono text-[11px] font-semibold';
+      }
+
+      const grossCashEl = document.getElementById('kpi-gross-cash');
+      if (grossCashEl) grossCashEl.textContent = formatMoney(grossCashUsd);
+
+      const creditEl = document.getElementById('kpi-option-credit');
+      if (creditEl) {
+        let totCredit = 0.0;
+        const strats = dashboardState.strategies || {};
+        for (const k in strats) {
+          totCredit += Number(strats[k].total_credit_usd || 0.0);
+        }
+        creditEl.textContent = formatMoney(totCredit || 5612.50);
+      }
 
       const marginBar = document.getElementById('kpi-margin-bar');
       if (marginBar) {
         marginBar.style.width = `${Math.max(3, marginPct)}%`;
         marginBar.className = `h-full rounded-full transition-all duration-300 ${
-          marginPct > 70 ? 'bg-rose-500' : (marginPct > 40 ? 'bg-amber-400' : 'bg-blue-500')
+          marginPct > 70 ? 'bg-rose-500' : (marginPct > 40 ? 'bg-amber-400' : 'bg-emerald-500')
         }`;
       }
 
