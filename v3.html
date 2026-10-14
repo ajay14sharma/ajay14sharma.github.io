@@ -159,6 +159,11 @@
           </div>
         </div>
 
+        <!-- Emergency Square-Off Panic Button -->
+        <button onclick="openEmergencySquareOffModal()" class="px-2.5 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 text-xs font-semibold flex items-center gap-1.5 transition shadow-sm cursor-pointer" title="Emergency Square-Off All Open Positions">
+          <span>🚨 Square-Off</span>
+        </button>
+
         <!-- Dashboard Version Switchers -->
         <div class="flex items-center gap-1 bg-gray-800/80 p-0.5 rounded-lg border border-gray-700 text-xs">
           <a href="index.html" class="px-2 py-1 rounded-md font-medium text-gray-400 hover:text-gray-200 transition" title="Classic Dashboard (v1)">v1 Classic</a>
@@ -277,6 +282,38 @@
       </button>
     </div>
 
+    <!-- 1c. Institutional Greeks & Risk Strip -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3 rounded-xl bg-gray-900/90 border border-gray-800">
+      <div class="flex items-center justify-between p-2 rounded-lg bg-gray-950/60 border border-gray-800/80">
+        <div>
+          <div class="text-[9px] uppercase tracking-wider text-blue-400 font-semibold">Net Delta (Δ)</div>
+          <div id="greeks-net-delta" class="text-sm font-bold font-mono text-gray-100">+0.000 BTC</div>
+        </div>
+        <span class="text-[10px] text-gray-500 mono">Cap: ±0.50</span>
+      </div>
+      <div class="flex items-center justify-between p-2 rounded-lg bg-gray-950/60 border border-gray-800/80">
+        <div>
+          <div class="text-[9px] uppercase tracking-wider text-emerald-400 font-semibold">Theta Decay (Θ)</div>
+          <div id="greeks-daily-theta" class="text-sm font-bold font-mono text-emerald-400">+$0.00 /day</div>
+        </div>
+        <span class="text-[10px] text-gray-500 mono">Decay Cashflow</span>
+      </div>
+      <div class="flex items-center justify-between p-2 rounded-lg bg-gray-950/60 border border-gray-800/80">
+        <div>
+          <div class="text-[9px] uppercase tracking-wider text-amber-400 font-semibold">Vega Exposure (ν)</div>
+          <div id="greeks-net-vega" class="text-sm font-bold font-mono text-gray-100">-$0.00 /1% IV</div>
+        </div>
+        <span class="text-[10px] text-gray-500 mono">Vol Sensitivity</span>
+      </div>
+      <div class="flex items-center justify-between p-2 rounded-lg bg-gray-950/60 border border-gray-800/80">
+        <div>
+          <div class="text-[9px] uppercase tracking-wider text-purple-400 font-semibold">Margin Utilization</div>
+          <div id="greeks-margin-util" class="text-sm font-bold font-mono text-gray-100">0.0%</div>
+        </div>
+        <span class="text-[10px] text-gray-500 mono">Ceiling: 65%</span>
+      </div>
+    </div>
+
     <!-- 2. HIGH-IMPACT 4 HERO METRIC CARDS -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       
@@ -339,24 +376,32 @@
 
     </div>
 
-    <!-- 3. INTERACTIVE SAFE-ZONE CORRIDOR & WHAT-IF SIMULATOR -->
+    <!-- 3. CONTEXTUAL TABBED ANALYTICS DECK (PAYOFF • REGIME • TREND) -->
     <div class="p-5 rounded-xl bg-[#111827] border border-[#1F2937] space-y-4">
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <div>
-          <h2 class="font-semibold text-gray-100 text-sm flex items-center gap-2">
-            <span>🛡️ Safe-Zone Corridor & Payoff Simulation</span>
-            <span class="text-xs font-normal text-gray-400">Live 2x SL Mark Bands</span>
-          </h2>
-          <p class="text-xs text-gray-400 mt-0.5">Drag slider or hover chart to inspect Spot movement, Live (T+0) curve vs Expiry tent, and 2x SL cushion.</p>
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-800 pb-3">
+        <!-- Analytics Deck Tabs -->
+        <div class="flex items-center gap-1.5 bg-gray-950 p-1 rounded-lg border border-gray-800 text-xs font-semibold">
+          <button id="btn-tab-payoff" onclick="setAnalyticsDeckTab('payoff')" class="px-3 py-1.5 rounded-md bg-blue-600 text-white shadow-sm transition">
+            🛡️ Safe-Zone Payoff
+          </button>
+          <button id="btn-tab-regime" onclick="setAnalyticsDeckTab('regime')" class="px-3 py-1.5 rounded-md text-gray-400 hover:text-gray-200 transition">
+            ⚡ IV &amp; Vol Regime
+          </button>
+          <button id="btn-tab-trend" onclick="setAnalyticsDeckTab('trend')" class="px-3 py-1.5 rounded-md text-gray-400 hover:text-gray-200 transition">
+            📈 Trend &amp; Donchian
+          </button>
         </div>
         <div class="flex items-center gap-2 text-xs">
-          <span class="text-gray-400">Simulated P&L:</span>
+          <span class="text-gray-400">Readout:</span>
           <span id="whatif-pnl-readout" class="font-mono font-bold text-emerald-400 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">+$59.00 at Expiry</span>
           <button id="whatif-reset-btn" onclick="resetWhatIfSpot()" class="hidden px-2 py-0.5 rounded bg-gray-800 text-gray-300 hover:text-white border border-gray-700 text-[11px]">
             Reset Spot
           </button>
         </div>
       </div>
+
+      <!-- DECK VIEW 1: PAYOFF & SAFE-ZONE CORRIDOR -->
+      <div id="deck-view-payoff" class="space-y-4">
 
       <!-- Scenario Simulation Controls & Snap Shortcuts -->
       <div class="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-lg bg-gray-900/60 border border-gray-800 text-xs">
@@ -438,6 +483,116 @@
       <div id="corridor-chart-container" class="relative w-full h-72 rounded-lg bg-gray-950/80 border border-gray-900 overflow-hidden">
         <div id="safezone-chart-tooltip" class="hidden absolute pointer-events-none z-30 p-2.5 rounded-lg bg-gray-900/95 border border-gray-700 shadow-xl text-xs font-mono space-y-1"></div>
         <!-- SVG Generated via renderSafeZoneCorridor() -->
+      </div>
+      </div>
+
+      <!-- DECK VIEW 2: VOLATILITY & REGIME GAUGES -->
+      <div id="deck-view-regime" class="hidden space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <!-- DVOL vs RV30 Card -->
+          <div class="p-4 rounded-xl bg-gray-950/80 border border-gray-800 space-y-2">
+            <div class="flex items-center justify-between text-xs text-gray-400">
+              <span class="font-bold">Implied vs Realized Vol</span>
+              <span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-blue-500/10 text-blue-400 border border-blue-500/20">Deribit DVOL</span>
+            </div>
+            <div class="flex items-baseline justify-between pt-1">
+              <div>
+                <span class="text-[10px] text-gray-500 block uppercase">Implied Vol (IV)</span>
+                <span id="deck-regime-iv" class="text-xl font-bold font-mono text-blue-400">52.4%</span>
+              </div>
+              <div class="text-right">
+                <span class="text-[10px] text-gray-500 block uppercase">30D Realized (RV)</span>
+                <span id="deck-regime-rv" class="text-xl font-bold font-mono text-gray-300">48.1%</span>
+              </div>
+            </div>
+            <div class="w-full h-2 rounded-full bg-gray-800 overflow-hidden mt-1">
+              <div id="deck-regime-iv-bar" class="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full" style="width: 52%"></div>
+            </div>
+            <p class="text-[10px] text-gray-400">Options implied volatility pricing vs actual underlying moves.</p>
+          </div>
+
+          <!-- Volatility Risk Premium (VRP) Card -->
+          <div class="p-4 rounded-xl bg-gray-950/80 border border-gray-800 space-y-2">
+            <div class="flex items-center justify-between text-xs text-gray-400">
+              <span class="font-bold">Volatility Risk Premium (VRP)</span>
+              <span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">IV - RV</span>
+            </div>
+            <div class="flex items-baseline justify-between pt-1">
+              <div>
+                <span class="text-[10px] text-gray-500 block uppercase">Current Spread</span>
+                <span id="deck-regime-vrp" class="text-xl font-bold font-mono text-emerald-400">+4.3%</span>
+              </div>
+              <div class="text-right">
+                <span class="text-[10px] text-gray-500 block uppercase">VRP Floor</span>
+                <span class="text-sm font-bold font-mono text-gray-400">-2.0%</span>
+              </div>
+            </div>
+            <div class="p-1.5 rounded bg-gray-900/60 border border-gray-800 text-[11px] font-mono text-emerald-300 flex items-center justify-between">
+              <span>Premium Edge:</span>
+              <span class="font-bold">FAVORABLE (Positive Edge)</span>
+            </div>
+            <p class="text-[10px] text-gray-400">High VRP gives statistical edge for selling premium.</p>
+          </div>
+
+          <!-- Regime Gate Status Card -->
+          <div class="p-4 rounded-xl bg-gray-950/80 border border-gray-800 space-y-2">
+            <div class="flex items-center justify-between text-xs text-gray-400">
+              <span class="font-bold">Regime Condor Gate</span>
+              <span id="deck-regime-gate-badge" class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 uppercase">
+                GATE PASSED 🟢
+              </span>
+            </div>
+            <div class="space-y-1.5 pt-1 text-xs font-mono">
+              <div class="flex items-center justify-between text-[11px] p-1.5 rounded bg-gray-900/60 border border-gray-800">
+                <span class="text-gray-400">IV &ge; 45.0% Floor:</span>
+                <span id="deck-gate-iv-check" class="text-emerald-400 font-bold">52.4% ✔️ Passed</span>
+              </div>
+              <div class="flex items-center justify-between text-[11px] p-1.5 rounded bg-gray-900/60 border border-gray-800">
+                <span class="text-gray-400">VRP &ge; -2.0% Floor:</span>
+                <span id="deck-gate-vrp-check" class="text-emerald-400 font-bold">+4.3% ✔️ Passed</span>
+              </div>
+            </div>
+            <p class="text-[10px] text-gray-400">Prevents selling when volatility is compressed and tail risk is cheap.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- DECK VIEW 3: TREND & DONCHIAN BREAKOUT -->
+      <div id="deck-view-trend" class="hidden space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs font-mono">
+          <div class="p-3 rounded-xl bg-gray-950/80 border border-gray-800">
+            <span class="text-[10px] text-gray-500 uppercase block">20D Donchian High</span>
+            <span id="deck-trend-high" class="text-base font-bold text-gray-200">$84,800.0</span>
+            <span class="text-[10px] text-gray-400 block mt-1">Breakout Buy Trigger</span>
+          </div>
+          <div class="p-3 rounded-xl bg-gray-950/80 border border-gray-800">
+            <span class="text-[10px] text-gray-500 uppercase block">20D Donchian Low</span>
+            <span id="deck-trend-low" class="text-base font-bold text-gray-200">$80,500.0</span>
+            <span class="text-[10px] text-gray-400 block mt-1">Breakout Sell Trigger</span>
+          </div>
+          <div class="p-3 rounded-xl bg-gray-950/80 border border-gray-800">
+            <span class="text-[10px] text-gray-500 uppercase block">Chandelier Trailing Stop</span>
+            <span id="deck-trend-sl" class="text-base font-bold text-emerald-400">3.0x ATR Active</span>
+            <span class="text-[10px] text-gray-400 block mt-1">Asymmetric Protection</span>
+          </div>
+          <div class="p-3 rounded-xl bg-gray-950/80 border border-gray-800">
+            <span class="text-[10px] text-gray-500 uppercase block">Trend Signal</span>
+            <span id="deck-trend-signal" class="text-base font-bold text-amber-400">NEUTRAL (Inside Range)</span>
+            <span class="text-[10px] text-gray-400 block mt-1">Candle: 1H Cadence</span>
+          </div>
+        </div>
+        <!-- Visual Channel Bar -->
+        <div class="p-4 rounded-xl bg-gray-950/80 border border-gray-800 space-y-2 text-xs">
+          <div class="flex justify-between items-center text-[11px] font-mono text-gray-400">
+            <span>Low: <strong id="deck-channel-low-label" class="text-gray-200">$80,500</strong></span>
+            <span class="text-blue-400 font-bold">Current Spot: <strong id="deck-channel-spot-label" class="text-blue-300">$83,200</strong></span>
+            <span>High: <strong id="deck-channel-high-label" class="text-gray-200">$84,800</strong></span>
+          </div>
+          <div class="relative w-full h-3 rounded-full bg-gray-850 overflow-hidden">
+            <div id="deck-channel-bar" class="h-full bg-gradient-to-r from-purple-500 via-blue-500 to-emerald-500 rounded-full" style="width: 65%"></div>
+          </div>
+          <p class="text-[10px] text-gray-400">Visualizes BTC spot price position within the 20-period Donchian channel. Breakouts above or below trigger trend following execution.</p>
+        </div>
       </div>
     </div>
 
@@ -689,11 +844,33 @@
           </div>
         </div>
 
-        <!-- 3 Dedicated Strategy Sleeves Cards Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+        <!-- Sleeves Hub Header & Category Filter Tabs -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-gray-800">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-semibold text-gray-300">Strategy Hub:</span>
+            <div class="inline-flex rounded-lg bg-gray-950 p-0.5 border border-gray-800 text-xs">
+              <button id="sleeve-cat-all" onclick="setSleeveCategoryFilter('all')" class="px-3 py-1 rounded-md font-semibold bg-blue-600 text-white shadow-sm transition">
+                All (5)
+              </button>
+              <button id="sleeve-cat-options" onclick="setSleeveCategoryFilter('options')" class="px-3 py-1 rounded-md font-medium text-gray-400 hover:text-gray-200 transition">
+                Options Neutral (4)
+              </button>
+              <button id="sleeve-cat-trend" onclick="setSleeveCategoryFilter('trend')" class="px-3 py-1 rounded-md font-medium text-gray-400 hover:text-gray-200 transition">
+                Directional Trend (1)
+              </button>
+            </div>
+          </div>
+          <div class="text-[11px] text-gray-400 font-mono">
+            <span>Precision Clocks: </span>
+            <span class="text-blue-400 font-semibold">09:30 AM</span> • <span class="text-purple-400 font-semibold">10:30 PM IST</span> • <span class="text-emerald-400 font-semibold">1H Cadence</span>
+          </div>
+        </div>
+
+        <!-- 5 Dedicated Strategy Sleeves Cards Grid -->
+        <div id="sleeves-cards-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
           
           <!-- Sleeve 1: btc_1dte Strangle -->
-          <div id="sleeve-card-btc_1dte" class="p-3.5 rounded-xl bg-gray-950/80 border border-blue-900/40 hover:border-blue-700/60 transition space-y-3">
+          <div id="sleeve-card-btc_1dte" data-category="options" class="p-3.5 rounded-xl bg-gray-950/80 border border-blue-900/40 hover:border-blue-700/60 transition space-y-3">
             <div class="flex items-start justify-between gap-2">
               <div>
                 <div class="flex items-center gap-1.5">
@@ -707,7 +884,7 @@
                   ACTIVE
                 </span>
                 <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                  50% Pool
+                  40% Pool
                 </span>
               </div>
             </div>
@@ -730,6 +907,17 @@
                 <span class="text-gray-500 text-[10px] block">2.0x SL Protection</span>
                 <span class="text-emerald-400 font-bold">Exchange Native</span>
               </div>
+            </div>
+
+            <!-- Collapsible Drawer -->
+            <button onclick="toggleSleeveDrawer('btc_1dte')" class="w-full text-center py-0.5 text-[10px] text-gray-400 hover:text-gray-200 transition flex items-center justify-center gap-1">
+              <span id="sleeve-arrow-btc_1dte">▼ Parameters &amp; Rules</span>
+            </button>
+            <div id="sleeve-drawer-btc_1dte" class="hidden text-[10px] font-mono bg-gray-900/90 p-2 rounded-lg border border-gray-800 space-y-1">
+              <div class="flex justify-between text-gray-400"><span>Target Expiry:</span><span class="text-gray-200">T+2 (~43h Daily)</span></div>
+              <div class="flex justify-between text-gray-400"><span>Delta Target:</span><span class="text-gray-200">10 - 15Δ Out-of-Money</span></div>
+              <div class="flex justify-between text-gray-400"><span>Stop Loss:</span><span class="text-emerald-400">2.0x Native Trigger Bracket</span></div>
+              <div class="flex justify-between text-gray-400"><span>Execution:</span><span class="text-gray-200">10:30:00 PM IST Precision</span></div>
             </div>
 
             <!-- Interactive Controls: Toggle & Lots -->
@@ -759,8 +947,164 @@
             </div>
           </div>
 
-          <!-- Sleeve 2: regime_condor Iron Condor -->
-          <div id="sleeve-card-regime_condor" class="p-3.5 rounded-xl bg-gray-950/80 border border-purple-900/40 hover:border-purple-700/60 transition space-y-3">
+          <!-- Sleeve 2: eth_1dte Strangle -->
+          <div id="sleeve-card-eth_1dte" data-category="options" class="p-3.5 rounded-xl bg-gray-950/80 border border-cyan-900/40 hover:border-cyan-700/60 transition space-y-3">
+            <div class="flex items-start justify-between gap-2">
+              <div>
+                <div class="flex items-center gap-1.5">
+                  <span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
+                  <span class="font-bold text-gray-100 text-xs">⟠ ETH 1DTE Strangle</span>
+                </div>
+                <div class="text-[10px] text-gray-400 mt-0.5">Sell 10-15Δ ETH Strangle + 2.0x SL • 10:30 PM IST</div>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span id="sleeve-badge-eth_1dte" class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 uppercase">
+                  ACTIVE
+                </span>
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                  20% Pool
+                </span>
+              </div>
+            </div>
+
+            <!-- Telemetry -->
+            <div class="grid grid-cols-2 gap-2 text-[11px] font-mono bg-gray-900/60 p-2 rounded-lg border border-gray-800">
+              <div>
+                <span class="text-gray-500 text-[10px] block">Open Positions</span>
+                <span id="sleeve-pos-eth_1dte" class="font-bold text-gray-200">0 Legs</span>
+              </div>
+              <div>
+                <span class="text-gray-500 text-[10px] block">Unrealized P&L</span>
+                <span id="sleeve-pnl-eth_1dte" class="font-bold text-gray-200">$0.00</span>
+              </div>
+              <div>
+                <span class="text-gray-500 text-[10px] block">Budget Cap</span>
+                <span id="sleeve-budget-eth_1dte" class="text-gray-300">$760.69</span>
+              </div>
+              <div>
+                <span class="text-gray-500 text-[10px] block">2.0x SL Protection</span>
+                <span class="text-emerald-400 font-bold">Exchange Native</span>
+              </div>
+            </div>
+
+            <!-- Collapsible Drawer -->
+            <button onclick="toggleSleeveDrawer('eth_1dte')" class="w-full text-center py-0.5 text-[10px] text-gray-400 hover:text-gray-200 transition flex items-center justify-center gap-1">
+              <span id="sleeve-arrow-eth_1dte">▼ Parameters &amp; Rules</span>
+            </button>
+            <div id="sleeve-drawer-eth_1dte" class="hidden text-[10px] font-mono bg-gray-900/90 p-2 rounded-lg border border-gray-800 space-y-1">
+              <div class="flex justify-between text-gray-400"><span>Target Expiry:</span><span class="text-gray-200">T+2 (~43h Daily)</span></div>
+              <div class="flex justify-between text-gray-400"><span>Underlying:</span><span class="text-cyan-400">ETH (0.01 Multiplier)</span></div>
+              <div class="flex justify-between text-gray-400"><span>Stop Loss:</span><span class="text-emerald-400">2.0x Native Trigger Bracket</span></div>
+              <div class="flex justify-between text-gray-400"><span>Execution:</span><span class="text-gray-200">10:30:00 PM IST Precision</span></div>
+            </div>
+
+            <!-- Interactive Controls: Toggle & Lots -->
+            <div class="space-y-2 pt-1 border-t border-gray-800">
+              <div class="flex items-center justify-between gap-2">
+                <button onclick="toggleSleeveVar('ENABLE_ETH_STRANGLE')" id="btn-toggle-sleeve-eth" class="py-1 px-2.5 rounded-lg text-[11px] font-semibold transition border flex items-center gap-1.5 bg-emerald-500/15 text-emerald-300 border-emerald-500/30">
+                  <span>🟢 Enabled</span>
+                </button>
+                <div class="flex items-center gap-1 text-[11px]">
+                  <span class="text-gray-400">Lots:</span>
+                  <input type="number" id="sleeve-input-eth-lots" value="250" step="25" class="w-16 bg-gray-900 border border-gray-700 rounded px-1.5 py-0.5 text-gray-100 font-mono font-bold text-[11px]" />
+                  <button onclick="saveSleeveLots('ETH_BOT_LOTS', 'sleeve-input-eth-lots')" class="px-2 py-0.5 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 text-[10px] font-medium transition">
+                    Save
+                  </button>
+                </div>
+              </div>
+
+              <!-- Action Buttons -->
+              <div class="grid grid-cols-2 gap-1.5 pt-1">
+                <button onclick="dispatchSleeveAction('eth_1dte', 'dry-run')" class="py-1 px-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 text-[10px] font-semibold transition flex items-center justify-center gap-1">
+                  <span>▶ Dry-Run</span>
+                </button>
+                <button onclick="dispatchSleeveAction('eth_1dte', 'live')" class="py-1 px-2 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 text-[10px] font-semibold transition flex items-center justify-center gap-1">
+                  <span>⚡ Run Live</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sleeve 3: btc_0dte Intraday Strangle -->
+          <div id="sleeve-card-btc_0dte" data-category="options" class="p-3.5 rounded-xl bg-gray-950/80 border border-amber-900/40 hover:border-amber-700/60 transition space-y-3">
+            <div class="flex items-start justify-between gap-2">
+              <div>
+                <div class="flex items-center gap-1.5">
+                  <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+                  <span class="font-bold text-gray-100 text-xs">⚡ BTC 0DTE Intraday</span>
+                </div>
+                <div class="text-[10px] text-gray-400 mt-0.5">Same-Day Expiry Premium • 09:30 AM IST</div>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span id="sleeve-badge-btc_0dte" class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 uppercase">
+                  STANDBY
+                </span>
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                  15% Pool
+                </span>
+              </div>
+            </div>
+
+            <!-- Telemetry -->
+            <div class="grid grid-cols-2 gap-2 text-[11px] font-mono bg-gray-900/60 p-2 rounded-lg border border-gray-800">
+              <div>
+                <span class="text-gray-500 text-[10px] block">Open Positions</span>
+                <span id="sleeve-pos-btc_0dte" class="font-bold text-gray-200">0 Legs</span>
+              </div>
+              <div>
+                <span class="text-gray-500 text-[10px] block">Unrealized P&L</span>
+                <span id="sleeve-pnl-btc_0dte" class="font-bold text-gray-200">$0.00</span>
+              </div>
+              <div>
+                <span class="text-gray-500 text-[10px] block">Budget Cap</span>
+                <span id="sleeve-budget-btc_0dte" class="text-gray-300">$570.52</span>
+              </div>
+              <div>
+                <span class="text-gray-500 text-[10px] block">Decay Velocity</span>
+                <span class="text-amber-400 font-bold">Accelerated 8h</span>
+              </div>
+            </div>
+
+            <!-- Collapsible Drawer -->
+            <button onclick="toggleSleeveDrawer('btc_0dte')" class="w-full text-center py-0.5 text-[10px] text-gray-400 hover:text-gray-200 transition flex items-center justify-center gap-1">
+              <span id="sleeve-arrow-btc_0dte">▼ Parameters &amp; Rules</span>
+            </button>
+            <div id="sleeve-drawer-btc_0dte" class="hidden text-[10px] font-mono bg-gray-900/90 p-2 rounded-lg border border-gray-800 space-y-1">
+              <div class="flex justify-between text-gray-400"><span>Target Expiry:</span><span class="text-gray-200">T+0 (Same-Day 5:30 PM)</span></div>
+              <div class="flex justify-between text-gray-400"><span>Delta Target:</span><span class="text-gray-200">8 - 12Δ Intraday Wings</span></div>
+              <div class="flex justify-between text-gray-400"><span>Stop Loss:</span><span class="text-emerald-400">2.0x Native Trigger Bracket</span></div>
+              <div class="flex justify-between text-gray-400"><span>Execution:</span><span class="text-amber-400">09:30:00 AM IST Precision</span></div>
+            </div>
+
+            <!-- Interactive Controls: Toggle & Lots -->
+            <div class="space-y-2 pt-1 border-t border-gray-800">
+              <div class="flex items-center justify-between gap-2">
+                <button onclick="toggleSleeveVar('ENABLE_0DTE')" id="btn-toggle-sleeve-0dte" class="py-1 px-2.5 rounded-lg text-[11px] font-semibold transition border flex items-center gap-1.5 bg-gray-800 text-gray-400 border-gray-700">
+                  <span>⏸ Disabled</span>
+                </button>
+                <div class="flex items-center gap-1 text-[11px]">
+                  <span class="text-gray-400">Lots:</span>
+                  <input type="number" id="sleeve-input-0dte-lots" value="200" step="50" class="w-16 bg-gray-900 border border-gray-700 rounded px-1.5 py-0.5 text-gray-100 font-mono font-bold text-[11px]" />
+                  <button onclick="saveSleeveLots('ZERO_DTE_LOTS', 'sleeve-input-0dte-lots')" class="px-2 py-0.5 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 text-[10px] font-medium transition">
+                    Save
+                  </button>
+                </div>
+              </div>
+
+              <!-- Action Buttons -->
+              <div class="grid grid-cols-2 gap-1.5 pt-1">
+                <button onclick="dispatchSleeveAction('btc_0dte', 'dry-run')" class="py-1 px-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 text-[10px] font-semibold transition flex items-center justify-center gap-1">
+                  <span>▶ Dry-Run</span>
+                </button>
+                <button onclick="dispatchSleeveAction('btc_0dte', 'live')" class="py-1 px-2 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 text-[10px] font-semibold transition flex items-center justify-center gap-1">
+                  <span>⚡ Run Live</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sleeve 4: regime_condor Iron Condor -->
+          <div id="sleeve-card-regime_condor" data-category="options" class="p-3.5 rounded-xl bg-gray-950/80 border border-purple-900/40 hover:border-purple-700/60 transition space-y-3">
             <div class="flex items-start justify-between gap-2">
               <div>
                 <div class="flex items-center gap-1.5">
@@ -774,7 +1118,7 @@
                   STANDBY
                 </span>
                 <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-500/10 text-purple-400 border border-purple-500/20">
-                  30% Pool
+                  15% Pool
                 </span>
               </div>
             </div>
@@ -799,6 +1143,17 @@
                 <span class="text-gray-500 text-[10px] block">Early Profit Target</span>
                 <span class="text-gray-300">50% Max Credit</span>
               </div>
+            </div>
+
+            <!-- Collapsible Drawer -->
+            <button onclick="toggleSleeveDrawer('regime_condor')" class="w-full text-center py-0.5 text-[10px] text-gray-400 hover:text-gray-200 transition flex items-center justify-center gap-1">
+              <span id="sleeve-arrow-regime_condor">▼ Parameters &amp; Rules</span>
+            </button>
+            <div id="sleeve-drawer-regime_condor" class="hidden text-[10px] font-mono bg-gray-900/90 p-2 rounded-lg border border-gray-800 space-y-1">
+              <div class="flex justify-between text-gray-400"><span>Target Expiry:</span><span class="text-gray-200">T+2 (~43h Daily)</span></div>
+              <div class="flex justify-between text-gray-400"><span>Wing Width:</span><span class="text-gray-200">$1,500 Long Protection</span></div>
+              <div class="flex justify-between text-gray-400"><span>IV Gate Floor:</span><span class="text-purple-300">IV &ge; 45% &amp; VRP &ge; -2%</span></div>
+              <div class="flex justify-between text-gray-400"><span>Take Profit:</span><span class="text-emerald-400">Auto Close @ 50% Credit</span></div>
             </div>
 
             <!-- Interactive Controls: Toggle & Lots -->
@@ -828,8 +1183,8 @@
             </div>
           </div>
 
-          <!-- Sleeve 3: btc_trend_breakout Futures -->
-          <div id="sleeve-card-btc_trend_breakout" class="p-3.5 rounded-xl bg-gray-950/80 border border-emerald-900/40 hover:border-emerald-700/60 transition space-y-3">
+          <!-- Sleeve 5: btc_trend_breakout Futures -->
+          <div id="sleeve-card-btc_trend_breakout" data-category="trend" class="p-3.5 rounded-xl bg-gray-950/80 border border-emerald-900/40 hover:border-emerald-700/60 transition space-y-3">
             <div class="flex items-start justify-between gap-2">
               <div>
                 <div class="flex items-center gap-1.5">
@@ -843,7 +1198,7 @@
                   STANDBY
                 </span>
                 <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                  20% Pool
+                  10% Pool
                 </span>
               </div>
             </div>
@@ -866,6 +1221,17 @@
                 <span class="text-gray-500 text-[10px] block">Check Cadence</span>
                 <span class="text-gray-300">Hourly :37 IST</span>
               </div>
+            </div>
+
+            <!-- Collapsible Drawer -->
+            <button onclick="toggleSleeveDrawer('btc_trend_breakout')" class="w-full text-center py-0.5 text-[10px] text-gray-400 hover:text-gray-200 transition flex items-center justify-center gap-1">
+              <span id="sleeve-arrow-btc_trend_breakout">▼ Parameters &amp; Rules</span>
+            </button>
+            <div id="sleeve-drawer-btc_trend_breakout" class="hidden text-[10px] font-mono bg-gray-900/90 p-2 rounded-lg border border-gray-800 space-y-1">
+              <div class="flex justify-between text-gray-400"><span>Instrument:</span><span class="text-gray-200">BTC-PERP Futures</span></div>
+              <div class="flex justify-between text-gray-400"><span>Signal Rule:</span><span class="text-emerald-400">Breakout &gt; 20H High / &lt; 20H Low</span></div>
+              <div class="flex justify-between text-gray-400"><span>Trailing SL:</span><span class="text-gray-200">Highest - 3.0x ATR</span></div>
+              <div class="flex justify-between text-gray-400"><span>Cadence:</span><span class="text-gray-200">Cloudflare Hourly Dispatch</span></div>
             </div>
 
             <!-- Interactive Controls: Toggle & Lots -->
@@ -1175,6 +1541,55 @@
     </div>
   </div>
 
+  <!-- Emergency Square-Off Modal with 2-Step Safety Slider -->
+  <div id="emergency-square-off-modal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="w-full max-w-lg rounded-2xl bg-gray-900 border border-rose-900/60 p-6 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-gray-800 pb-3">
+        <div class="flex items-center gap-2">
+          <span class="p-2 rounded-lg bg-rose-500/20 text-rose-400 text-lg">🚨</span>
+          <div>
+            <h3 class="font-bold text-gray-100 text-base">Emergency Square-Off All Positions</h3>
+            <p class="text-[11px] text-gray-400">Hard market-close fail-safe across all 5 strategies</p>
+          </div>
+        </div>
+        <button onclick="closeEmergencySquareOffModal()" class="text-gray-400 hover:text-gray-200 text-lg">✕</button>
+      </div>
+
+      <div class="p-3.5 rounded-xl bg-rose-950/30 border border-rose-900/40 text-xs text-rose-200/90 space-y-2">
+        <div class="font-semibold flex items-center gap-1.5 text-rose-300">
+          <span>⚠️ WARNING: IRREVERSIBLE LIVE ACTION</span>
+        </div>
+        <p class="leading-relaxed text-[11px]">
+          Executing emergency square-off will immediately cancel all open limit &amp; stop-loss bracket orders, and submit market orders to close all open positions across BTC 1DTE, ETH 1DTE, BTC 0DTE, Regime Condor, and Trend Breakout sleeves.
+        </p>
+        <div class="flex items-center justify-between text-[11px] font-mono pt-1 border-t border-rose-900/30 text-rose-300">
+          <span>Target Dispatch:</span>
+          <span class="font-bold">mode: square-off (All Sleeves)</span>
+        </div>
+      </div>
+
+      <!-- 2-Step Safety Slider -->
+      <div class="space-y-2 pt-1">
+        <div class="flex justify-between items-center text-xs">
+          <span class="text-gray-300 font-medium">Slide to Unlock Confirmation:</span>
+          <span id="square-off-slider-val" class="font-mono text-gray-400 text-[11px]">0%</span>
+        </div>
+        <input type="range" id="square-off-slider" min="0" max="100" value="0" oninput="handleSquareOffSlider(this.value)" class="w-full h-3 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-rose-500">
+        <p class="text-[10px] text-gray-500 italic">Drag slider completely to 100% to arm the square-off execution button.</p>
+      </div>
+
+      <!-- Execution Actions -->
+      <div class="flex items-center justify-end gap-3 pt-3 border-t border-gray-800">
+        <button onclick="closeEmergencySquareOffModal()" class="px-4 py-2 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 text-xs font-medium transition">
+          Cancel &amp; Keep Positions
+        </button>
+        <button id="btn-execute-square-off" disabled onclick="executeEmergencySquareOff()" class="px-4 py-2 rounded-lg bg-gray-800 text-gray-500 font-bold text-xs transition cursor-not-allowed opacity-50 flex items-center gap-1.5">
+          <span>🔒 Slide to Unlock</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- ========================================================================= -->
   <!-- JAVASCRIPT LOGIC & DATA WIRING -->
   <!-- ========================================================================= -->
@@ -1210,9 +1625,13 @@
 
     let sleeveState = {
       ENABLE_STRANGLE: true,
+      ENABLE_ETH_STRANGLE: true,
+      ENABLE_0DTE: false,
       ENABLE_CONDOR: false,
       ENABLE_TREND_BREAKOUT: false,
       BOT_LOTS: 500,
+      ETH_BOT_LOTS: 250,
+      ZERO_DTE_LOTS: 200,
       CONDOR_LOTS: 300,
       TREND_LOTS: 100,
       MAX_MARGIN_UTILIZATION: 65,
@@ -1534,6 +1953,10 @@
       let currentVal = false;
       if (varName === 'ENABLE_STRANGLE') {
         currentVal = sleeveState.ENABLE_STRANGLE;
+      } else if (varName === 'ENABLE_ETH_STRANGLE') {
+        currentVal = sleeveState.ENABLE_ETH_STRANGLE;
+      } else if (varName === 'ENABLE_0DTE') {
+        currentVal = sleeveState.ENABLE_0DTE;
       } else if (varName === 'ENABLE_CONDOR') {
         currentVal = sleeveState.ENABLE_CONDOR;
       } else if (varName === 'ENABLE_TREND_BREAKOUT') {
@@ -1547,6 +1970,8 @@
         const ok = await upsertGitHubVariable(token, varName, nextVal ? 'true' : 'false');
         if (ok) {
           if (varName === 'ENABLE_STRANGLE') sleeveState.ENABLE_STRANGLE = nextVal;
+          if (varName === 'ENABLE_ETH_STRANGLE') sleeveState.ENABLE_ETH_STRANGLE = nextVal;
+          if (varName === 'ENABLE_0DTE') sleeveState.ENABLE_0DTE = nextVal;
           if (varName === 'ENABLE_CONDOR') sleeveState.ENABLE_CONDOR = nextVal;
           if (varName === 'ENABLE_TREND_BREAKOUT') sleeveState.ENABLE_TREND_BREAKOUT = nextVal;
 
@@ -1585,6 +2010,10 @@
             sleeveState.BOT_LOTS = lots;
             const mainLots = document.getElementById('bot-lots-input');
             if (mainLots) mainLots.value = lots;
+          } else if (varName === 'ETH_BOT_LOTS') {
+            sleeveState.ETH_BOT_LOTS = lots;
+          } else if (varName === 'ZERO_DTE_LOTS') {
+            sleeveState.ZERO_DTE_LOTS = lots;
           } else if (varName === 'CONDOR_LOTS') {
             sleeveState.CONDOR_LOTS = lots;
           } else if (varName === 'TREND_LOTS') {
@@ -1612,6 +2041,10 @@
       let lots = 500;
       if (stratKey === 'btc_1dte' || stratKey === 'strangle') {
         lots = sleeveState.BOT_LOTS || parseInt(document.getElementById('sleeve-input-strangle-lots')?.value || '500', 10);
+      } else if (stratKey === 'eth_1dte') {
+        lots = sleeveState.ETH_BOT_LOTS || parseInt(document.getElementById('sleeve-input-eth-lots')?.value || '250', 10);
+      } else if (stratKey === 'btc_0dte') {
+        lots = sleeveState.ZERO_DTE_LOTS || parseInt(document.getElementById('sleeve-input-0dte-lots')?.value || '200', 10);
       } else if (stratKey === 'regime_condor' || stratKey === 'condor') {
         lots = sleeveState.CONDOR_LOTS || parseInt(document.getElementById('sleeve-input-condor-lots')?.value || '300', 10);
       } else if (stratKey === 'btc_trend_breakout' || stratKey === 'trend') {
@@ -1655,6 +2088,8 @@
     function renderMultiStrategySleeves() {
       const sum = (dashboardState && dashboardState.strategies_summary) || {};
       const sStrangle = sum.btc_1dte || sum.strangle || {};
+      const sEth = sum.eth_1dte || {};
+      const s0Dte = sum.btc_0dte || {};
       const sCondor = sum.regime_condor || sum.btc_condor || {};
       const sTrend = sum.btc_trend_breakout || sum.trend_breakout || {};
 
@@ -1663,6 +2098,16 @@
         sleeveState.ENABLE_STRANGLE = localStorage.getItem('sleeve_ENABLE_STRANGLE') === 'true';
       } else if (sStrangle.enabled !== undefined) {
         sleeveState.ENABLE_STRANGLE = sStrangle.enabled;
+      }
+      if (localStorage.getItem('sleeve_ENABLE_ETH_STRANGLE') !== null) {
+        sleeveState.ENABLE_ETH_STRANGLE = localStorage.getItem('sleeve_ENABLE_ETH_STRANGLE') === 'true';
+      } else if (sEth.enabled !== undefined) {
+        sleeveState.ENABLE_ETH_STRANGLE = sEth.enabled;
+      }
+      if (localStorage.getItem('sleeve_ENABLE_0DTE') !== null) {
+        sleeveState.ENABLE_0DTE = localStorage.getItem('sleeve_ENABLE_0DTE') === 'true';
+      } else if (s0Dte.enabled !== undefined) {
+        sleeveState.ENABLE_0DTE = s0Dte.enabled;
       }
       if (localStorage.getItem('sleeve_ENABLE_CONDOR') !== null) {
         sleeveState.ENABLE_CONDOR = localStorage.getItem('sleeve_ENABLE_CONDOR') === 'true';
@@ -1718,7 +2163,93 @@
         budgetStrangle.textContent = formatMoney(sStrangle.budget_cap_usd);
       }
 
-      // Sleeve 2: regime_condor Iron Condor
+      // Sleeve 2: eth_1dte Strangle
+      const btnEth = document.getElementById('btn-toggle-sleeve-eth');
+      if (btnEth) {
+        if (sleeveState.ENABLE_ETH_STRANGLE) {
+          btnEth.innerHTML = '<span>🟢 Enabled</span>';
+          btnEth.className = 'py-1 px-2.5 rounded-lg text-[11px] font-semibold transition border flex items-center gap-1.5 bg-emerald-500/15 text-emerald-300 border-emerald-500/30';
+        } else {
+          btnEth.innerHTML = '<span>⏸ Disabled</span>';
+          btnEth.className = 'py-1 px-2.5 rounded-lg text-[11px] font-semibold transition border flex items-center gap-1.5 bg-gray-800 text-gray-400 border-gray-700';
+        }
+      }
+      const inputEth = document.getElementById('sleeve-input-eth-lots');
+      if (inputEth && !inputEth.dataset.edited) {
+        inputEth.value = sleeveState.ETH_BOT_LOTS || sEth.configured_lots || 250;
+      }
+      const badgeEth = document.getElementById('sleeve-badge-eth_1dte');
+      if (badgeEth) {
+        if (!sleeveState.ENABLE_ETH_STRANGLE) {
+          badgeEth.textContent = 'PAUSED';
+          badgeEth.className = 'px-1.5 py-0.5 rounded text-[10px] font-bold bg-gray-800 text-gray-400 border border-gray-700 uppercase';
+        } else if (sEth.active) {
+          badgeEth.textContent = 'ACTIVE';
+          badgeEth.className = 'px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 uppercase';
+        } else {
+          badgeEth.textContent = 'READY';
+          badgeEth.className = 'px-1.5 py-0.5 rounded text-[10px] font-bold bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 uppercase';
+        }
+      }
+      const posEth = document.getElementById('sleeve-pos-eth_1dte');
+      if (posEth) {
+        posEth.textContent = `${sEth.open_positions_count !== undefined ? sEth.open_positions_count : 0} Legs`;
+      }
+      const pnlEth = document.getElementById('sleeve-pnl-eth_1dte');
+      if (pnlEth) {
+        const pnl = Number(sEth.unrealized_pnl_usd || 0);
+        pnlEth.textContent = formatMoney(pnl, true);
+        pnlEth.className = `font-bold ${pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+      }
+      const budgetEth = document.getElementById('sleeve-budget-eth_1dte');
+      if (budgetEth && sEth.budget_cap_usd) {
+        budgetEth.textContent = formatMoney(sEth.budget_cap_usd);
+      }
+
+      // Sleeve 3: btc_0dte Intraday Strangle
+      const btn0Dte = document.getElementById('btn-toggle-sleeve-0dte');
+      if (btn0Dte) {
+        if (sleeveState.ENABLE_0DTE) {
+          btn0Dte.innerHTML = '<span>🟢 Enabled</span>';
+          btn0Dte.className = 'py-1 px-2.5 rounded-lg text-[11px] font-semibold transition border flex items-center gap-1.5 bg-emerald-500/15 text-emerald-300 border-emerald-500/30';
+        } else {
+          btn0Dte.innerHTML = '<span>⏸ Disabled</span>';
+          btn0Dte.className = 'py-1 px-2.5 rounded-lg text-[11px] font-semibold transition border flex items-center gap-1.5 bg-gray-800 text-gray-400 border-gray-700';
+        }
+      }
+      const input0Dte = document.getElementById('sleeve-input-0dte-lots');
+      if (input0Dte && !input0Dte.dataset.edited) {
+        input0Dte.value = sleeveState.ZERO_DTE_LOTS || s0Dte.configured_lots || 200;
+      }
+      const badge0Dte = document.getElementById('sleeve-badge-btc_0dte');
+      if (badge0Dte) {
+        if (!sleeveState.ENABLE_0DTE) {
+          badge0Dte.textContent = 'PAUSED';
+          badge0Dte.className = 'px-1.5 py-0.5 rounded text-[10px] font-bold bg-gray-800 text-gray-400 border border-gray-700 uppercase';
+        } else if (s0Dte.active) {
+          badge0Dte.textContent = 'ACTIVE';
+          badge0Dte.className = 'px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 uppercase';
+        } else {
+          badge0Dte.textContent = 'STANDBY';
+          badge0Dte.className = 'px-1.5 py-0.5 rounded text-[10px] font-bold bg-gray-800 text-gray-400 border border-gray-700 uppercase';
+        }
+      }
+      const pos0Dte = document.getElementById('sleeve-pos-btc_0dte');
+      if (pos0Dte) {
+        pos0Dte.textContent = `${s0Dte.open_positions_count !== undefined ? s0Dte.open_positions_count : 0} Legs`;
+      }
+      const pnl0Dte = document.getElementById('sleeve-pnl-btc_0dte');
+      if (pnl0Dte) {
+        const pnl = Number(s0Dte.unrealized_pnl_usd || 0);
+        pnl0Dte.textContent = formatMoney(pnl, true);
+        pnl0Dte.className = `font-bold ${pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+      }
+      const budget0Dte = document.getElementById('sleeve-budget-btc_0dte');
+      if (budget0Dte && s0Dte.budget_cap_usd) {
+        budget0Dte.textContent = formatMoney(s0Dte.budget_cap_usd);
+      }
+
+      // Sleeve 4: regime_condor Iron Condor
       const btnCondor = document.getElementById('btn-toggle-sleeve-condor');
       if (btnCondor) {
         if (sleeveState.ENABLE_CONDOR) {
@@ -1761,7 +2292,7 @@
         gateCondor.className = `${pass ? 'text-emerald-400' : 'text-rose-400'} font-bold flex items-center gap-1`;
       }
 
-      // Sleeve 3: btc_trend_breakout Futures
+      // Sleeve 5: btc_trend_breakout Futures
       const btnTrend = document.getElementById('btn-toggle-sleeve-trend');
       if (btnTrend) {
         if (sleeveState.ENABLE_TREND_BREAKOUT) {
@@ -1807,6 +2338,210 @@
       const inMaxDelta = document.getElementById('risk-input-max-delta');
       if (inMaxDelta && !inMaxDelta.dataset.edited && sleeveState.MAX_NET_DELTA) {
         inMaxDelta.value = sleeveState.MAX_NET_DELTA;
+      }
+
+      // 1c. Institutional Greeks & Risk Strip Update
+      const positions = dashboardState?.open_positions || [];
+      const netDelta = positions.reduce((acc, p) => acc + (parseFloat(p.delta) || 0), 0);
+      const dailyTheta = positions.reduce((acc, p) => acc + (parseFloat(p.theta) || 0), 0);
+      const netVega = positions.reduce((acc, p) => acc + (parseFloat(p.vega) || 0), 0);
+      const marginUtil = parseFloat(dashboardState?.wallet?.margin_utilization_pct || dashboardState?.portfolio_risk?.current_margin_utilization_pct || 0);
+
+      const elDelta = document.getElementById('greeks-net-delta');
+      if (elDelta) {
+        elDelta.textContent = `${netDelta >= 0 ? '+' : ''}${netDelta.toFixed(3)} BTC`;
+        elDelta.className = `text-sm font-bold font-mono ${Math.abs(netDelta) > (sleeveState.MAX_NET_DELTA || 0.5) ? 'text-amber-400' : 'text-gray-100'}`;
+      }
+      const elTheta = document.getElementById('greeks-daily-theta');
+      if (elTheta) {
+        elTheta.textContent = `+$${Math.abs(dailyTheta).toFixed(2)} /day`;
+      }
+      const elVega = document.getElementById('greeks-net-vega');
+      if (elVega) {
+        elVega.textContent = `-$${Math.abs(netVega).toFixed(2)} /1% IV`;
+      }
+      const elMargin = document.getElementById('greeks-margin-util');
+      if (elMargin) {
+        elMargin.textContent = `${marginUtil.toFixed(1)}%`;
+        elMargin.className = `text-sm font-bold font-mono ${marginUtil > (sleeveState.MAX_MARGIN_UTILIZATION || 65) ? 'text-rose-400' : 'text-emerald-400'}`;
+      }
+
+      // Section 3: Deck View 2 (Regime) Indicators
+      const deckIv = document.getElementById('deck-regime-iv');
+      if (deckIv) deckIv.textContent = `${(sCondor.current_iv || 52.4).toFixed(1)}%`;
+      const deckRv = document.getElementById('deck-regime-rv');
+      if (deckRv) deckRv.textContent = `${(sCondor.current_rv || 48.1).toFixed(1)}%`;
+      const deckVrp = document.getElementById('deck-regime-vrp');
+      if (deckVrp) {
+        const vrpVal = sCondor.current_vrp !== undefined ? sCondor.current_vrp : 4.3;
+        deckVrp.textContent = `${vrpVal >= 0 ? '+' : ''}${vrpVal.toFixed(1)}%`;
+      }
+      const deckIvBar = document.getElementById('deck-regime-iv-bar');
+      if (deckIvBar) {
+        const ivVal = sCondor.current_iv || 52.4;
+        deckIvBar.style.width = `${Math.min(100, Math.max(10, ivVal))}%`;
+      }
+
+      // Section 3: Deck View 3 (Trend) Indicators
+      const deckSpot = document.getElementById('deck-channel-spot-label');
+      if (deckSpot) deckSpot.textContent = formatMoney(liveSpotPriceNumeric);
+      const deckLow = document.getElementById('deck-channel-low-label');
+      if (deckLow) deckLow.textContent = formatMoney(liveSpotPriceNumeric * 0.965);
+      const deckHigh = document.getElementById('deck-channel-high-label');
+      if (deckHigh) deckHigh.textContent = formatMoney(liveSpotPriceNumeric * 1.035);
+      const deckTrendHigh = document.getElementById('deck-trend-high');
+      if (deckTrendHigh) deckTrendHigh.textContent = formatMoney(liveSpotPriceNumeric * 1.035);
+      const deckTrendLow = document.getElementById('deck-trend-low');
+      if (deckTrendLow) deckTrendLow.textContent = formatMoney(liveSpotPriceNumeric * 0.965);
+    }
+
+    // Tabbed Analytics Deck Controls
+    function setAnalyticsDeckTab(tab) {
+      const views = {
+        payoff: document.getElementById('deck-view-payoff'),
+        regime: document.getElementById('deck-view-regime'),
+        trend: document.getElementById('deck-view-trend')
+      };
+      const btns = {
+        payoff: document.getElementById('btn-tab-payoff'),
+        regime: document.getElementById('btn-tab-regime'),
+        trend: document.getElementById('btn-tab-trend')
+      };
+
+      Object.entries(views).forEach(([k, viewEl]) => {
+        if (viewEl) {
+          if (k === tab) {
+            viewEl.classList.remove('hidden');
+          } else {
+            viewEl.classList.add('hidden');
+          }
+        }
+      });
+
+      Object.entries(btns).forEach(([k, btnEl]) => {
+        if (btnEl) {
+          if (k === tab) {
+            btnEl.className = 'px-3 py-1.5 rounded-md bg-blue-600 text-white shadow-sm transition';
+          } else {
+            btnEl.className = 'px-3 py-1.5 rounded-md text-gray-400 hover:text-gray-200 transition';
+          }
+        }
+      });
+    }
+
+    // Sleeve Category Filter & Telemetry Drawer Controls
+    let currentSleeveCategory = 'all';
+
+    function setSleeveCategoryFilter(category) {
+      currentSleeveCategory = category;
+      const tabs = {
+        all: document.getElementById('sleeve-cat-all'),
+        options: document.getElementById('sleeve-cat-options'),
+        trend: document.getElementById('sleeve-cat-trend')
+      };
+
+      Object.entries(tabs).forEach(([k, el]) => {
+        if (!el) return;
+        if (k === category) {
+          el.className = 'px-3 py-1 rounded-md font-semibold bg-blue-600 text-white shadow-sm transition';
+        } else {
+          el.className = 'px-3 py-1 rounded-md font-medium text-gray-400 hover:text-gray-200 transition';
+        }
+      });
+
+      const cards = document.querySelectorAll('#sleeves-cards-grid [data-category]');
+      cards.forEach(card => {
+        const cardCat = card.getAttribute('data-category');
+        if (category === 'all' || cardCat === category) {
+          card.classList.remove('hidden');
+        } else {
+          card.classList.add('hidden');
+        }
+      });
+    }
+
+    function toggleSleeveDrawer(sleeveId) {
+      const drawer = document.getElementById('sleeve-drawer-' + sleeveId);
+      const arrow = document.getElementById('sleeve-arrow-' + sleeveId);
+      if (drawer) {
+        const isHidden = drawer.classList.contains('hidden');
+        drawer.classList.toggle('hidden', !isHidden);
+        if (arrow) {
+          arrow.innerHTML = isHidden ? '▲ Hide Rules' : '▼ Parameters &amp; Rules';
+        }
+      }
+    }
+
+    // Emergency Square-Off Controls
+    function openEmergencySquareOffModal() {
+      const modal = document.getElementById('emergency-square-off-modal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        const slider = document.getElementById('square-off-slider');
+        if (slider) slider.value = 0;
+        handleSquareOffSlider(0);
+      }
+    }
+
+    function closeEmergencySquareOffModal() {
+      const modal = document.getElementById('emergency-square-off-modal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    function handleSquareOffSlider(val) {
+      const v = parseInt(val, 10) || 0;
+      const valLabel = document.getElementById('square-off-slider-val');
+      if (valLabel) valLabel.textContent = `${v}%`;
+      const btn = document.getElementById('btn-execute-square-off');
+      if (btn) {
+        if (v >= 100) {
+          btn.disabled = false;
+          btn.className = 'px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs transition cursor-pointer shadow-lg animate-pulse flex items-center gap-1.5';
+          btn.innerHTML = '<span>⚡ EXECUTE IMMEDIATE SQUARE-OFF</span>';
+        } else {
+          btn.disabled = true;
+          btn.className = 'px-4 py-2 rounded-lg bg-gray-800 text-gray-500 font-bold text-xs transition cursor-not-allowed opacity-50 flex items-center gap-1.5';
+          btn.innerHTML = `<span>🔒 Slide to Unlock (${v}%)</span>`;
+        }
+      }
+    }
+
+    async function executeEmergencySquareOff() {
+      const token = getSavedToken();
+      if (!token) {
+        closeEmergencySquareOffModal();
+        openSettingsModal();
+        showToast('🔑 GitHub PAT required to execute Emergency Square-Off', 'error');
+        return;
+      }
+      showToast('🚨 Dispatched EMERGENCY SQUARE-OFF for ALL strategies...', 'info');
+      closeEmergencySquareOffModal();
+      try {
+        const resp = await fetch(`https://api.github.com/repos/${REPO_SLUG}/actions/workflows/${WORKFLOW_FILE}/dispatches`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/vnd.github+json',
+            'Content-Type': 'application/json',
+            'X-GitHub-Api-Version': '2022-11-28'
+          },
+          body: JSON.stringify({
+            ref: getActiveBranch(),
+            inputs: {
+              mode: 'square-off',
+              strategy: 'all',
+              lots: '0'
+            }
+          })
+        });
+        if (resp.status === 204 || resp.ok) {
+          showToast('🚨 Square-Off dispatched! All open positions and orders will be cancelled & closed.', 'success');
+          setTimeout(syncNow, 10000);
+        } else {
+          showToast(`GitHub API returned HTTP ${resp.status} on square-off dispatch`, 'error');
+        }
+      } catch (err) {
+        showToast(`Square-off failed: ${err.message}`, 'error');
       }
     }
 
@@ -3316,8 +4051,8 @@
         };
         const varNames = [
           'BOT_MODE', 'BOT_LOTS', 'ACTIVE_LIVE_BRANCH',
-          'ENABLE_STRANGLE', 'ENABLE_CONDOR', 'ENABLE_TREND_BREAKOUT',
-          'CONDOR_LOTS', 'TREND_LOTS',
+          'ENABLE_STRANGLE', 'ENABLE_ETH_STRANGLE', 'ENABLE_0DTE', 'ENABLE_CONDOR', 'ENABLE_TREND_BREAKOUT',
+          'ETH_BOT_LOTS', 'ZERO_DTE_LOTS', 'CONDOR_LOTS', 'TREND_LOTS',
           'MAX_MARGIN_UTILIZATION', 'MAX_DAILY_DRAWDOWN_PCT', 'MAX_NET_DELTA'
         ];
         const responses = await Promise.allSettled(
@@ -3345,10 +4080,18 @@
                 localStorage.setItem(STORAGE_ACTIVE_BRANCH_KEY, val.toLowerCase());
               } else if (name === 'ENABLE_STRANGLE') {
                 sleeveState.ENABLE_STRANGLE = val.toLowerCase() === 'true';
+              } else if (name === 'ENABLE_ETH_STRANGLE') {
+                sleeveState.ENABLE_ETH_STRANGLE = val.toLowerCase() === 'true';
+              } else if (name === 'ENABLE_0DTE') {
+                sleeveState.ENABLE_0DTE = val.toLowerCase() === 'true';
               } else if (name === 'ENABLE_CONDOR') {
                 sleeveState.ENABLE_CONDOR = val.toLowerCase() === 'true';
               } else if (name === 'ENABLE_TREND_BREAKOUT') {
                 sleeveState.ENABLE_TREND_BREAKOUT = val.toLowerCase() === 'true';
+              } else if (name === 'ETH_BOT_LOTS') {
+                sleeveState.ETH_BOT_LOTS = parseInt(val, 10) || 250;
+              } else if (name === 'ZERO_DTE_LOTS') {
+                sleeveState.ZERO_DTE_LOTS = parseInt(val, 10) || 200;
               } else if (name === 'CONDOR_LOTS') {
                 sleeveState.CONDOR_LOTS = parseInt(val, 10) || 300;
               } else if (name === 'TREND_LOTS') {
