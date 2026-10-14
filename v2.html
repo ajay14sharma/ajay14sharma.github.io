@@ -2242,47 +2242,74 @@
       const phone = getSavedWaPhone();
       const metaPid = getSavedMetaPhoneId();
       const metaTok = getSavedMetaToken();
+      const toDigits = phone.replace(/\D+/g, '');
 
       if (metaPid && metaTok) {
         showToast(`Sending test alert via Meta Cloud API to ${phone}...`, 'info');
+        let delivered = false;
+
+        // 1. Primary Attempt: Send direct rich-text message (instant delivery if 24h window is open)
         try {
-          const url = `https://graph.facebook.com/v21.0/${metaPid}/messages`;
-          const body = {
-            messaging_product: "whatsapp",
-            recipient_type: "individual",
-            to: phone.replace(/\D+/g, ''),
-            type: "template",
-            template: {
-              name: "delta_strangle_bot_alert",
-              language: { code: "en_US" },
-              components: [
-                {
-                  type: "body",
-                  parameters: [
-                    { type: "text", text: `⚡ Strangle Bot Test Alert (${new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' })} IST) — BTC Spot: $${Number(liveSpotPriceNumeric || 0).toLocaleString()} • All systems nominal.` }
-                  ]
-                }
-              ]
-            }
-          };
-          const res = await fetch(url, {
+          const textUrl = `https://graph.facebook.com/v21.0/${metaPid}/messages`;
+          const textRes = await fetch(textUrl, {
             method: "POST",
             headers: {
               "Authorization": `Bearer ${metaTok}`,
               "Content-Type": "application/json"
             },
-            body: JSON.stringify(body)
+            body: JSON.stringify({
+              messaging_product: "whatsapp",
+              recipient_type: "individual",
+              to: toDigits,
+              type: "text",
+              text: {
+                preview_url: false,
+                body: `⚡ *Delta Strangle Bot Test Alert*\n🕒 ${new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' })} IST • Live Ping\n📊 BTC Spot: $${Number(liveSpotPriceNumeric || 0).toLocaleString()} • All systems nominal.\n\n🌐 https://ajay14sharma.github.io/v2.html`
+              }
+            })
           });
-          if (res.ok) {
-            showToast(`📲 Meta WhatsApp alert delivered to ${phone}!`, 'success');
-            return;
+          if (textRes.ok) {
+            delivered = true;
           }
         } catch (e) {
-          console.warn('Meta API direct call failed, trying workflow dispatch...', e);
+          console.warn('Direct text message attempt error:', e);
+        }
+
+        // 2. Guaranteed 24/7 Delivery Attempt: Send hello_world starter template
+        // (Bypasses 24h window and guarantees physical delivery to handset)
+        try {
+          const tplUrl = `https://graph.facebook.com/v21.0/${metaPid}/messages`;
+          const tplRes = await fetch(tplUrl, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${metaTok}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              messaging_product: "whatsapp",
+              to: toDigits,
+              type: "template",
+              template: { name: "hello_world", language: { code: "en_US" } }
+            })
+          });
+          if (tplRes.ok) {
+            showToast(`📲 Test alert delivered to ${phone}! Reply 'Hi' on WhatsApp to unlock rich text.`, 'success');
+            return;
+          } else {
+            const errData = await tplRes.json().catch(() => ({}));
+            console.warn('hello_world template attempt error:', errData);
+          }
+        } catch (e) {
+          console.warn('hello_world template attempt error:', e);
+        }
+
+        if (delivered) {
+          showToast(`📲 Meta rich text message dispatched to ${phone}!`, 'success');
+          return;
         }
       }
 
-      // Fallback to workflow dispatch
+      // Fallback: Dispatch workflow run via GitHub Actions
       if (token) {
         showToast(`Dispatching 'test-whatsapp' workflow via GitHub Actions...`, 'info');
         try {
@@ -2305,7 +2332,8 @@
         }
       }
 
-      showToast('📲 Please configure Meta Token or GitHub PAT in settings to test WhatsApp.', 'info');
+      showToast('⚙️ Please configure Meta Token or GitHub PAT in settings.', 'warning');
+      openSettingsModal();
     }
 
     // 11. Modals & Settings Management
