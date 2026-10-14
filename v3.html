@@ -3083,13 +3083,33 @@
         let upnl = 0;
         let entryCredit = 0;
         let decayPct = 0;
+
+        // Base uPnL from exchange net cashflow (realized_cashflow + unrealized_cashflow) or snapshot unrealized_pnl_usd
+        if (p.unrealized_pnl_usd !== undefined && !isNaN(parseFloat(p.unrealized_pnl_usd))) {
+          upnl = parseFloat(p.unrealized_pnl_usd);
+        } else if (p.realized_cashflow !== undefined && p.unrealized_cashflow !== undefined) {
+          upnl = parseFloat(p.realized_cashflow) + parseFloat(p.unrealized_cashflow);
+        } else if (p.realized_cashflow_usd !== undefined && p.unrealized_cashflow_usd !== undefined) {
+          upnl = parseFloat(p.realized_cashflow_usd) + parseFloat(p.unrealized_cashflow_usd);
+        } else if (isLong) {
+          upnl = (markPx - entryPx) * cryptoQty;
+        } else {
+          upnl = (entryPx - markPx) * cryptoQty;
+        }
+
+        // Live incremental price tick adjustment if live tickers streamed a newer mark price
+        if (ticker.mark_price && p.mark_price && !isNaN(parseFloat(ticker.mark_price)) && !isNaN(parseFloat(p.mark_price))) {
+          const snapMark = parseFloat(p.mark_price);
+          const liveMark = parseFloat(ticker.mark_price);
+          const incrementalMove = isLong ? (liveMark - snapMark) : (snapMark - liveMark);
+          upnl += incrementalMove * cryptoQty;
+        }
+
         if (isLong) {
           entryCredit = -(entryPx * cryptoQty);
-          upnl = (markPx - entryPx) * cryptoQty;
           decayPct = 0;
         } else {
           entryCredit = entryPx * cryptoQty;
-          upnl = (entryPx - markPx) * cryptoQty;
           decayPct = entryPx > 0 ? Math.min(100, Math.max(0, ((entryPx - markPx) / entryPx) * 100)) : 0;
         }
         const slDist = slTrigger - markPx;
