@@ -3285,13 +3285,11 @@
       const entryPx = Number(p.entry_price || p.entry_px || 0);
       const lots = Number(p.lots || p.size || -500);
       const isLong = lots > 0;
-      const defaultSl = isLong ? (entryPx > 0 ? entryPx * 0.5 : 0) : (entryPx > 0 ? entryPx * 2.0 : 0);
-      const defaultTp = isLong ? (entryPx > 0 ? entryPx * 2.0 : 0) : (entryPx > 0 ? entryPx * 0.5 : 0);
-
-      const slTrigger = Number(p.sl_trigger || p.stop_loss_price || defaultSl);
-      const tpTrigger = Number(p.tp_trigger || p.take_profit_price || defaultTp);
-      const hasSlOrder = Boolean(p.sl_active || p.sl_order_id);
-      const hasTpOrder = Boolean(p.tp_active || p.tp_order_id);
+      // Live open orders on Delta Exchange
+      const hasSlOrder = Boolean(p.sl_active && p.sl_trigger !== null && p.sl_trigger !== undefined && Number(p.sl_trigger) > 0);
+      const hasTpOrder = Boolean(p.tp_active && p.tp_trigger !== null && p.tp_trigger !== undefined && Number(p.tp_trigger) > 0);
+      const slTrigger = hasSlOrder ? Number(p.sl_trigger) : null;
+      const tpTrigger = hasTpOrder ? Number(p.tp_trigger) : null;
       const multiplier = p.contract_multiplier || (parsed.underlying === 'ETH' ? 0.01 : 0.001);
       const assetUnit = parsed.underlying || 'BTC';
       const cryptoQty = Math.abs(lots) * multiplier;
@@ -3327,7 +3325,7 @@
         entryCredit = entryPx * cryptoQty;
         decayPct = entryPx > 0 ? Math.min(100, Math.max(0, ((entryPx - markPx) / entryPx) * 100)) : 0;
       }
-      const slDist = slTrigger - markPx;
+      const slDist = slTrigger !== null ? (slTrigger - markPx) : null;
       const ivPct = p.ivPct || (ticker.implied_volatility ? parseFloat(ticker.implied_volatility) * 100 : 38.5);
 
       return {
@@ -3800,12 +3798,12 @@
               totalCohortUpnl += (p.upnl || 0);
             }
             const slBadge = p.hasSlOrder
-              ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-emerald-500/15 text-emerald-300 border border-emerald-500/30" title="Active Stop-Loss Order on Delta Exchange">🟢 Live SL: $${p.slTrigger.toFixed(1)}</span>`
-              : `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-gray-800 text-gray-400 border border-gray-700" title="Scheduled Bot Stop-Loss Trigger (2.0x)">⏱️ Bot SL: $${p.slTrigger.toFixed(1)}</span>`;
+              ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-emerald-500/15 text-emerald-300 border border-emerald-500/30" title="Active Stop-Loss Order on Delta Exchange (#${p.sl_order_id || 'live'})">🟢 Live SL: $${p.slTrigger.toFixed(1)}</span>`
+              : `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-gray-900 text-gray-500 border border-gray-800" title="No active Stop-Loss order on Delta Exchange">⚪ No SL Order</span>`;
 
             const tpBadge = p.hasTpOrder
-              ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-cyan-500/15 text-cyan-300 border border-cyan-500/30" title="Active Take-Profit Order on Delta Exchange">🎯 Live TP: $${p.tpTrigger.toFixed(1)}</span>`
-              : `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-gray-800 text-gray-400 border border-gray-700" title="Scheduled Profit Target (50% Decay)">💡 50% TP: $${p.tpTrigger.toFixed(1)}</span>`;
+              ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-cyan-500/15 text-cyan-300 border border-cyan-500/30" title="Active Take-Profit Order on Delta Exchange (#${p.tp_order_id || 'live'})">🎯 Live TP: $${p.tpTrigger.toFixed(1)}</span>`
+              : `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-gray-900 text-gray-500 border border-gray-800" title="No active Take-Profit order on Delta Exchange (held to expiry)">⚪ No TP Order</span>`;
 
             const row = document.createElement('div');
             row.className = `p-2.5 rounded-lg border text-xs transition flex items-center justify-between ${isSelected ? 'bg-gray-900 border-gray-750 hover:border-gray-650' : 'bg-gray-950/60 border-gray-900 opacity-40'}`;
@@ -3910,7 +3908,26 @@
       const maxDomain = Math.ceil(rawMaxDomain / roundStep) * roundStep;
       const domainSpan = Math.max(isEth ? 400 : 4000, maxDomain - minDomain);
 
-      // Expiry Payoff function
+      // Baseline Expiry Payoff (unbracketed contract economics for true mathematical breakevens)
+      const calcBaselineExpiryPayoff = (S) => {
+        if (isFlat) {
+          const pPut = Math.max(0, targetPutStrike - S);
+          const pCall = Math.max(0, S - targetCallStrike);
+          const qty = isEth ? 2.5 : 0.5;
+          return ((previewLegCredit - pPut) + (previewLegCredit - pCall)) * qty;
+        }
+        let pnl = 0;
+        for (const p of activePositions) {
+          const k = p.parsed.strike;
+          const intrinsic = p.parsed.isCall ? Math.max(0, S - k) : Math.max(0, k - S);
+          const isLong = (p.lots || 0) > 0;
+          const qty = p.cryptoQty || p.btcQty || (isEth ? 2.5 : 0.5);
+          pnl += isLong ? (intrinsic - p.entryPx) * qty : (p.entryPx - intrinsic) * qty;
+        }
+        return pnl;
+      };
+
+      // Expiry Payoff (incorporating live exchange order brackets if enabled)
       const calcExpiryPayoff = (S) => {
         if (isFlat) {
           const pPut = Math.max(0, targetPutStrike - S);
@@ -3931,22 +3948,23 @@
           const qty = p.cryptoQty || p.btcQty || (isEth ? 2.5 : 0.5);
           let legPnl = isLong ? (intrinsic - p.entryPx) * qty : (p.entryPx - intrinsic) * qty;
 
+          // Only cap if simDynamicBrackets is ON AND this contract has an actual live order on Delta Exchange
           if (simDynamicBrackets) {
             if (!isLong) {
-              if (p.slTrigger > 0 && intrinsic >= p.slTrigger) {
+              if (p.hasSlOrder && p.slTrigger !== null && intrinsic >= p.slTrigger) {
                 const maxLoss = -(p.slTrigger - p.entryPx) * qty;
                 legPnl = Math.max(maxLoss, legPnl);
               }
-              if (p.hasTpOrder && p.tpTrigger > 0 && intrinsic <= p.tpTrigger) {
+              if (p.hasTpOrder && p.tpTrigger !== null && intrinsic <= p.tpTrigger) {
                 const maxGain = (p.entryPx - p.tpTrigger) * qty;
                 legPnl = Math.min(maxGain, legPnl);
               }
             } else {
-              if (p.slTrigger > 0 && intrinsic <= p.slTrigger) {
+              if (p.hasSlOrder && p.slTrigger !== null && intrinsic <= p.slTrigger) {
                 const maxLoss = -(p.entryPx - p.slTrigger) * qty;
                 legPnl = Math.max(maxLoss, legPnl);
               }
-              if (p.hasTpOrder && p.tpTrigger > 0 && intrinsic >= p.tpTrigger) {
+              if (p.hasTpOrder && p.tpTrigger !== null && intrinsic >= p.tpTrigger) {
                 const maxGain = (p.tpTrigger - p.entryPx) * qty;
                 legPnl = Math.min(maxGain, legPnl);
               }
@@ -3986,22 +4004,23 @@
           const qty = p.cryptoQty || p.btcQty || (isEth ? 2.5 : 0.5);
           let legPnl = isLong ? (optVal - p.entryPx) * qty : (p.entryPx - optVal) * qty;
 
+          // Only cap if simDynamicBrackets is ON AND this contract has an actual live order on Delta Exchange
           if (simDynamicBrackets) {
             if (!isLong) {
-              if (p.slTrigger > 0 && optVal >= p.slTrigger) {
+              if (p.hasSlOrder && p.slTrigger !== null && optVal >= p.slTrigger) {
                 const maxLoss = -(p.slTrigger - p.entryPx) * qty;
                 legPnl = Math.max(maxLoss, legPnl);
               }
-              if (p.hasTpOrder && p.tpTrigger > 0 && optVal <= p.tpTrigger) {
+              if (p.hasTpOrder && p.tpTrigger !== null && optVal <= p.tpTrigger) {
                 const maxGain = (p.entryPx - p.tpTrigger) * qty;
                 legPnl = Math.min(maxGain, legPnl);
               }
             } else {
-              if (p.slTrigger > 0 && optVal <= p.slTrigger) {
+              if (p.hasSlOrder && p.slTrigger !== null && optVal <= p.slTrigger) {
                 const maxLoss = -(p.entryPx - p.slTrigger) * qty;
                 legPnl = Math.max(maxLoss, legPnl);
               }
-              if (p.hasTpOrder && p.tpTrigger > 0 && optVal >= p.tpTrigger) {
+              if (p.hasTpOrder && p.tpTrigger !== null && optVal >= p.tpTrigger) {
                 const maxGain = (p.tpTrigger - p.entryPx) * qty;
                 legPnl = Math.min(maxGain, legPnl);
               }
@@ -4034,15 +4053,15 @@
         return netDelta;
       };
 
-      // Numerical Breakeven Solver (scans for zero crossings)
+      // Numerical Breakeven Solver (ALWAYS solved on baseline unbracketed curve)
       const zeroCrossings = [];
-      const scanSteps = 140;
+      const scanSteps = 160;
       const stepSize = (maxDomain - minDomain) / scanSteps;
       let prevPx = minDomain;
-      let prevPnl = calcExpiryPayoff(prevPx);
+      let prevPnl = calcBaselineExpiryPayoff(prevPx);
       for (let s = 1; s <= scanSteps; s++) {
         const curPx = minDomain + s * stepSize;
-        const curPnl = calcExpiryPayoff(curPx);
+        const curPnl = calcBaselineExpiryPayoff(curPx);
         if ((prevPnl <= 0 && curPnl >= 0) || (prevPnl >= 0 && curPnl <= 0)) {
           const t = Math.abs(prevPnl) / (Math.abs(prevPnl) + Math.abs(curPnl) + 1e-9);
           const zeroPx = prevPx + t * (curPx - prevPx);
@@ -4094,16 +4113,16 @@
 
       let totalBracketMaxLoss = 0;
       let hasUncappedShortLeg = false;
-      let hasActiveBracketOrder = false;
+      let activeOrderCount = 0;
 
       activePositions.forEach(p => {
         const isLong = (p.lots || 0) > 0;
         const qty = p.cryptoQty || p.btcQty || (isEth ? 2.5 : 0.5);
         if (!isLong) {
-          if (p.slTrigger > 0) {
+          if (p.hasSlOrder && p.slTrigger !== null) {
             const legLoss = (p.slTrigger - p.entryPx) * qty;
             totalBracketMaxLoss += Math.max(0, legLoss);
-            if (p.hasSlOrder) hasActiveBracketOrder = true;
+            activeOrderCount++;
           } else {
             hasUncappedShortLeg = true;
           }
@@ -4114,10 +4133,12 @@
 
       let maxLossDisplay = 'Unlimited (Tail Risk)';
       if (simDynamicBrackets) {
-        if (hasUncappedShortLeg) {
+        if (activeOrderCount === 0) {
+          maxLossDisplay = 'Unlimited (No Open SL Orders)';
+        } else if (hasUncappedShortLeg) {
           maxLossDisplay = `-$${Math.round(totalBracketMaxLoss).toLocaleString()} (Partial Cap)`;
         } else {
-          maxLossDisplay = `-$${Math.round(totalBracketMaxLoss).toLocaleString()} (Dynamic Brackets)`;
+          maxLossDisplay = `-$${Math.round(totalBracketMaxLoss).toLocaleString()} (Live Orders Capped)`;
         }
       } else {
         const hasShorts = activePositions.some(p => (p.lots || 0) < 0);
@@ -4130,7 +4151,7 @@
       setSafeText('kpi-risk-max-profit', `+$${Math.round(maxExpiryPnl).toLocaleString()} USD`);
       setSafeText('kpi-risk-target-profit', `Target Date: +$${Math.round(targetPnlAtEval).toLocaleString()}`);
       setSafeText('kpi-risk-max-loss', maxLossDisplay);
-      setSafeText('kpi-risk-sl-status', `Dynamic Brackets: ${simDynamicBrackets ? (hasActiveBracketOrder ? 'ON (Live Orders)' : 'ON (Bot SL/TP)') : 'OFF'}`);
+      setSafeText('kpi-risk-sl-status', `Dynamic Brackets: ${simDynamicBrackets ? (activeOrderCount > 0 ? `ON (${activeOrderCount} Live Orders)` : 'ON (0 Active Orders)') : 'OFF'}`);
       setSafeText('kpi-risk-breakevens', `$${Math.round(putBreakeven).toLocaleString()} — $${Math.round(callBreakeven).toLocaleString()}`);
       setSafeText('kpi-risk-safe-range', `${Math.round(bufferPts).toLocaleString()} pts (${bufferPct}%)`);
 
@@ -4231,7 +4252,7 @@
 
       // Vertical Scaling
       const maxPnl = Math.max(50, Math.ceil(maxExpiryPnl * 1.15 / 50) * 50);
-      const minPnl = simDynamicBrackets
+      const minPnl = (simDynamicBrackets && activeOrderCount > 0 && !hasUncappedShortLeg)
         ? Math.min(-50, -Math.abs(totalBracketMaxLoss || maxExpiryPnl) * 1.15)
         : Math.min(-100, Math.max(Math.floor(minExpiryPnl * 1.05 / 50) * 50, -6000));
       const pnlSpan = Math.max(40, maxPnl - minPnl);
@@ -4539,7 +4560,7 @@
               </div>
             </div>
             <div class="text-[9px] mt-1.5 pt-1 border-t border-gray-800 text-gray-500">
-              ${isFlat ? '🛡️ Preview Model (Flat Capital Reserve)' : (isSafe ? '🟢 Inside Safe Corridor' : (simDynamicBrackets ? '🛡️ Protected by Dynamic Brackets' : '🔴 Unhedged Tail Risk'))}
+              ${isFlat ? '🛡️ Preview Model (Flat Capital Reserve)' : (isSafe ? '🟢 Inside Safe Corridor' : (simDynamicBrackets && activeOrderCount > 0 ? '🛡️ Protected by Live Orders' : '🔴 Unhedged Tail Risk'))}
             </div>
           `;
         });
