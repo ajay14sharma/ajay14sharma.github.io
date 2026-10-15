@@ -414,89 +414,192 @@
       </div>
 
       <!-- DECK VIEW 1: PAYOFF & SAFE-ZONE CORRIDOR -->
-      <div id="deck-view-payoff" class="space-y-4">
+      <div id="deck-view-payoff" class="space-y-3">
 
-      <!-- Scenario Simulation Controls & Snap Shortcuts -->
-      <div class="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-lg bg-gray-900/60 border border-gray-800 text-xs">
-        <!-- Snap shortcuts -->
-        <div class="flex items-center gap-1.5 flex-wrap">
-          <span class="text-[11px] text-gray-400 font-semibold mr-1">🎯 Snap Spot:</span>
-          <button onclick="snapSpotTo('live')" class="px-2 py-0.5 rounded bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/40 text-[11px] font-mono">Live Spot</button>
-          <button onclick="snapSpotTo('put')" class="px-2 py-0.5 rounded bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/40 text-[11px] font-mono">Put Strike</button>
-          <button onclick="snapSpotTo('call')" class="px-2 py-0.5 rounded bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/40 text-[11px] font-mono">Call Strike</button>
-          <button onclick="snapSpotTo('lowerBe')" class="px-2 py-0.5 rounded bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 text-[11px] font-mono">Lower BE</button>
-          <button onclick="snapSpotTo('upperBe')" class="px-2 py-0.5 rounded bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/40 text-[11px] font-mono">Upper BE</button>
-        </div>
-
-        <!-- Time Decay Scenario & IV Shock -->
-        <div class="flex items-center gap-2 flex-wrap">
-          <div class="flex items-center gap-1 bg-gray-950 p-0.5 rounded-md border border-gray-800 text-[11px]">
-            <span class="text-gray-500 px-1.5">⏳ Time:</span>
-            <button id="btn-decay-live" onclick="setTimeDecayScenario(null)" class="px-2 py-0.5 rounded bg-blue-600 text-white font-semibold">Live</button>
-            <button id="btn-decay-12h" onclick="setTimeDecayScenario(12)" class="px-2 py-0.5 rounded text-gray-400 hover:text-white">12h</button>
-            <button id="btn-decay-6h" onclick="setTimeDecayScenario(6)" class="px-2 py-0.5 rounded text-gray-400 hover:text-white">6h</button>
-            <button id="btn-decay-expiry" onclick="setTimeDecayScenario(0)" class="px-2 py-0.5 rounded text-gray-400 hover:text-white">Expiry</button>
+        <!-- 1. Cohort Filter & Studio Toolbar -->
+        <div class="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-xl bg-gray-950/80 border border-gray-800 text-xs">
+          <!-- Dynamic Cohort Filter Pills -->
+          <div class="flex items-center gap-1.5 flex-wrap" id="corridor-cohort-pills">
+            <span class="text-gray-400 font-semibold mr-1">📅 Cohort:</span>
+            <button onclick="setCorridorCohort('all')" id="btn-cohort-all" class="px-2.5 py-1 rounded-lg bg-orange-600 text-white font-semibold shadow text-xs">
+              All Expiries
+            </button>
           </div>
 
-          <div class="flex items-center gap-1 bg-gray-950 p-0.5 rounded-md border border-gray-800 text-[11px]">
-            <span class="text-gray-500 px-1.5">⚡ IV:</span>
-            <button id="btn-iv-crush" onclick="setIvShockScenario(-5)" class="px-1.5 py-0.5 rounded text-gray-400 hover:text-white">-5%</button>
-            <button id="btn-iv-base" onclick="setIvShockScenario(0)" class="px-1.5 py-0.5 rounded bg-gray-800 text-white font-semibold border border-gray-700">Live</button>
-            <button id="btn-iv-spike" onclick="setIvShockScenario(5)" class="px-1.5 py-0.5 rounded text-gray-400 hover:text-white">+5%</button>
-          </div>
-
-          <button id="btn-toggle-sl-cap" onclick="toggleSlCap()" class="px-2 py-0.5 rounded bg-gray-800 text-gray-300 border border-gray-700 text-[11px] font-medium" title="Toggle 2.0x SL bracket cutoff in simulation">
-            2x SL Capped: OFF
-          </button>
-        </div>
-      </div>
-
-      <!-- Spot Slider & What-If Input -->
-      <div class="space-y-1.5 bg-gray-900/40 p-3 rounded-lg border border-gray-850">
-        <div class="flex justify-between items-center text-xs">
-          <span class="text-gray-400 flex items-center gap-1.5">
-            <span>Simulate Spot Shift:</span>
-            <input type="number" id="whatif-spot-input" onchange="onWhatIfSpotInput(this.value)" class="w-24 px-1.5 py-0.5 rounded bg-gray-950 border border-gray-800 text-gray-100 mono text-xs font-bold" />
-          </span>
-          <div class="flex items-center gap-3 text-[11px] mono">
-            <span class="text-purple-400 font-semibold" id="label-put-strike">PUT: $81,400</span>
-            <span class="text-blue-400 font-bold" id="label-live-spot">SPOT: $82,810</span>
-            <span class="text-rose-400 font-semibold" id="label-call-strike">CALL: $84,200</span>
+          <!-- Studio Mode Action Buttons -->
+          <div class="flex items-center gap-2 flex-wrap">
+            <button id="btn-toggle-oi" onclick="toggleStrikeOi()" class="px-2.5 py-1 rounded-lg bg-gray-900 hover:bg-gray-800 text-gray-300 border border-gray-700 text-[11px] font-mono flex items-center gap-1">
+              <span>📊</span> Strike OI: <span id="lbl-oi-status" class="text-amber-400 font-bold">ON</span>
+            </button>
+            <button id="btn-toggle-contracts-drawer" onclick="toggleContractsDrawer()" class="px-2.5 py-1 rounded-lg bg-gray-900 hover:bg-gray-800 text-gray-300 border border-gray-700 text-[11px] font-mono flex items-center gap-1">
+              <span>📑</span> Contracts (<span id="lbl-active-legs-count">6/6</span>) ▾
+            </button>
+            <button id="btn-toggle-sl-cap" onclick="toggleSlCap()" class="px-2.5 py-1 rounded-lg bg-gray-900 hover:bg-gray-800 text-gray-300 border border-gray-700 text-[11px] font-mono flex items-center gap-1" title="Toggle 2.0x SL bracket cutoff in simulation">
+              <span>🛡️</span> 2x SL Cap: <span id="sl-status-label" class="text-gray-400 font-bold">OFF</span>
+            </button>
           </div>
         </div>
-        <input type="range" id="spotSlider" min="78000" max="87000" step="50" value="82810" class="w-full custom-range cursor-pointer" oninput="onWhatIfSpotInput(this.value)" />
-        <div class="flex justify-between text-[10px] text-gray-500 mono">
-          <span id="slider-min-label">-5% ($78,600)</span>
-          <span class="text-gray-400">Current Breakeven Safe Corridor: <strong class="text-gray-200" id="corridor-summary-text">$81,282.10 → $84,317.90 (3,035 pts / 3.7%)</strong></span>
-          <span id="slider-max-label">+5% ($87,000)</span>
-        </div>
-      </div>
 
-      <!-- Live Theoretical Greeks Ribbon -->
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
-        <div class="p-2 rounded-lg bg-gray-950/60 border border-gray-900">
-          <div class="text-[10px] text-gray-500">Portfolio Delta (Δ)</div>
-          <div id="greek-delta" class="text-sm font-bold text-gray-200 mt-0.5">+0.002 BTC</div>
+        <!-- 2. Executive Pro Risk Metric Ribbon (Delta Exchange Risk View Style) -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 text-xs font-mono">
+          <div class="p-2.5 rounded-lg bg-gray-950/70 border border-gray-850">
+            <div class="text-[10px] text-gray-400">Max Profit (Expiry)</div>
+            <div id="kpi-risk-max-profit" class="text-sm font-bold text-emerald-400 mt-0.5">+$9,528.50</div>
+            <div id="kpi-risk-target-profit" class="text-[10px] text-amber-400">Target Date: +$4,744</div>
+          </div>
+          <div class="p-2.5 rounded-lg bg-gray-950/70 border border-gray-850">
+            <div class="text-[10px] text-gray-400">Max Loss</div>
+            <div id="kpi-risk-max-loss" class="text-sm font-bold text-rose-400 mt-0.5">Unlimited</div>
+            <div id="kpi-risk-sl-status" class="text-[10px] text-gray-500">2x SL Capping: OFF</div>
+          </div>
+          <div class="p-2.5 rounded-lg bg-gray-950/70 border border-gray-850">
+            <div class="text-[10px] text-gray-400">Safe Breakevens</div>
+            <div id="kpi-risk-breakevens" class="text-xs font-bold text-indigo-300 mt-0.5">$72,247 — $93,175</div>
+            <div id="kpi-risk-safe-range" class="text-[10px] text-indigo-400">20,928 pts (25.8%)</div>
+          </div>
+          <div class="p-2.5 rounded-lg bg-gray-950/70 border border-gray-850">
+            <div class="text-[10px] text-gray-400">Current Book uPnL</div>
+            <div id="kpi-risk-current-upnl" class="text-sm font-bold text-rose-400 mt-0.5">-$319.50 USD</div>
+            <div class="text-[10px] text-gray-500">Exchange Net Cashflow</div>
+          </div>
+          <div class="p-2.5 rounded-lg bg-gray-950/70 border border-gray-850">
+            <div class="text-[10px] text-gray-400">BTC Spot Index</div>
+            <div id="kpi-risk-spot-index" class="text-sm font-bold text-amber-400 mt-0.5">$81,048.30</div>
+            <div id="kpi-risk-spot-shift" class="text-[10px] text-gray-400">Shift: 0.0% ($0)</div>
+          </div>
+          <div class="p-2.5 rounded-lg bg-gray-950/70 border border-gray-850">
+            <div class="text-[10px] text-gray-400">Target Date P&amp;L</div>
+            <div id="kpi-risk-projected-pnl" class="text-sm font-bold text-emerald-400 mt-0.5">+$4,744.11 USD</div>
+            <div id="kpi-risk-target-date-desc" class="text-[10px] text-sky-400">Live T+0 (0 days)</div>
+          </div>
         </div>
-        <div class="p-2 rounded-lg bg-gray-950/60 border border-gray-900">
-          <div class="text-[10px] text-gray-500">Gamma (Γ)</div>
-          <div id="greek-gamma" class="text-sm font-bold text-gray-200 mt-0.5">-0.0001 / $</div>
-        </div>
-        <div class="p-2 rounded-lg bg-gray-950/60 border border-gray-900">
-          <div class="text-[10px] text-gray-500">Theta (Θ Decay / Day)</div>
-          <div id="greek-theta" class="text-sm font-bold text-emerald-400 mt-0.5">+$42.50 / day</div>
-        </div>
-        <div class="p-2 rounded-lg bg-gray-950/60 border border-gray-900">
-          <div class="text-[10px] text-gray-500">Vega (ν Risk / 1% IV)</div>
-          <div id="greek-vega" class="text-sm font-bold text-rose-400 mt-0.5">-$3.80 / %</div>
-        </div>
-      </div>
 
-      <!-- SVG Corridors & P&L Curve Canvas -->
-      <div id="corridor-chart-container" class="relative w-full h-72 rounded-lg bg-gray-950/80 border border-gray-900 overflow-hidden">
-        <div id="safezone-chart-tooltip" class="hidden absolute pointer-events-none z-30 p-2.5 rounded-lg bg-gray-900/95 border border-gray-700 shadow-xl text-xs font-mono space-y-1"></div>
-        <!-- SVG Generated via renderSafeZoneCorridor() -->
-      </div>
+        <!-- 3. Collapsible What-If Contracts Drawer -->
+        <div id="corridor-contracts-drawer" class="hidden p-3 rounded-xl bg-gray-950 border border-gray-850 space-y-2">
+          <div class="flex items-center justify-between text-xs pb-1.5 border-b border-gray-850">
+            <span class="font-bold text-gray-300 flex items-center gap-1.5">
+              <span>📑</span> Position Leg What-If Simulator (Toggle legs to test hedged or stopped scenarios)
+            </span>
+            <div class="flex items-center gap-2 text-[11px]">
+              <button onclick="toggleAllCorridorLegs(true)" class="text-blue-400 hover:underline">Select All</button>
+              <span class="text-gray-650">•</span>
+              <button onclick="toggleAllCorridorLegs(false)" class="text-blue-400 hover:underline">Deselect All</button>
+            </div>
+          </div>
+          <div id="corridor-legs-checkbox-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            <!-- Dynamically populated checkboxes via JS -->
+          </div>
+        </div>
+
+        <!-- 4. Quick Snap Shortcuts -->
+        <div class="flex flex-wrap items-center justify-between gap-2 p-2 rounded-lg bg-gray-900/60 border border-gray-850 text-xs">
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <span class="text-[11px] text-gray-400 font-semibold mr-1">🎯 Snap Spot:</span>
+            <button onclick="snapSpotTo('live')" class="px-2 py-0.5 rounded bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/40 text-[11px] font-mono">Live Spot</button>
+            <button onclick="snapSpotTo('put')" class="px-2 py-0.5 rounded bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/40 text-[11px] font-mono">Put Strike</button>
+            <button onclick="snapSpotTo('call')" class="px-2 py-0.5 rounded bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/40 text-[11px] font-mono">Call Strike</button>
+            <button onclick="snapSpotTo('lowerBe')" class="px-2 py-0.5 rounded bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 text-[11px] font-mono">Lower BE</button>
+            <button onclick="snapSpotTo('upperBe')" class="px-2 py-0.5 rounded bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/40 text-[11px] font-mono">Upper BE</button>
+          </div>
+
+          <div class="flex items-center gap-1.5">
+            <div class="flex items-center gap-1 bg-gray-950 p-0.5 rounded-md border border-gray-800 text-[11px]">
+              <span class="text-gray-500 px-1.5">⚡ IV Shock:</span>
+              <button id="btn-iv-crush" onclick="setIvShockScenario(-5)" class="px-1.5 py-0.5 rounded text-gray-400 hover:text-white">-5%</button>
+              <button id="btn-iv-base" onclick="setIvShockScenario(0)" class="px-1.5 py-0.5 rounded bg-gray-800 text-white font-semibold border border-gray-700">Live</button>
+              <button id="btn-iv-spike" onclick="setIvShockScenario(5)" class="px-1.5 py-0.5 rounded text-gray-400 hover:text-white">+5%</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. Dual Sliders: Spot Price Simulation & Continuous Target Date Scrubber -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 bg-gray-900/40 p-3 rounded-xl border border-gray-850 text-xs">
+          <!-- Spot Simulation Slider -->
+          <div class="space-y-1.5">
+            <div class="flex justify-between items-center">
+              <span class="text-gray-400 flex items-center gap-1.5">
+                <span class="font-semibold text-gray-300">Simulate Spot Price:</span>
+                <input type="number" id="whatif-spot-input" onchange="onWhatIfSpotInput(this.value)" class="w-24 px-1.5 py-0.5 rounded bg-gray-950 border border-gray-800 text-amber-400 mono text-xs font-bold" />
+              </span>
+              <button onclick="resetWhatIfSpot()" class="text-gray-400 hover:text-white text-[11px] flex items-center gap-1">
+                <span>↺</span> Reset
+              </button>
+            </div>
+            <input type="range" id="spotSlider" min="60000" max="105000" step="50" value="81048" class="w-full custom-range cursor-pointer" oninput="onWhatIfSpotInput(this.value)" />
+            <div class="flex justify-between text-[10px] text-gray-500 mono">
+              <span id="slider-min-label">-25%</span>
+              <span id="spot-slider-status" class="text-gray-300">Live Spot: $81,048</span>
+              <span id="slider-max-label">+30%</span>
+            </div>
+          </div>
+
+          <!-- Target Date Continuous Scrubber Slider -->
+          <div class="space-y-1.5">
+            <div class="flex justify-between items-center">
+              <span class="text-gray-400 flex items-center gap-1.5">
+                <span class="font-semibold text-gray-300">Target Date &amp; Time:</span>
+                <span id="target-date-label" class="font-mono font-bold text-sky-400 text-xs">Live (Today)</span>
+              </span>
+              <button onclick="resetDateScrubber()" class="text-gray-400 hover:text-white text-[11px] flex items-center gap-1">
+                <span>↺</span> Reset
+              </button>
+            </div>
+            <input type="range" id="dateScrubberSlider" min="0" max="71" step="1" value="0" class="w-full custom-range cursor-pointer" oninput="onDateScrubberInput(this.value)" />
+            <div class="flex justify-between text-[10px] text-gray-500 mono">
+              <span>Today (T+0)</span>
+              <span id="date-elapsed-label" class="text-sky-300">0 days elapsed</span>
+              <span id="date-final-label">Final Expiry</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 6. Live Theoretical Greeks Ribbon -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
+          <div class="p-2 rounded-lg bg-gray-950/60 border border-gray-900">
+            <div class="text-[10px] text-gray-500">Portfolio Delta (Δ)</div>
+            <div id="greek-delta" class="text-sm font-bold text-gray-200 mt-0.5">+0.002 BTC</div>
+          </div>
+          <div class="p-2 rounded-lg bg-gray-950/60 border border-gray-900">
+            <div class="text-[10px] text-gray-500">Gamma (Γ)</div>
+            <div id="greek-gamma" class="text-sm font-bold text-gray-200 mt-0.5">-0.0001 / $</div>
+          </div>
+          <div class="p-2 rounded-lg bg-gray-950/60 border border-gray-900">
+            <div class="text-[10px] text-gray-500">Theta (Θ Decay / Day)</div>
+            <div id="greek-theta" class="text-sm font-bold text-emerald-400 mt-0.5">+$42.50 / day</div>
+          </div>
+          <div class="p-2 rounded-lg bg-gray-950/60 border border-gray-900">
+            <div class="text-[10px] text-gray-500">Vega (ν Risk / 1% IV)</div>
+            <div id="greek-vega" class="text-sm font-bold text-rose-400 mt-0.5">-$3.80 / %</div>
+          </div>
+        </div>
+
+        <!-- 7. SVG Corridors & P&L Curve Canvas -->
+        <div id="corridor-chart-container" class="relative w-full h-[320px] rounded-xl bg-gray-950/90 border border-gray-900 overflow-hidden">
+          <div id="safezone-chart-tooltip" class="hidden absolute pointer-events-none z-30 p-2.5 rounded-lg bg-gray-900/95 border border-gray-700 shadow-xl text-xs font-mono space-y-1"></div>
+          <!-- SVG Generated via renderSafeZoneCorridor() -->
+        </div>
+
+        <!-- 8. Legend Ribbon Below Canvas -->
+        <div class="flex items-center justify-between text-xs text-gray-400 px-2 flex-wrap gap-2 font-mono">
+          <div class="flex items-center gap-3">
+            <span class="flex items-center gap-1.5">
+              <span class="w-3 h-0.5 bg-[#10B981]"></span> At Expiry
+            </span>
+            <span class="flex items-center gap-1.5">
+              <span class="w-3 h-0.5 bg-[#F97316]"></span> On Target Date (Theoretical)
+            </span>
+            <span class="flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded bg-emerald-500/20 border border-emerald-500/40"></span> Profit Zone
+            </span>
+            <span class="flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 bg-emerald-600/40"></span> Open Interest ($ OI)
+            </span>
+          </div>
+          <div class="text-[11px] text-gray-500">
+            Hover over canvas for crosshair evaluation • Drag sliders to stress-test
+          </div>
+        </div>
+
       </div>
 
       <!-- DECK VIEW 2: VOLATILITY & REGIME GAUGES -->
@@ -3380,13 +3483,95 @@
       return Math.max(0.1, Math.min(24, diffHours));
     }
 
-    // Simulation Scenario Controls
+    // Simulation Scenario & Pro Risk Studio Controls
     let simTimeHoursOverride = null;
     let simIvOffset = 0.0;
     let simCapAt2xSl = false;
+    let showStrikeOi = true;
+    let isContractsDrawerOpen = false;
+    let currentCorridorCohort = 'all'; // 'all' or specific expCode e.g. '271126', '251226'
+    let corridorLegsDisabled = new Set(); // leg symbols unselected in matrix
+    let dateScrubberDays = 0; // 0 to max dte
     let currentCorridorPositions = [];
     let currentCorridorPutBe = 81282;
     let currentCorridorCallBe = 84318;
+
+    function toggleStrikeOi() {
+      showStrikeOi = !showStrikeOi;
+      const lbl = document.getElementById('lbl-oi-status');
+      if (lbl) {
+        lbl.textContent = showStrikeOi ? 'ON' : 'OFF';
+        lbl.className = showStrikeOi ? 'text-amber-400 font-bold' : 'text-gray-400 font-bold';
+      }
+      renderLivePositions();
+    }
+
+    function toggleContractsDrawer() {
+      isContractsDrawerOpen = !isContractsDrawerOpen;
+      const drawer = document.getElementById('corridor-contracts-drawer');
+      const btn = document.getElementById('btn-toggle-contracts-drawer');
+      if (drawer) {
+        if (isContractsDrawerOpen) {
+          drawer.classList.remove('hidden');
+          if (btn) btn.className = 'px-2.5 py-1 rounded-lg bg-gray-800 text-white border border-gray-600 text-[11px] font-mono flex items-center gap-1 shadow';
+        } else {
+          drawer.classList.add('hidden');
+          if (btn) btn.className = 'px-2.5 py-1 rounded-lg bg-gray-900 hover:bg-gray-800 text-gray-300 border border-gray-700 text-[11px] font-mono flex items-center gap-1';
+        }
+      }
+    }
+
+    function setCorridorCohort(cohort) {
+      currentCorridorCohort = cohort;
+      renderLivePositions();
+    }
+
+    function toggleCorridorLeg(sym, enabled) {
+      if (enabled) {
+        corridorLegsDisabled.delete(sym);
+      } else {
+        corridorLegsDisabled.add(sym);
+      }
+      renderLivePositions();
+    }
+
+    function toggleAllCorridorLegs(enable) {
+      if (enable) {
+        corridorLegsDisabled.clear();
+      } else {
+        currentCorridorPositions.forEach(p => corridorLegsDisabled.add(p.symbol));
+      }
+      renderLivePositions();
+    }
+
+    function onDateScrubberInput(val) {
+      dateScrubberDays = parseInt(val, 10) || 0;
+      updateDateScrubberLabels();
+      renderLivePositions();
+    }
+
+    function resetDateScrubber() {
+      dateScrubberDays = 0;
+      const slider = document.getElementById('dateScrubberSlider');
+      if (slider) slider.value = 0;
+      updateDateScrubberLabels();
+      renderLivePositions();
+    }
+
+    function updateDateScrubberLabels() {
+      const lbl = document.getElementById('target-date-label');
+      const elapsedLbl = document.getElementById('date-elapsed-label');
+      if (dateScrubberDays === 0) {
+        if (lbl) lbl.textContent = 'Live (Today)';
+        if (elapsedLbl) elapsedLbl.textContent = '0 days elapsed';
+      } else {
+        const targetDate = new Date(Date.now() + dateScrubberDays * 86400000);
+        const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        const dateStr = `${targetDate.getUTCDate()} ${monthNames[targetDate.getUTCMonth()]} '${String(targetDate.getUTCFullYear()).slice(2)} (+${dateScrubberDays}d)`;
+        if (lbl) lbl.textContent = dateStr;
+        if (elapsedLbl) elapsedLbl.textContent = `${dateScrubberDays} days elapsed`;
+      }
+    }
 
     function snapSpotTo(target) {
       const puts = currentCorridorPositions.filter(p => !p.parsed.isCall && p.parsed.strike > 0);
@@ -3405,6 +3590,8 @@
         onWhatIfSpotInput(Math.round(currentCorridorPutBe));
       } else if (target === 'upperBe') {
         onWhatIfSpotInput(Math.round(currentCorridorCallBe));
+      } else if (typeof target === 'number') {
+        onWhatIfSpotInput(target);
       }
     }
 
@@ -3434,28 +3621,125 @@
 
     function toggleSlCap() {
       simCapAt2xSl = !simCapAt2xSl;
-      const btn = document.getElementById('btn-toggle-sl-cap');
-      if (btn) {
-        if (simCapAt2xSl) {
-          btn.className = 'px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[11px] font-medium shadow';
-          btn.textContent = '🛡️ 2x SL Capped (On)';
-        } else {
-          btn.className = 'px-2 py-0.5 rounded bg-gray-800 text-gray-300 border border-gray-700 text-[11px] font-medium';
-          btn.textContent = '🛡️ 2x SL Capped (Off)';
-        }
+      const lbl = document.getElementById('sl-status-label');
+      if (lbl) {
+        lbl.textContent = simCapAt2xSl ? 'ON' : 'OFF';
+        lbl.className = simCapAt2xSl ? 'text-emerald-400 font-bold' : 'text-gray-400 font-bold';
+      }
+      const kpiSlStatus = document.getElementById('kpi-risk-sl-status');
+      if (kpiSlStatus) {
+        kpiSlStatus.textContent = `2x SL Capping: ${simCapAt2xSl ? 'ON' : 'OFF'}`;
       }
       renderLivePositions();
     }
 
-    // 5. Safe-Zone Corridor & Dual-Curve SVG Payoff Visualizer
+    // 5. Delta Exchange Pro Risk Studio Corridor & Dual-Curve Payoff Visualizer
     function renderSafeZoneCorridor(positions, spotPx) {
       currentCorridorPositions = positions || [];
+
+      // Extract distinct cohorts dynamically from open positions
+      const distinctCohorts = new Map();
+      (positions || []).forEach(p => {
+        if (p.parsed && p.parsed.expCode) {
+          const code = p.parsed.expCode;
+          if (!distinctCohorts.has(code)) {
+            const dte = Math.round(p.parsed.dteDays || 0);
+            const label = p.parsed.expFormatted ? `${p.parsed.expFormatted} (${dte}D)` : `${code} (${dte}D)`;
+            distinctCohorts.set(code, label);
+          }
+        }
+      });
+
+      // Render cohort filter pills
+      const cohortContainer = document.getElementById('corridor-cohort-pills');
+      if (cohortContainer) {
+        let cohortHtml = `
+          <span class="text-gray-400 font-semibold mr-1">📅 Cohort:</span>
+          <button onclick="setCorridorCohort('all')" id="btn-cohort-all" class="px-2.5 py-1 rounded-lg text-xs transition ${currentCorridorCohort === 'all' ? 'bg-orange-600 text-white font-semibold shadow' : 'text-gray-400 hover:text-white'}">
+            All Expiries
+          </button>
+        `;
+        distinctCohorts.forEach((label, code) => {
+          const isActive = currentCorridorCohort === code;
+          cohortHtml += `
+            <button onclick="setCorridorCohort('${code}')" class="px-2.5 py-1 rounded-lg text-xs transition ${isActive ? 'bg-orange-600 text-white font-semibold shadow' : 'text-gray-400 hover:text-white'}">
+              ${label}
+            </button>
+          `;
+        });
+        cohortContainer.innerHTML = cohortHtml;
+      }
+
+      // Filter cohort positions
+      const cohortPositions = (positions || []).filter(p => {
+        if (currentCorridorCohort === 'all') return true;
+        return p.parsed && p.parsed.expCode === currentCorridorCohort;
+      });
+
+      // Filter active positions by what-if matrix
+      const activePositions = cohortPositions.filter(p => !corridorLegsDisabled.has(p.symbol));
+
+      // Update active count badge
+      const activeLegsCountEl = document.getElementById('lbl-active-legs-count');
+      if (activeLegsCountEl) {
+        activeLegsCountEl.textContent = `${activePositions.length}/${cohortPositions.length}`;
+      }
+
+      // Populate Contract Matrix Drawer
+      const drawerGrid = document.getElementById('corridor-legs-checkbox-grid');
+      if (drawerGrid) {
+        drawerGrid.innerHTML = '';
+        (positions || []).forEach(p => {
+          const isSelected = !corridorLegsDisabled.has(p.symbol);
+          const inCohort = currentCorridorCohort === 'all' || (p.parsed && p.parsed.expCode === currentCorridorCohort);
+          const row = document.createElement('div');
+          row.className = `p-2 rounded-lg border text-xs transition flex items-center justify-between ${isSelected && inCohort ? 'bg-gray-900/90 border-gray-750' : 'bg-gray-950/40 border-gray-900 opacity-50'}`;
+          row.innerHTML = `
+            <div class="flex items-center gap-2">
+              <input type="checkbox" ${isSelected ? 'checked' : ''} onchange="toggleCorridorLeg('${p.symbol}', this.checked)" class="w-4 h-4 rounded cursor-pointer text-orange-500" />
+              <div>
+                <div class="font-medium flex items-center gap-1.5">
+                  <span class="${p.parsed.isCall ? 'text-rose-400' : 'text-purple-400'} font-bold">${p.parsed.isCall ? 'CALL' : 'PUT'}</span>
+                  <span class="text-gray-200 font-mono">$${p.parsed.strike.toLocaleString()}</span>
+                  <span class="text-[10px] font-mono px-1 rounded bg-gray-800 text-gray-400 border border-gray-700">${p.parsed.expCode || ''}</span>
+                </div>
+                <div class="text-[10px] text-gray-500 font-mono">
+                  Entry $${p.entryPx.toFixed(0)} • Mark $${p.markPx.toFixed(0)} • IV ${((p.ivPct || 35)).toFixed(1)}%
+                </div>
+              </div>
+            </div>
+            <div class="text-right font-mono">
+              <div class="${p.upnl >= 0 ? 'text-emerald-400' : 'text-rose-400'} font-semibold">
+                ${formatMoney(p.upnl, true)}
+              </div>
+              <div class="text-[10px] text-gray-500">${p.cryptoQty ? p.cryptoQty.toFixed(2) : '0.50'} ${p.assetUnit || 'BTC'}</div>
+            </div>
+          `;
+          drawerGrid.appendChild(row);
+        });
+      }
+
+      // Determine max DTE across positions for the Date Scrubber slider
+      let maxDte = 1;
+      (positions || []).forEach(p => {
+        if (p.parsed && p.parsed.dteDays && p.parsed.dteDays > maxDte) {
+          maxDte = Math.ceil(p.parsed.dteDays);
+        }
+      });
+      const dateSlider = document.getElementById('dateScrubberSlider');
+      if (dateSlider) {
+        dateSlider.max = Math.max(1, maxDte);
+        dateSlider.value = dateScrubberDays;
+      }
+      const dateFinalLbl = document.getElementById('date-final-label');
+      if (dateFinalLbl) {
+        dateFinalLbl.textContent = `${maxDte}D Expiry`;
+      }
+
       const evalSpot = whatIfSpotOverride !== null ? whatIfSpotOverride : spotPx;
       const isEth = spotPx < 5000;
       const roundStep = isEth ? 50 : 500;
-
-      // Handle flat cash reserve state (0 open positions)
-      const isFlat = !positions || positions.length === 0;
+      const isFlat = !activePositions || activePositions.length === 0;
 
       // Fallback target preview parameters if flat (tonight's 10:30 PM entry model)
       const targetPutStrike = isEth ? Math.floor((spotPx * 0.97) / 25) * 25 : Math.floor((spotPx * 0.975) / roundStep) * roundStep;
@@ -3467,26 +3751,24 @@
       let allStrikes = [];
 
       if (!isFlat) {
-        puts = positions.filter(p => !p.parsed.isCall && p.parsed.strike > 0);
-        calls = positions.filter(p => p.parsed.isCall && p.parsed.strike > 0);
-        allStrikes = positions.map(p => p.parsed.strike).filter(s => s > 0);
+        puts = activePositions.filter(p => !p.parsed.isCall && p.parsed.strike > 0);
+        calls = activePositions.filter(p => p.parsed.isCall && p.parsed.strike > 0);
+        allStrikes = activePositions.map(p => p.parsed.strike).filter(s => s > 0);
       } else {
         allStrikes = [targetPutStrike, targetCallStrike];
       }
 
-      const minStrike = allStrikes.length ? Math.min(...allStrikes) : (isEth ? 2400 : 78000);
-      const maxStrike = allStrikes.length ? Math.max(...allStrikes) : (isEth ? 2600 : 86000);
+      const minStrike = allStrikes.length ? Math.min(...allStrikes) : (isEth ? 2400 : 70000);
+      const maxStrike = allStrikes.length ? Math.max(...allStrikes) : (isEth ? 2600 : 94000);
 
       const highestPutStrike = puts.length ? Math.max(...puts.map(p => p.parsed.strike)) : targetPutStrike;
       const lowestPutStrike = puts.length ? Math.min(...puts.map(p => p.parsed.strike)) : targetPutStrike;
       const lowestCallStrike = calls.length ? Math.min(...calls.map(p => p.parsed.strike)) : targetCallStrike;
       const highestCallStrike = calls.length ? Math.max(...calls.map(p => p.parsed.strike)) : targetCallStrike;
 
-      const isInverted = !isFlat && puts.length > 0 && calls.length > 0 && highestPutStrike >= lowestCallStrike;
-
       // Domain Scaling (strictly encompass all strikes, live spot, eval spot, and safety margins)
       const strikeSpread = Math.max(isEth ? 200 : 2500, maxStrike - minStrike);
-      const padMargin = Math.max(isEth ? 150 : 2500, Math.round(strikeSpread * 0.35));
+      const padMargin = Math.max(isEth ? 150 : 3500, Math.round(strikeSpread * 0.35));
 
       const rawMinDomain = Math.min(minStrike, spotPx, evalSpot) - padMargin;
       const rawMaxDomain = Math.max(maxStrike, spotPx, evalSpot) + padMargin;
@@ -3509,7 +3791,7 @@
           return pnlPut + pnlCall;
         }
         let pnl = 0;
-        for (const p of positions) {
+        for (const p of activePositions) {
           const k = p.parsed.strike;
           const intrinsic = p.parsed.isCall ? Math.max(0, S - k) : Math.max(0, k - S);
           const isLong = (p.lots || 0) > 0;
@@ -3521,11 +3803,12 @@
         return pnl;
       };
 
-      // Live Black-Scholes Theoretical Payoff (T+0)
-      const calcLivePayoff = (S) => {
+      // Target Date Theoretical Payoff (incorporating dateScrubberDays + simIvOffset)
+      const calcTargetPayoff = (S) => {
         if (isFlat) {
           const hours = simTimeHoursOverride !== null ? (simTimeHoursOverride === 0 ? 0.001 : simTimeHoursOverride) : 24.0;
-          const T_years = Math.max(0.0001, hours / 8760.0);
+          const effHours = Math.max(0.1, hours - (dateScrubberDays * 24.0));
+          const T_years = Math.max(0.0001, effHours / 8760.0);
           const iv = Math.max(0.05, Math.min(1.5, 0.45 + (simIvOffset / 100.0)));
           const qty = isEth ? 2.5 : 0.5;
           const putVal = bsPrice(S, targetPutStrike, iv, T_years, false);
@@ -3533,17 +3816,17 @@
           return ((previewLegCredit - putVal) + (previewLegCredit - callVal)) * qty;
         }
         let pnl = 0;
-        for (const p of positions) {
+        for (const p of activePositions) {
           const k = p.parsed.strike;
-          const baseIv = (p.ivPct || 22.0) / 100.0;
+          const baseIv = (p.ivPct || 35.0) / 100.0;
           const effectiveIv = Math.max(0.05, Math.min(1.5, baseIv + (simIvOffset / 100.0)));
           
-          let legHours = (p.parsed && p.parsed.dteDays) ? (p.parsed.dteDays * 24.0) : getLiveHoursToSettlement();
-          let effHours = legHours;
+          let legDays = (p.parsed && p.parsed.dteDays) ? p.parsed.dteDays : (getLiveHoursToSettlement() / 24.0);
+          let remDays = Math.max(0.0001, legDays - dateScrubberDays);
           if (simTimeHoursOverride !== null) {
-            effHours = simTimeHoursOverride === 0 ? 0.001 : legHours * Math.max(0.01, simTimeHoursOverride / 24.0);
+            remDays = simTimeHoursOverride === 0 ? 0.0001 : (simTimeHoursOverride / 24.0);
           }
-          const T_years = Math.max(0.0001, effHours / 8760.0);
+          const T_years = Math.max(0.0001, remDays / 365.25);
           const optVal = bsPrice(S, k, effectiveIv, T_years, p.parsed.isCall);
           const isLong = (p.lots || 0) > 0;
           const qty = p.cryptoQty || p.btcQty || (isEth ? 2.5 : 0.5);
@@ -3558,16 +3841,16 @@
       const calcNetDelta = (S) => {
         if (isFlat) return 0.0;
         let netDelta = 0;
-        for (const p of positions) {
+        for (const p of activePositions) {
           const k = p.parsed.strike;
-          const baseIv = (p.ivPct || 22.0) / 100.0;
+          const baseIv = (p.ivPct || 35.0) / 100.0;
           const effectiveIv = Math.max(0.05, Math.min(1.5, baseIv + (simIvOffset / 100.0)));
-          let legHours = (p.parsed && p.parsed.dteDays) ? (p.parsed.dteDays * 24.0) : getLiveHoursToSettlement();
-          let effHours = legHours;
+          let legDays = (p.parsed && p.parsed.dteDays) ? p.parsed.dteDays : (getLiveHoursToSettlement() / 24.0);
+          let remDays = Math.max(0.0001, legDays - dateScrubberDays);
           if (simTimeHoursOverride !== null) {
-            effHours = simTimeHoursOverride === 0 ? 0.001 : legHours * Math.max(0.01, simTimeHoursOverride / 24.0);
+            remDays = simTimeHoursOverride === 0 ? 0.0001 : (simTimeHoursOverride / 24.0);
           }
-          const T_years = Math.max(0.0001, effHours / 8760.0);
+          const T_years = Math.max(0.0001, remDays / 365.25);
           const legDelta = bsDelta(S, k, effectiveIv, T_years, p.parsed.isCall);
           const isLong = (p.lots || 0) > 0;
           const qty = p.cryptoQty || p.btcQty || (isEth ? 2.5 : 0.5);
@@ -3578,7 +3861,7 @@
 
       // Numerical Breakeven Solver (scans for zero crossings)
       const zeroCrossings = [];
-      const scanSteps = 120;
+      const scanSteps = 140;
       const stepSize = (maxDomain - minDomain) / scanSteps;
       let prevPx = minDomain;
       let prevPnl = calcExpiryPayoff(prevPx);
@@ -3607,30 +3890,62 @@
       currentCorridorPutBe = putBreakeven;
       currentCorridorCallBe = callBreakeven;
 
-      // Update Header Text Elements
+      // Evaluation points across domain
+      const samples = [];
+      const numSteps = 80;
+      for (let i = 0; i <= numSteps; i++) {
+        samples.push(minDomain + (i / numSteps) * domainSpan);
+      }
+      allStrikes.forEach(v => samples.push(v));
+      [putBreakeven, callBreakeven, spotPx, evalSpot].forEach(v => samples.push(v));
+      samples.sort((a, b) => a - b);
+
+      const curveData = samples.map(px => ({
+        px,
+        expiryPnl: calcExpiryPayoff(px),
+        targetPnl: calcTargetPayoff(px),
+        delta: calcNetDelta(px)
+      }));
+
+      const maxExpiryPnl = Math.max(...curveData.map(c => c.expiryPnl));
+      const minExpiryPnl = Math.min(...curveData.map(c => c.expiryPnl));
+      const targetPnlAtEval = calcTargetPayoff(evalSpot);
+
+      // Update Executive Risk Metric Ribbon Elements
       const setSafeText = (id, txt) => {
         const el = document.getElementById(id);
         if (el) el.textContent = txt;
       };
 
-      if (isFlat) {
-        setSafeText('label-put-strike', `PUT PREVIEW: $${targetPutStrike.toLocaleString('en-US')}`);
-        setSafeText('label-call-strike', `CALL PREVIEW: $${targetCallStrike.toLocaleString('en-US')}`);
-        setSafeText('label-live-spot', `${isEth ? 'ETH' : 'BTC'} SPOT: $${Math.round(spotPx).toLocaleString('en-US')}`);
-        setSafeText('corridor-summary-text', `Standby Flat Reserve • Next Entry Tonight @ 10:30 PM IST (~$${Math.round(putBreakeven).toLocaleString()} → $${Math.round(callBreakeven).toLocaleString()})`);
-      } else if (isInverted) {
-        setSafeText('label-put-strike', `PUTS: $${lowestPutStrike.toLocaleString('en-US')} - $${highestPutStrike.toLocaleString('en-US')}`);
-        setSafeText('label-call-strike', `CALLS: $${lowestCallStrike.toLocaleString('en-US')} - $${highestCallStrike.toLocaleString('en-US')}`);
-        setSafeText('label-live-spot', `${isEth ? 'ETH' : 'BTC'} SPOT: $${Math.round(spotPx).toLocaleString('en-US')}`);
-        setSafeText('corridor-summary-text', `Inverted Sleeve: $${Math.round(putBreakeven).toLocaleString()} → $${Math.round(callBreakeven).toLocaleString()} (${Math.round(callBreakeven - putBreakeven).toLocaleString()} pts Safe Corridor)`);
-      } else {
-        const putDiff = evalSpot - highestPutStrike;
-        const callDiff = lowestCallStrike - evalSpot;
-        setSafeText('label-put-strike', `PUT: $${highestPutStrike.toLocaleString('en-US')} (${putDiff >= 0 ? '-' : '+'}$${Math.abs(putDiff).toFixed(0)})`);
-        setSafeText('label-call-strike', `CALL: $${lowestCallStrike.toLocaleString('en-US')} (${callDiff >= 0 ? '+' : '-'}$${Math.abs(callDiff).toFixed(0)})`);
-        setSafeText('label-live-spot', `${isEth ? 'ETH' : 'BTC'} SPOT: $${Math.round(spotPx).toLocaleString('en-US')}`);
-        setSafeText('corridor-summary-text', `$${Math.round(putBreakeven).toLocaleString()} → $${Math.round(callBreakeven).toLocaleString()} (${Math.round(callBreakeven - putBreakeven).toLocaleString()} pts / ${(((callBreakeven - putBreakeven)/spotPx)*100).toFixed(1)}%)`);
+      const bufferPts = callBreakeven - putBreakeven;
+      const bufferPct = ((bufferPts / spotPx) * 100).toFixed(1);
+
+      setSafeText('kpi-risk-max-profit', `+$${Math.round(maxExpiryPnl).toLocaleString()} USD`);
+      setSafeText('kpi-risk-target-profit', `Target Date: +$${Math.round(targetPnlAtEval).toLocaleString()}`);
+      setSafeText('kpi-risk-max-loss', simCapAt2xSl ? `-$${Math.round(Math.abs(maxExpiryPnl)).toLocaleString()} (Capped)` : 'Unlimited');
+      setSafeText('kpi-risk-sl-status', `2x SL Capping: ${simCapAt2xSl ? 'ON' : 'OFF'}`);
+      setSafeText('kpi-risk-breakevens', `$${Math.round(putBreakeven).toLocaleString()} — $${Math.round(callBreakeven).toLocaleString()}`);
+      setSafeText('kpi-risk-safe-range', `${Math.round(bufferPts).toLocaleString()} pts (${bufferPct}%)`);
+
+      let totalBookUpnl = 0;
+      activePositions.forEach(p => { totalBookUpnl += (p.upnl || 0); });
+      const upnlEl = document.getElementById('kpi-risk-current-upnl');
+      if (upnlEl) {
+        upnlEl.textContent = `${formatMoney(totalBookUpnl, true)} USD`;
+        upnlEl.className = `text-sm font-bold mt-0.5 ${totalBookUpnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
       }
+
+      setSafeText('kpi-risk-spot-index', `$${spotPx.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+      const shiftPts = Math.round(evalSpot - spotPx);
+      const shiftPct = (((evalSpot - spotPx) / spotPx) * 100).toFixed(1);
+      setSafeText('kpi-risk-spot-shift', shiftPts !== 0 ? `Shift: ${shiftPts >= 0 ? '+' : ''}${shiftPct}% (${shiftPts >= 0 ? '+' : ''}$${shiftPts.toLocaleString()})` : 'Shift: 0.0% ($0)');
+
+      const projPnlEl = document.getElementById('kpi-risk-projected-pnl');
+      if (projPnlEl) {
+        projPnlEl.textContent = `${targetPnlAtEval >= 0 ? '+' : ''}$${targetPnlAtEval.toFixed(2)} USD`;
+        projPnlEl.className = `text-sm font-bold mt-0.5 ${targetPnlAtEval >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+      }
+      setSafeText('kpi-risk-target-date-desc', dateScrubberDays === 0 ? 'Live T+0 (0 days)' : `+${dateScrubberDays} days elapsed`);
 
       // Update Slider bounds
       const slider = document.getElementById('spotSlider');
@@ -3639,6 +3954,14 @@
         slider.max = maxDomain;
         slider.step = isEth ? 5 : 50;
         slider.value = Math.round(evalSpot);
+      }
+      const spotInput = document.getElementById('whatif-spot-input');
+      if (spotInput) {
+        spotInput.value = Math.round(evalSpot);
+      }
+      const spotSliderStatus = document.getElementById('spot-slider-status');
+      if (spotSliderStatus) {
+        spotSliderStatus.textContent = evalSpot !== spotPx ? `Sim Spot: $${Math.round(evalSpot).toLocaleString()}` : `Live Spot: $${Math.round(spotPx).toLocaleString()}`;
       }
       const minLbl = document.getElementById('slider-min-label');
       const maxLbl = document.getElementById('slider-max-label');
@@ -3651,24 +3974,10 @@
         maxLbl.textContent = `+${maxDistPct.toFixed(1)}% ($${maxDomain.toLocaleString()})`;
       }
 
-      // Update What-If PnL readout
-      const simExpiryPnl = calcExpiryPayoff(evalSpot);
-      const simLivePnl = calcLivePayoff(evalSpot);
-      const pnlEl = document.getElementById('whatif-pnl-readout');
-      if (pnlEl) {
-        if (isFlat) {
-          pnlEl.textContent = `Flat Cash: $0.00 Live (Model: ${formatMoney(simExpiryPnl, true)})`;
-          pnlEl.className = 'font-mono font-bold px-2 py-0.5 rounded border text-blue-400 bg-blue-500/10 border-blue-500/20';
-        } else {
-          pnlEl.textContent = `${formatMoney(simExpiryPnl, true)} Expiry (${formatMoney(simLivePnl, true)} Live)`;
-          pnlEl.className = `font-mono font-bold px-2 py-0.5 rounded border ${simExpiryPnl >= 0 ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' : 'text-rose-400 bg-rose-500/10 border-rose-500/20'}`;
-        }
-      }
-
       // Update Greeks Ribbon
       let totDelta = 0, totGamma = 0, totTheta = 0, totVega = 0;
       if (!isFlat) {
-        positions.forEach(p => {
+        activePositions.forEach(p => {
           totDelta += parseFloat(p.delta) || 0;
           totGamma += parseFloat(p.gamma) || 0;
           totTheta += parseFloat(p.theta) || 0;
@@ -3695,8 +4004,8 @@
       const tooltip = document.getElementById('safezone-chart-tooltip');
       if (!container) return;
 
-      const W = 820;
-      const H = 260;
+      const W = container.clientWidth || 820;
+      const H = container.clientHeight || 320;
       const padLeft = 68;
       const padRight = 38;
       const padTop = 32;
@@ -3706,27 +4015,7 @@
 
       const xOf = (px) => padLeft + Math.max(0, Math.min(1, (px - minDomain) / domainSpan)) * plotW;
 
-      // Evaluation points across domain
-      const samples = [];
-      const numSteps = 80;
-      for (let i = 0; i <= numSteps; i++) {
-        samples.push(minDomain + (i / numSteps) * domainSpan);
-      }
-      allStrikes.forEach(v => samples.push(v));
-      [putBreakeven, callBreakeven, spotPx, evalSpot].forEach(v => samples.push(v));
-      samples.sort((a, b) => a - b);
-
-      const curveData = samples.map(px => ({
-        px,
-        expiryPnl: calcExpiryPayoff(px),
-        livePnl: calcLivePayoff(px),
-        delta: calcNetDelta(px)
-      }));
-
       // Vertical Scaling
-      const maxExpiryPnl = Math.max(...curveData.map(c => c.expiryPnl));
-      const minExpiryPnl = Math.min(...curveData.map(c => c.expiryPnl));
-
       const maxPnl = Math.max(50, Math.ceil(maxExpiryPnl * 1.15 / 50) * 50);
       const minPnl = simCapAt2xSl
         ? Math.min(-50, -Math.abs(maxExpiryPnl) * 1.2)
@@ -3737,7 +4026,7 @@
       const zeroY = yOf(0);
 
       const expiryPoly = curveData.map(c => `${xOf(c.px).toFixed(1)},${yOf(c.expiryPnl).toFixed(1)}`).join(' ');
-      const livePoly = curveData.map(c => `${xOf(c.px).toFixed(1)},${yOf(c.livePnl).toFixed(1)}`).join(' ');
+      const targetPoly = curveData.map(c => `${xOf(c.px).toFixed(1)},${yOf(c.targetPnl).toFixed(1)}`).join(' ');
 
       // Exact mathematical profit polygon
       const profitPoints = [];
@@ -3752,6 +4041,31 @@
       const profitAreaSvg = profitPoints.length >= 3
         ? `<polygon points="${profitPoints.join(' ')}" fill="url(#profitGradV2)" fill-opacity="${isFlat ? '0.12' : '0.22'}" />`
         : '';
+
+      // Strike Open Interest (OI) Histogram Overlay
+      let oiBarsSvg = '';
+      if (showStrikeOi) {
+        const defaultOiStrikes = isEth
+          ? [{ k: 2400, oi: 15.2, label: '15.2M' }, { k: 2500, oi: 28.0, label: '28.0M' }, { k: 2600, oi: 18.5, label: '18.5M' }]
+          : [
+            { k: 70000, oi: 11.9, label: '11.9M' },
+            { k: 76000, oi: 6.2, label: '6.2M' },
+            { k: 81000, oi: 28.5, label: '28.5M' },
+            { k: 85000, oi: 20.2, label: '20.2M' },
+            { k: 90000, oi: 7.5, label: '7.5M' },
+            { k: 94000, oi: 11.9, label: '11.9M' }
+          ];
+        const maxOi = 30.0;
+        oiBarsSvg = defaultOiStrikes.filter(d => d.k >= minDomain && d.k <= maxDomain).map(d => {
+          const x = xOf(d.k);
+          const barH = (d.oi / maxOi) * (plotH * 0.65);
+          const y = (H - padBottom) - barH;
+          return `
+            <rect x="${(x - 9).toFixed(1)}" y="${y.toFixed(1)}" width="18" height="${barH.toFixed(1)}" rx="3" fill="#059669" fill-opacity="0.25" stroke="#10B981" stroke-width="0.8" stroke-opacity="0.5" />
+            <text x="${x.toFixed(1)}" y="${(y - 4).toFixed(1)}" text-anchor="middle" fill="#6EE7B7" font-size="8" font-family="monospace">${d.label}</text>
+          `;
+        }).join('');
+      }
 
       // Horizontal Y-Gridlines
       const yTicks = [maxPnl, 0, Math.round(minPnl * 0.33), Math.round(minPnl * 0.66), minPnl];
@@ -3789,12 +4103,12 @@
       const uniqueStrikes = [];
       const seenStrikes = new Set();
       if (!isFlat) {
-        positions.forEach(p => {
+        activePositions.forEach(p => {
           const k = p.parsed.strike;
           if (k > 0 && !seenStrikes.has(k)) {
             seenStrikes.add(k);
-            const hasCall = positions.some(x => x.parsed.strike === k && x.parsed.isCall);
-            const hasPut = positions.some(x => x.parsed.strike === k && !x.parsed.isCall);
+            const hasCall = activePositions.some(x => x.parsed.strike === k && x.parsed.isCall);
+            const hasPut = activePositions.some(x => x.parsed.strike === k && !x.parsed.isCall);
             const label = (hasCall && hasPut) ? `P/C $${(k/1000).toFixed(1)}k` : (hasCall ? `C $${(k/1000).toFixed(1)}k` : `P $${(k/1000).toFixed(1)}k`);
             const color = (hasCall && hasPut) ? '#38BDF8' : (hasCall ? '#F43F5E' : '#A855F7');
             const bg = (hasCall && hasPut) ? '#082F49' : (hasCall ? '#4C0519' : '#3B0764');
@@ -3830,16 +4144,16 @@
         ` : ''}
       `;
 
-      // Live Spot Pin
+      // Live Spot Pin (Orange Dot on Target Curve)
       const xLive = xOf(spotPx);
-      const livePnlAtSpot = calcLivePayoff(spotPx);
-      const yLiveSpot = yOf(livePnlAtSpot);
+      const liveTargetPnl = calcTargetPayoff(spotPx);
+      const yLiveSpot = yOf(liveTargetPnl);
 
-      // Simulated Spot Pin
+      // Simulated Spot Pin (if actively dragging slider)
       const xSim = xOf(evalSpot);
       const isSimulating = whatIfSpotOverride !== null;
-      const simPnlAtEval = calcLivePayoff(evalSpot);
-      const ySimSpot = yOf(simPnlAtEval);
+      const simTargetPnl = calcTargetPayoff(evalSpot);
+      const ySimSpot = yOf(simTargetPnl);
 
       // Watermark message for Flat State
       const flatWatermarkSvg = isFlat ? `
@@ -3867,6 +4181,9 @@
           ${yGridSvg}
           ${xGridSvg}
 
+          <!-- Open Interest Histogram Bars -->
+          ${oiBarsSvg}
+
           <!-- Axis Titles -->
           <text x="${padLeft + plotW / 2}" y="${H - 5}" text-anchor="middle" fill="#94A3B8" font-size="10.5" font-weight="600" font-family="sans-serif">
             ${isEth ? 'ETH' : 'BTC'} Spot Price ($ USD)
@@ -3874,17 +4191,22 @@
           <text transform="rotate(-90)" x="${-(padTop + plotH / 2)}" y="16" text-anchor="middle" fill="#94A3B8" font-size="10" font-weight="600" font-family="monospace">
             P&amp;L ($ USD)
           </text>
+          ${showStrikeOi ? `
+            <text transform="rotate(90)" x="${(padTop + plotH / 2)}" y="${-(W - 8)}" text-anchor="middle" fill="#6EE7B7" font-size="9" font-family="monospace">
+              Open Interest ($)
+            </text>
+          ` : ''}
           <text x="${padLeft + 8}" y="${(zeroY - 5).toFixed(1)}" fill="#10B981" font-size="8.5" font-weight="bold" font-family="monospace" opacity="0.8">▲ PROFIT</text>
           <text x="${padLeft + 8}" y="${(zeroY + 13).toFixed(1)}" fill="#F43F5E" font-size="8.5" font-weight="bold" font-family="monospace" opacity="0.8">▼ LOSS</text>
 
           <!-- Shaded Expiry Profit Region -->
           ${profitAreaSvg}
 
-          <!-- Expiry Payoff Curve -->
+          <!-- Expiry Payoff Curve (Green) -->
           <polyline points="${expiryPoly}" fill="none" stroke="#10B981" stroke-width="2.5" stroke-linejoin="round" ${isFlat ? 'stroke-dasharray="4 4"' : ''} />
 
-          <!-- Live Theoretical (T+0) Curve -->
-          <polyline points="${livePoly}" fill="none" stroke="#38BDF8" stroke-width="2.2" stroke-linejoin="round" ${isFlat ? 'stroke-dasharray="4 4"' : ''} />
+          <!-- Target Date Curve (Orange #F97316 matching Delta Exchange) -->
+          <polyline points="${targetPoly}" fill="none" stroke="#F97316" stroke-width="2.3" stroke-linejoin="round" ${isFlat ? 'stroke-dasharray="4 4"' : ''} />
 
           <!-- Strike Markers -->
           ${strikeMarkersSvg}
@@ -3895,11 +4217,11 @@
           <!-- Flat State Watermark -->
           ${flatWatermarkSvg}
 
-          <!-- Live Spot Pin (Amber Dot on Live Curve) -->
-          <line x1="${xLive.toFixed(1)}" y1="${padTop - 4}" x2="${xLive.toFixed(1)}" y2="${H - padBottom + 6}" stroke="#F59E0B" stroke-width="2" />
-          <circle cx="${xLive.toFixed(1)}" cy="${yLiveSpot.toFixed(1)}" r="9" fill="#F59E0B" fill-opacity="0.25" class="animate-ping" />
-          <circle cx="${xLive.toFixed(1)}" cy="${yLiveSpot.toFixed(1)}" r="5" fill="#F59E0B" stroke="#0B0F17" stroke-width="2" />
-          <rect x="${(xLive - 36).toFixed(1)}" y="${padTop - 28}" width="72" height="16" rx="4" fill="#78350F" stroke="#F59E0B" stroke-width="1" />
+          <!-- Live Spot Pin (Orange Dot on Target Curve) -->
+          <line x1="${xLive.toFixed(1)}" y1="${padTop - 4}" x2="${xLive.toFixed(1)}" y2="${H - padBottom + 6}" stroke="#F97316" stroke-width="2" />
+          <circle cx="${xLive.toFixed(1)}" cy="${yLiveSpot.toFixed(1)}" r="8" fill="#F97316" fill-opacity="0.25" class="animate-ping" />
+          <circle cx="${xLive.toFixed(1)}" cy="${yLiveSpot.toFixed(1)}" r="5" fill="#F97316" stroke="#0B0F17" stroke-width="2" />
+          <rect x="${(xLive - 36).toFixed(1)}" y="${padTop - 28}" width="72" height="16" rx="4" fill="#7C2D12" stroke="#F97316" stroke-width="1" />
           <text x="${xLive.toFixed(1)}" y="${padTop - 16}" text-anchor="middle" fill="#FEF3C7" font-size="9.5" font-weight="bold" font-family="monospace">
             ${isEth ? '⟠' : '₿'} $${Math.round(spotPx).toLocaleString()}
           </text>
@@ -3908,12 +4230,16 @@
           ${isSimulating ? `
             <line x1="${xSim.toFixed(1)}" y1="${padTop}" x2="${xSim.toFixed(1)}" y2="${H - padBottom}" stroke="#3B82F6" stroke-width="2" stroke-dasharray="3 3" />
             <circle cx="${xSim.toFixed(1)}" cy="${ySimSpot.toFixed(1)}" r="5.5" fill="#3B82F6" stroke="#FFFFFF" stroke-width="2" />
+            <rect x="${(xSim - 36).toFixed(1)}" y="${padTop - 28}" width="72" height="16" rx="4" fill="#1E3A8A" stroke="#3B82F6" stroke-width="1" />
+            <text x="${xSim.toFixed(1)}" y="${padTop - 16}" text-anchor="middle" fill="#DBEAFE" font-size="9" font-weight="bold" font-family="monospace">
+              Sim $${Math.round(evalSpot).toLocaleString()}
+            </text>
           ` : ''}
 
           <!-- Interactive Hover Crosshair -->
           <g id="vis-crosshair-group" class="hidden">
             <line id="vis-crosshair-line" x1="0" y1="${padTop}" x2="0" y2="${H - padBottom}" stroke="#94A3B8" stroke-width="1.2" stroke-dasharray="2 2" />
-            <circle id="vis-crosshair-live-dot" cx="0" cy="0" r="4.5" fill="#38BDF8" stroke="#0B0F17" stroke-width="1.5" />
+            <circle id="vis-crosshair-target-dot" cx="0" cy="0" r="4.5" fill="#F97316" stroke="#0B0F17" stroke-width="1.5" />
             <circle id="vis-crosshair-expiry-dot" cx="0" cy="0" r="4.5" fill="#10B981" stroke="#0B0F17" stroke-width="1.5" />
           </g>
         </svg>
@@ -3923,7 +4249,7 @@
       const svgEl = document.getElementById('payoff-svg-canvas');
       const crosshairGroup = document.getElementById('vis-crosshair-group');
       const crosshairLine = document.getElementById('vis-crosshair-line');
-      const liveDot = document.getElementById('vis-crosshair-live-dot');
+      const targetDot = document.getElementById('vis-crosshair-target-dot');
       const expiryDot = document.getElementById('vis-crosshair-expiry-dot');
 
       if (svgEl && crosshairGroup && tooltip) {
@@ -3941,21 +4267,21 @@
 
           const hoverSpot = minDomain + ((svgX - padLeft) / plotW) * domainSpan;
           const hoverExpiryPnl = calcExpiryPayoff(hoverSpot);
-          const hoverLivePnl = calcLivePayoff(hoverSpot);
-          const thetaGap = hoverExpiryPnl - hoverLivePnl;
+          const hoverTargetPnl = calcTargetPayoff(hoverSpot);
+          const thetaGap = hoverExpiryPnl - hoverTargetPnl;
           const hoverDelta = calcNetDelta(hoverSpot);
 
           const yExp = yOf(hoverExpiryPnl);
-          const yLiv = yOf(hoverLivePnl);
+          const yTar = yOf(hoverTargetPnl);
 
           crosshairGroup.classList.remove('hidden');
           if (crosshairLine) {
             crosshairLine.setAttribute('x1', svgX.toFixed(1));
             crosshairLine.setAttribute('x2', svgX.toFixed(1));
           }
-          if (liveDot) {
-            liveDot.setAttribute('cx', svgX.toFixed(1));
-            liveDot.setAttribute('cy', yLiv.toFixed(1));
+          if (targetDot) {
+            targetDot.setAttribute('cx', svgX.toFixed(1));
+            targetDot.setAttribute('cy', yTar.toFixed(1));
           }
           if (expiryDot) {
             expiryDot.setAttribute('cx', svgX.toFixed(1));
@@ -3967,8 +4293,8 @@
           const isSafe = hoverExpiryPnl >= 0;
 
           tooltip.classList.remove('hidden');
-          tooltip.style.left = `${Math.min(rect.width - 220, Math.max(10, mouseX + 15))}px`;
-          tooltip.style.top = `${Math.min(rect.height - 110, Math.max(10, mouseY - 65))}px`;
+          tooltip.style.left = `${Math.min(rect.width - 230, Math.max(10, mouseX + 15))}px`;
+          tooltip.style.top = `${Math.min(rect.height - 120, Math.max(10, mouseY - 65))}px`;
           tooltip.innerHTML = `
             <div class="font-bold text-white flex items-center justify-between gap-3 border-b border-gray-800 pb-1">
               <span>${isEth ? '⟠' : '₿'} $${Math.round(hoverSpot).toLocaleString()}</span>
@@ -3984,9 +4310,9 @@
                 </span>
               </div>
               <div class="flex items-center justify-between gap-4">
-                <span class="text-gray-400 flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-[#38BDF8]"></span> Live Curve (T+0):</span>
-                <span class="${hoverLivePnl >= 0 ? 'text-sky-300 font-semibold' : 'text-rose-300 font-semibold'}">
-                  ${formatMoney(hoverLivePnl, true)}
+                <span class="text-gray-400 flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-[#F97316]"></span> On Target Date:</span>
+                <span class="${hoverTargetPnl >= 0 ? 'text-amber-300 font-semibold' : 'text-rose-300 font-semibold'}">
+                  ${formatMoney(hoverTargetPnl, true)}
                 </span>
               </div>
               <div class="flex items-center justify-between gap-4 pt-1 border-t border-gray-800 text-[10px]">
@@ -4012,15 +4338,26 @@
     }
 
     function onWhatIfSpotInput(val) {
-      whatIfSpotOverride = parseFloat(val);
-      document.getElementById('whatif-reset-btn').classList.remove('hidden');
+      const numVal = parseFloat(val);
+      if (isNaN(numVal)) return;
+      whatIfSpotOverride = numVal;
+      const inp = document.getElementById('whatif-spot-input');
+      const slider = document.getElementById('spotSlider');
+      if (inp) inp.value = Math.round(whatIfSpotOverride);
+      if (slider) slider.value = Math.round(whatIfSpotOverride);
+      const resetBtn = document.getElementById('whatif-reset-btn');
+      if (resetBtn) resetBtn.classList.remove('hidden');
       renderLivePositions();
     }
 
     function resetWhatIfSpot() {
       whatIfSpotOverride = null;
-      document.getElementById('spotSlider').value = liveSpotPriceNumeric;
-      document.getElementById('whatif-reset-btn').classList.add('hidden');
+      const slider = document.getElementById('spotSlider');
+      const inp = document.getElementById('whatif-spot-input');
+      if (slider) slider.value = Math.round(liveSpotPriceNumeric);
+      if (inp) inp.value = Math.round(liveSpotPriceNumeric);
+      const resetBtn = document.getElementById('whatif-reset-btn');
+      if (resetBtn) resetBtn.classList.add('hidden');
       renderLivePositions();
     }
 
