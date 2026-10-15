@@ -138,8 +138,8 @@
                 <span class="text-[10px] text-gray-400 mono">Dual-Main</span>
               </button>
               <button onclick="testWhatsApp(); toggleActionMenu();" class="w-full text-left px-3 py-2 hover:bg-gray-800 text-gray-200 flex items-center justify-between">
-                <span>📲 Test WhatsApp Alert</span>
-                <span class="text-[10px] text-emerald-400 font-medium">Meta API</span>
+                <span>🔔 Test Alerts (TG / WA)</span>
+                <span class="text-[10px] text-sky-400 font-medium">Multi-Channel</span>
               </button>
               <button onclick="pingCloudflareWorkerHealth(); toggleActionMenu();" class="w-full text-left px-3 py-2 hover:bg-gray-800 text-gray-200 flex items-center justify-between">
                 <span>📡 Ping Worker Health</span>
@@ -1386,8 +1386,8 @@
               <button onclick="pingCloudflareWorkerHealth()" id="btn-ping-cf-worker" class="flex-1 py-1.5 px-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 transition font-medium text-center">
                 📡 Ping Worker
               </button>
-              <button onclick="testWhatsApp()" class="flex-1 py-1.5 px-2 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 transition font-medium text-center">
-                📲 Test WA
+              <button onclick="testWhatsApp()" class="flex-1 py-1.5 px-2 rounded-lg bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/30 transition font-medium text-center">
+                🔔 Test Alerts
               </button>
             </div>
           </div>
@@ -1498,6 +1498,15 @@
         <div>
           <label class="block text-gray-300 font-medium mb-1">Meta Phone Number ID</label>
           <input type="text" id="input-meta-phone-id" placeholder="105432..." class="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-gray-100 focus:outline-none focus:border-blue-500 font-mono text-xs">
+        </div>
+        <div class="pt-2 border-t border-gray-800">
+          <label class="block text-sky-400 font-medium mb-1">✈️ Telegram Bot Token (from @BotFather)</label>
+          <input type="password" id="input-tg-bot-token" placeholder="7123456789:AAH..." class="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-gray-100 focus:outline-none focus:border-sky-500 font-mono text-xs">
+          <p class="text-[11px] text-gray-500 mt-0.5">Instant delivery, zero 24h restrictions. Create bot in 30s with @BotFather.</p>
+        </div>
+        <div>
+          <label class="block text-sky-400 font-medium mb-1">✈️ Telegram Chat ID (from @userinfobot)</label>
+          <input type="text" id="input-tg-chat-id" placeholder="123456789" class="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-gray-100 focus:outline-none focus:border-sky-500 font-mono text-xs">
         </div>
       </div>
       <div class="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-gray-800">
@@ -1613,6 +1622,8 @@
     const STORAGE_WA_PHONE_KEY = 'delta_strangle_wa_phone';
     const STORAGE_META_PHONE_ID_KEY = 'delta_strangle_meta_phone_id';
     const STORAGE_META_TOKEN_KEY = 'delta_strangle_meta_wa_token';
+    const STORAGE_TG_BOT_TOKEN_KEY = 'delta_strangle_tg_bot_token';
+    const STORAGE_TG_CHAT_ID_KEY = 'delta_strangle_tg_chat_id';
 
     // State
     let dashboardState = null;
@@ -1651,12 +1662,14 @@
 
     // 1. Storage Helpers & Hash Bookmark Parsing
     (function checkHashToken() {
-      if (window.location.hash && (window.location.hash.includes('token=') || window.location.hash.includes('waphone='))) {
+      if (window.location.hash && (window.location.hash.includes('token=') || window.location.hash.includes('waphone=') || window.location.hash.includes('tgtoken='))) {
         const params = new URLSearchParams(window.location.hash.slice(1));
         const tok = params.get('token');
         const waPhone = params.get('waphone');
         const metaPid = params.get('metapid');
         const metaTok = params.get('metatok');
+        const tgTok = params.get('tgtoken');
+        const tgCid = params.get('tgchatid');
         if (tok) {
           localStorage.setItem(STORAGE_TOKEN_KEY, tok.trim());
           localStorage.setItem('gh_pat', tok.trim());
@@ -1667,6 +1680,14 @@
         }
         if (metaPid) localStorage.setItem(STORAGE_META_PHONE_ID_KEY, metaPid.replace(/\D+/g, ''));
         if (metaTok) localStorage.setItem(STORAGE_META_TOKEN_KEY, metaTok.trim());
+        if (tgTok) {
+          localStorage.setItem(STORAGE_TG_BOT_TOKEN_KEY, tgTok.trim());
+          localStorage.setItem('tg_bot_token', tgTok.trim());
+        }
+        if (tgCid) {
+          localStorage.setItem(STORAGE_TG_CHAT_ID_KEY, tgCid.trim());
+          localStorage.setItem('tg_chat_id', tgCid.trim());
+        }
         history.replaceState(null, '', window.location.pathname + window.location.search);
       }
     })();
@@ -1682,6 +1703,12 @@
     }
     function getSavedMetaToken() {
       return localStorage.getItem(STORAGE_META_TOKEN_KEY) || '';
+    }
+    function getSavedTgBotToken() {
+      return localStorage.getItem(STORAGE_TG_BOT_TOKEN_KEY) || localStorage.getItem('tg_bot_token') || '';
+    }
+    function getSavedTgChatId() {
+      return localStorage.getItem(STORAGE_TG_CHAT_ID_KEY) || localStorage.getItem('tg_chat_id') || '';
     }
     function getActiveBranch() {
       const gh = (dashboardState && dashboardState.github_actions) || {};
@@ -4414,9 +4441,58 @@
       const phone = getSavedWaPhone();
       const metaPid = getSavedMetaPhoneId();
       const metaTok = getSavedMetaToken();
+      const tgTok = getSavedTgBotToken();
+      const tgCid = getSavedTgChatId();
       const toDigits = phone.replace(/\D+/g, '');
 
-      if (metaPid && metaTok) {
+      let sentSuccess = 0;
+      let sentChannels = [];
+
+      // 1. Direct Telegram API dispatch
+      if (tgTok && tgCid) {
+        showToast('✈️ Dispatching alert via Telegram Bot API...', 'info');
+        const tgMsg = `⚡ *Delta Strangle Bot Test Alert*\n🕒 ${new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' })} IST • Live Ping\n📊 BTC Spot: $${Number(liveSpotPriceNumeric || 0).toLocaleString()} • All systems nominal.\n\n🌐 https://ajay14sharma.github.io/v3.html`;
+        try {
+          const tgRes = await fetch(`https://api.telegram.org/bot${tgTok}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: tgCid,
+              text: tgMsg,
+              parse_mode: 'Markdown'
+            })
+          });
+          if (tgRes.ok) {
+            sentSuccess++;
+            sentChannels.push('Telegram');
+            showToast('✈️ Telegram alert delivered instantly!', 'success');
+          } else {
+            const errData = await tgRes.json().catch(() => ({}));
+            console.warn('Telegram Markdown send error:', errData);
+            // Plain text retry
+            const plainRes = await fetch(`https://api.telegram.org/bot${tgTok}/sendMessage`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: tgCid,
+                text: tgMsg.replace(/[*_`]/g, '')
+              })
+            });
+            if (plainRes.ok) {
+              sentSuccess++;
+              sentChannels.push('Telegram');
+              showToast('✈️ Telegram alert delivered (plain text)!', 'success');
+            } else {
+              showToast(`Telegram API error: ${errData.description || 'Check Bot Token & Chat ID'}`, 'error');
+            }
+          }
+        } catch (e) {
+          console.warn('Telegram direct fetch error:', e);
+        }
+      }
+
+      // 2. Direct Meta WhatsApp dispatch
+      if (metaPid && metaTok && toDigits) {
         showToast(`Sending test alert via Meta Cloud API to ${phone}...`, 'info');
         let delivered = false;
 
@@ -4448,37 +4524,43 @@
         }
 
         // 2. Guaranteed 24/7 Delivery Attempt: Send hello_world starter template
-        // (Bypasses 24h window and guarantees physical delivery to handset)
-        try {
-          const tplUrl = `https://graph.facebook.com/v21.0/${metaPid}/messages`;
-          const tplRes = await fetch(tplUrl, {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${metaTok}`,
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              messaging_product: "whatsapp",
-              to: toDigits,
-              type: "template",
-              template: { name: "hello_world", language: { code: "en_US" } }
-            })
-          });
-          if (tplRes.ok) {
-            showToast(`📲 Test alert delivered to ${phone}! Reply 'Hi' on WhatsApp to unlock rich text.`, 'success');
-            return;
-          } else {
-            const errData = await tplRes.json().catch(() => ({}));
-            console.warn('hello_world template attempt error:', errData);
+        if (!delivered) {
+          try {
+            const tplUrl = `https://graph.facebook.com/v21.0/${metaPid}/messages`;
+            const tplRes = await fetch(tplUrl, {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${metaTok}`,
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                messaging_product: "whatsapp",
+                to: toDigits,
+                type: "template",
+                template: { name: "hello_world", language: { code: "en_US" } }
+              })
+            });
+            if (tplRes.ok) {
+              delivered = true;
+            } else {
+              const errData = await tplRes.json().catch(() => ({}));
+              console.warn('hello_world template attempt error:', errData);
+            }
+          } catch (e) {
+            console.warn('hello_world template attempt error:', e);
           }
-        } catch (e) {
-          console.warn('hello_world template attempt error:', e);
         }
 
         if (delivered) {
-          showToast(`📲 Meta rich text message dispatched to ${phone}!`, 'success');
-          return;
+          sentSuccess++;
+          sentChannels.push('WhatsApp');
+          showToast(`📲 Meta WhatsApp message dispatched to ${phone}!`, 'success');
         }
+      }
+
+      if (sentSuccess > 0) {
+        showToast(`🎉 Alerts dispatched via: ${sentChannels.join(' & ')}!`, 'success');
+        return;
       }
 
       // Fallback: Dispatch workflow run via GitHub Actions
@@ -4505,7 +4587,7 @@
       }
 
       // If credentials missing, alert user and open settings modal
-      showToast('⚙️ Please configure Meta Token or GitHub PAT in settings.', 'warning');
+      showToast('⚙️ Please configure Telegram, Meta Token, or GitHub PAT in settings.', 'warning');
       openSettingsModal();
     }
 
@@ -4515,6 +4597,10 @@
       document.getElementById('input-wa-phone').value = getSavedWaPhone();
       document.getElementById('input-meta-wa-token').value = getSavedMetaToken();
       document.getElementById('input-meta-phone-id').value = getSavedMetaPhoneId();
+      const tgTokInput = document.getElementById('input-tg-bot-token');
+      if (tgTokInput) tgTokInput.value = getSavedTgBotToken();
+      const tgCidInput = document.getElementById('input-tg-chat-id');
+      if (tgCidInput) tgCidInput.value = getSavedTgChatId();
       document.getElementById('settings-modal').classList.remove('hidden');
     }
 
@@ -4527,6 +4613,8 @@
       const phone = document.getElementById('input-wa-phone').value.trim();
       const metaTok = document.getElementById('input-meta-wa-token').value.trim();
       const metaPid = document.getElementById('input-meta-phone-id').value.trim();
+      const tgTok = (document.getElementById('input-tg-bot-token')?.value || '').trim();
+      const tgCid = (document.getElementById('input-tg-chat-id')?.value || '').trim();
 
       if (pat) {
         localStorage.setItem(STORAGE_TOKEN_KEY, pat);
@@ -4538,17 +4626,43 @@
       }
       if (metaTok) localStorage.setItem(STORAGE_META_TOKEN_KEY, metaTok);
       if (metaPid) localStorage.setItem(STORAGE_META_PHONE_ID_KEY, metaPid.replace(/\D+/g, ''));
+      if (tgTok) {
+        localStorage.setItem(STORAGE_TG_BOT_TOKEN_KEY, tgTok);
+        localStorage.setItem('tg_bot_token', tgTok);
+      }
+      if (tgCid) {
+        localStorage.setItem(STORAGE_TG_CHAT_ID_KEY, tgCid);
+        localStorage.setItem('tg_chat_id', tgCid);
+      }
+
+      // Also sync to GitHub Actions repository variables if PAT is available
+      if (pat) {
+        if (phone) upsertGitHubVariable(pat, 'META_WA_PHONE', phone);
+        if (metaPid) upsertGitHubVariable(pat, 'META_WA_PHONE_ID', metaPid);
+        if (tgTok) upsertGitHubVariable(pat, 'TELEGRAM_BOT_TOKEN', tgTok);
+        if (tgCid) upsertGitHubVariable(pat, 'TELEGRAM_CHAT_ID', tgCid);
+      }
 
       closeSettingsModal();
-      showToast('Settings saved successfully across v1 and v2!', 'success');
+      showToast('Settings saved successfully across browser & GitHub!', 'success');
     }
 
     function clearSavedSettings() {
-      [STORAGE_TOKEN_KEY, 'gh_pat', STORAGE_WA_PHONE_KEY, 'meta_wa_phone', STORAGE_META_TOKEN_KEY, STORAGE_META_PHONE_ID_KEY].forEach(k => localStorage.removeItem(k));
+      [
+        STORAGE_TOKEN_KEY, 'gh_pat',
+        STORAGE_WA_PHONE_KEY, 'meta_wa_phone',
+        STORAGE_META_TOKEN_KEY, STORAGE_META_PHONE_ID_KEY,
+        STORAGE_TG_BOT_TOKEN_KEY, 'tg_bot_token',
+        STORAGE_TG_CHAT_ID_KEY, 'tg_chat_id'
+      ].forEach(k => localStorage.removeItem(k));
       document.getElementById('input-gh-pat').value = '';
       document.getElementById('input-wa-phone').value = '';
       document.getElementById('input-meta-wa-token').value = '';
       document.getElementById('input-meta-phone-id').value = '';
+      const tgTokInput = document.getElementById('input-tg-bot-token');
+      if (tgTokInput) tgTokInput.value = '';
+      const tgCidInput = document.getElementById('input-tg-chat-id');
+      if (tgCidInput) tgCidInput.value = '';
       showToast('Credentials cleared from browser.', 'info');
     }
 
@@ -4557,6 +4671,8 @@
       const phone = document.getElementById('input-wa-phone').value.trim() || getSavedWaPhone();
       const metaPid = document.getElementById('input-meta-phone-id').value.trim() || getSavedMetaPhoneId();
       const metaTok = document.getElementById('input-meta-wa-token').value.trim() || getSavedMetaToken();
+      const tgTok = (document.getElementById('input-tg-bot-token')?.value || '').trim() || getSavedTgBotToken();
+      const tgCid = (document.getElementById('input-tg-chat-id')?.value || '').trim() || getSavedTgChatId();
 
       if (!pat) {
         showToast('Enter a GitHub PAT first to generate a bookmark URL.', 'error');
@@ -4566,6 +4682,8 @@
       if (phone) hash += `&waphone=${encodeURIComponent(phone)}`;
       if (metaPid) hash += `&metapid=${encodeURIComponent(metaPid)}`;
       if (metaTok) hash += `&metatok=${encodeURIComponent(metaTok)}`;
+      if (tgTok) hash += `&tgtoken=${encodeURIComponent(tgTok)}`;
+      if (tgCid) hash += `&tgchatid=${encodeURIComponent(tgCid)}`;
 
       const url = `${window.location.origin}${window.location.pathname}#${hash}`;
       navigator.clipboard.writeText(url);
