@@ -9,6 +9,7 @@
   <link rel="alternate icon" href="favicon.svg" type="image/svg+xml" />
   <link rel="alternate icon" href="favicon.png" type="image/png" />
   <link rel="apple-touch-icon" href="favicon.png" />
+  <script src="fallback_snapshot.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -413,190 +414,209 @@
         </div>
       </div>
 
-      <!-- DECK VIEW 1: PAYOFF & SAFE-ZONE CORRIDOR -->
-      <div id="deck-view-payoff" class="space-y-3">
+      <!-- DECK VIEW 1: PRO RISK STUDIO & SAFE-ZONE PAYOFF (DELTA EXCHANGE LAYOUT) -->
+      <div id="deck-view-payoff" class="space-y-4">
 
-        <!-- 1. Cohort Filter & Studio Toolbar -->
-        <div class="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-xl bg-gray-950/80 border border-gray-800 text-xs">
-          <!-- Dynamic Cohort Filter Pills -->
-          <div class="flex items-center gap-1.5 flex-wrap" id="corridor-cohort-pills">
-            <span class="text-gray-400 font-semibold mr-1">📅 Cohort:</span>
-            <button onclick="setCorridorCohort('all')" id="btn-cohort-all" class="px-2.5 py-1 rounded-lg bg-orange-600 text-white font-semibold shadow text-xs">
-              All Expiries
-            </button>
+        <!-- 1. Master Expiry Cohort Selector Bar (Prominent Delta Exchange Style) -->
+        <div class="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-gray-950 border border-gray-800">
+          <!-- Dynamic Primary Expiry Tabs -->
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5 mr-1">
+              <span>📅</span> Expiry Cohort:
+            </span>
+            <div id="corridor-cohort-pills" class="flex items-center gap-2 flex-wrap">
+              <button onclick="setCorridorCohort('all')" id="btn-cohort-all" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 bg-orange-600 text-white shadow-md ring-2 ring-orange-500/50">
+                <span>🌐</span> All Expiries (<span id="lbl-all-cohort-count">6</span>)
+              </button>
+              <!-- Dynamic tabs injected by JS: e.g. 27 Nov '26 (2), 25 Dec '26 (4) -->
+            </div>
           </div>
 
-          <!-- Studio Mode Action Buttons -->
-          <div class="flex items-center gap-2 flex-wrap">
-            <button id="btn-toggle-oi" onclick="toggleStrikeOi()" class="px-2.5 py-1 rounded-lg bg-gray-900 hover:bg-gray-800 text-gray-300 border border-gray-700 text-[11px] font-mono flex items-center gap-1">
+          <!-- Quick Studio Controls -->
+          <div class="flex items-center gap-2 flex-wrap text-xs">
+            <div class="flex items-center gap-1 bg-gray-900 px-2 py-1 rounded-lg border border-gray-800 text-[11px] font-mono">
+              <span class="text-gray-400">⚡ IV Shock:</span>
+              <button id="btn-iv-crush" onclick="setIvShockScenario(-5)" class="px-1.5 py-0.5 rounded text-gray-400 hover:text-white">-5%</button>
+              <button id="btn-iv-base" onclick="setIvShockScenario(0)" class="px-1.5 py-0.5 rounded bg-gray-800 text-white font-semibold border border-gray-700">Live</button>
+              <button id="btn-iv-spike" onclick="setIvShockScenario(5)" class="px-1.5 py-0.5 rounded text-gray-400 hover:text-white">+5%</button>
+            </div>
+            <button id="btn-toggle-oi" onclick="toggleStrikeOi()" class="px-2.5 py-1.5 rounded-lg bg-gray-900 hover:bg-gray-800 text-gray-300 border border-gray-750 text-[11px] font-mono flex items-center gap-1">
               <span>📊</span> Strike OI: <span id="lbl-oi-status" class="text-amber-400 font-bold">ON</span>
             </button>
-            <button id="btn-toggle-contracts-drawer" onclick="toggleContractsDrawer()" class="px-2.5 py-1 rounded-lg bg-gray-900 hover:bg-gray-800 text-gray-300 border border-gray-700 text-[11px] font-mono flex items-center gap-1">
-              <span>📑</span> Contracts (<span id="lbl-active-legs-count">6/6</span>) ▾
-            </button>
-            <button id="btn-toggle-sl-cap" onclick="toggleSlCap()" class="px-2.5 py-1 rounded-lg bg-gray-900 hover:bg-gray-800 text-gray-300 border border-gray-700 text-[11px] font-mono flex items-center gap-1" title="Toggle 2.0x SL bracket cutoff in simulation">
+            <button id="btn-toggle-sl-cap" onclick="toggleSlCap()" class="px-2.5 py-1.5 rounded-lg bg-gray-900 hover:bg-gray-800 text-gray-300 border border-gray-750 text-[11px] font-mono flex items-center gap-1" title="Toggle 2.0x SL bracket cutoff in simulation">
               <span>🛡️</span> 2x SL Cap: <span id="sl-status-label" class="text-gray-400 font-bold">OFF</span>
             </button>
           </div>
         </div>
 
-        <!-- 2. Executive Pro Risk Metric Ribbon (Delta Exchange Risk View Style) -->
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 text-xs font-mono">
-          <div class="p-2.5 rounded-lg bg-gray-950/70 border border-gray-850">
-            <div class="text-[10px] text-gray-400">Max Profit (Expiry)</div>
-            <div id="kpi-risk-max-profit" class="text-sm font-bold text-emerald-400 mt-0.5">+$9,528.50</div>
-            <div id="kpi-risk-target-profit" class="text-[10px] text-amber-400">Target Date: +$4,744</div>
-          </div>
-          <div class="p-2.5 rounded-lg bg-gray-950/70 border border-gray-850">
-            <div class="text-[10px] text-gray-400">Max Loss</div>
-            <div id="kpi-risk-max-loss" class="text-sm font-bold text-rose-400 mt-0.5">Unlimited</div>
-            <div id="kpi-risk-sl-status" class="text-[10px] text-gray-500">2x SL Capping: OFF</div>
-          </div>
-          <div class="p-2.5 rounded-lg bg-gray-950/70 border border-gray-850">
-            <div class="text-[10px] text-gray-400">Safe Breakevens</div>
-            <div id="kpi-risk-breakevens" class="text-xs font-bold text-indigo-300 mt-0.5">$72,247 — $93,175</div>
-            <div id="kpi-risk-safe-range" class="text-[10px] text-indigo-400">20,928 pts (25.8%)</div>
-          </div>
-          <div class="p-2.5 rounded-lg bg-gray-950/70 border border-gray-850">
-            <div class="text-[10px] text-gray-400">Current Book uPnL</div>
-            <div id="kpi-risk-current-upnl" class="text-sm font-bold text-rose-400 mt-0.5">-$319.50 USD</div>
-            <div class="text-[10px] text-gray-500">Exchange Net Cashflow</div>
-          </div>
-          <div class="p-2.5 rounded-lg bg-gray-950/70 border border-gray-850">
-            <div class="text-[10px] text-gray-400">BTC Spot Index</div>
-            <div id="kpi-risk-spot-index" class="text-sm font-bold text-amber-400 mt-0.5">$81,048.30</div>
-            <div id="kpi-risk-spot-shift" class="text-[10px] text-gray-400">Shift: 0.0% ($0)</div>
-          </div>
-          <div class="p-2.5 rounded-lg bg-gray-950/70 border border-gray-850">
-            <div class="text-[10px] text-gray-400">Target Date P&amp;L</div>
-            <div id="kpi-risk-projected-pnl" class="text-sm font-bold text-emerald-400 mt-0.5">+$4,744.11 USD</div>
-            <div id="kpi-risk-target-date-desc" class="text-[10px] text-sky-400">Live T+0 (0 days)</div>
-          </div>
-        </div>
+        <!-- 2. Split Workspace: Contracts Table (Left) + Payoff Analytics (Right) -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
 
-        <!-- 3. Collapsible What-If Contracts Drawer -->
-        <div id="corridor-contracts-drawer" class="hidden p-3 rounded-xl bg-gray-950 border border-gray-850 space-y-2">
-          <div class="flex items-center justify-between text-xs pb-1.5 border-b border-gray-850">
-            <span class="font-bold text-gray-300 flex items-center gap-1.5">
-              <span>📑</span> Position Leg What-If Simulator (Toggle legs to test hedged or stopped scenarios)
-            </span>
-            <div class="flex items-center gap-2 text-[11px]">
-              <button onclick="toggleAllCorridorLegs(true)" class="text-blue-400 hover:underline">Select All</button>
-              <span class="text-gray-650">•</span>
-              <button onclick="toggleAllCorridorLegs(false)" class="text-blue-400 hover:underline">Deselect All</button>
+          <!-- LEFT COLUMN (5 cols): Contracts Matrix Table -->
+          <div class="lg:col-span-5 bg-gray-950 rounded-xl border border-gray-850 p-3 space-y-3">
+            <div class="flex items-center justify-between pb-2 border-b border-gray-850">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-bold text-gray-200 flex items-center gap-1.5">
+                  <span>📑</span> Open Contracts (<span id="lbl-active-legs-count" class="text-orange-400 font-mono">6/6</span>)
+                </span>
+                <span id="lbl-active-cohort-tag" class="text-[10px] font-mono px-2 py-0.5 rounded bg-orange-500/10 text-orange-400 border border-orange-500/20">All Positions</span>
+              </div>
+              <div class="flex items-center gap-2 text-[11px] font-mono">
+                <button onclick="toggleAllCorridorLegs(true)" class="text-blue-400 hover:underline">All</button>
+                <span class="text-gray-650">•</span>
+                <button onclick="toggleAllCorridorLegs(false)" class="text-blue-400 hover:underline">None</button>
+              </div>
             </div>
-          </div>
-          <div id="corridor-legs-checkbox-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-            <!-- Dynamically populated checkboxes via JS -->
-          </div>
-        </div>
 
-        <!-- 4. Quick Snap Shortcuts -->
-        <div class="flex flex-wrap items-center justify-between gap-2 p-2 rounded-lg bg-gray-900/60 border border-gray-850 text-xs">
-          <div class="flex items-center gap-1.5 flex-wrap">
-            <span class="text-[11px] text-gray-400 font-semibold mr-1">🎯 Snap Spot:</span>
-            <button onclick="snapSpotTo('live')" class="px-2 py-0.5 rounded bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/40 text-[11px] font-mono">Live Spot</button>
-            <button onclick="snapSpotTo('put')" class="px-2 py-0.5 rounded bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/40 text-[11px] font-mono">Put Strike</button>
-            <button onclick="snapSpotTo('call')" class="px-2 py-0.5 rounded bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/40 text-[11px] font-mono">Call Strike</button>
-            <button onclick="snapSpotTo('lowerBe')" class="px-2 py-0.5 rounded bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 text-[11px] font-mono">Lower BE</button>
-            <button onclick="snapSpotTo('upperBe')" class="px-2 py-0.5 rounded bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/40 text-[11px] font-mono">Upper BE</button>
-          </div>
-
-          <div class="flex items-center gap-1.5">
-            <div class="flex items-center gap-1 bg-gray-950 p-0.5 rounded-md border border-gray-800 text-[11px]">
-              <span class="text-gray-500 px-1.5">⚡ IV Shock:</span>
-              <button id="btn-iv-crush" onclick="setIvShockScenario(-5)" class="px-1.5 py-0.5 rounded text-gray-400 hover:text-white">-5%</button>
-              <button id="btn-iv-base" onclick="setIvShockScenario(0)" class="px-1.5 py-0.5 rounded bg-gray-800 text-white font-semibold border border-gray-700">Live</button>
-              <button id="btn-iv-spike" onclick="setIvShockScenario(5)" class="px-1.5 py-0.5 rounded text-gray-400 hover:text-white">+5%</button>
+            <!-- Contracts Table Scroll Container -->
+            <div class="overflow-x-auto max-h-[460px] overflow-y-auto space-y-1.5 pr-0.5" id="corridor-legs-checkbox-grid">
+              <!-- Dynamically populated contract rows -->
             </div>
-          </div>
-        </div>
 
-        <!-- 5. Dual Sliders: Spot Price Simulation & Continuous Target Date Scrubber -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 bg-gray-900/40 p-3 rounded-xl border border-gray-850 text-xs">
-          <!-- Spot Simulation Slider -->
-          <div class="space-y-1.5">
-            <div class="flex justify-between items-center">
-              <span class="text-gray-400 flex items-center gap-1.5">
-                <span class="font-semibold text-gray-300">Simulate Spot Price:</span>
-                <input type="number" id="whatif-spot-input" onchange="onWhatIfSpotInput(this.value)" class="w-24 px-1.5 py-0.5 rounded bg-gray-950 border border-gray-800 text-amber-400 mono text-xs font-bold" />
-              </span>
-              <button onclick="resetWhatIfSpot()" class="text-gray-400 hover:text-white text-[11px] flex items-center gap-1">
-                <span>↺</span> Reset
-              </button>
-            </div>
-            <input type="range" id="spotSlider" min="60000" max="105000" step="50" value="81048" class="w-full custom-range cursor-pointer" oninput="onWhatIfSpotInput(this.value)" />
-            <div class="flex justify-between text-[10px] text-gray-500 mono">
-              <span id="slider-min-label">-25%</span>
-              <span id="spot-slider-status" class="text-gray-300">Live Spot: $81,048</span>
-              <span id="slider-max-label">+30%</span>
+            <!-- Column Footer: Summary & Aggregated Notional -->
+            <div class="pt-2 border-t border-gray-850 flex items-center justify-between text-[11px] font-mono text-gray-400">
+              <span id="lbl-corridor-notional-total">∑ Notional: 3.00 BTC (6 Legs)</span>
+              <span id="lbl-corridor-upnl-total" class="font-bold text-rose-400">Net uPnL: -.50</span>
             </div>
           </div>
 
-          <!-- Target Date Continuous Scrubber Slider -->
-          <div class="space-y-1.5">
-            <div class="flex justify-between items-center">
-              <span class="text-gray-400 flex items-center gap-1.5">
-                <span class="font-semibold text-gray-300">Target Date &amp; Time:</span>
-                <span id="target-date-label" class="font-mono font-bold text-sky-400 text-xs">Live (Today)</span>
-              </span>
-              <button onclick="resetDateScrubber()" class="text-gray-400 hover:text-white text-[11px] flex items-center gap-1">
-                <span>↺</span> Reset
-              </button>
+          <!-- RIGHT COLUMN (7 cols): Executive Risk Ribbon, Payoff Canvas, & Sliders -->
+          <div class="lg:col-span-7 space-y-3">
+
+            <!-- Executive Pro Risk Metric Ribbon -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs font-mono">
+              <div class="p-2.5 rounded-lg bg-gray-950 border border-gray-850">
+                <div class="text-[10px] text-gray-400">Max Profit (Expiry)</div>
+                <div id="kpi-risk-max-profit" class="text-sm font-bold text-emerald-400 mt-0.5">+,528.50</div>
+                <div id="kpi-risk-target-profit" class="text-[10px] text-amber-400">Target Date: +,744</div>
+              </div>
+              <div class="p-2.5 rounded-lg bg-gray-950 border border-gray-850">
+                <div class="text-[10px] text-gray-400">Max Loss</div>
+                <div id="kpi-risk-max-loss" class="text-sm font-bold text-rose-400 mt-0.5">Unlimited</div>
+                <div id="kpi-risk-sl-status" class="text-[10px] text-gray-500">2x SL Capping: OFF</div>
+              </div>
+              <div class="p-2.5 rounded-lg bg-gray-950 border border-gray-850">
+                <div class="text-[10px] text-gray-400">Safe Breakevens</div>
+                <div id="kpi-risk-breakevens" class="text-xs font-bold text-indigo-300 mt-0.5">,247 — ,175</div>
+                <div id="kpi-risk-safe-range" class="text-[10px] text-indigo-400">20,928 pts (25.8%)</div>
+              </div>
+              <div class="p-2.5 rounded-lg bg-gray-950 border border-gray-850">
+                <div class="text-[10px] text-gray-400">Current Book uPnL</div>
+                <div id="kpi-risk-current-upnl" class="text-sm font-bold text-rose-400 mt-0.5">-.50 USD</div>
+                <div class="text-[10px] text-gray-500">Exchange Net Cashflow</div>
+              </div>
+              <div class="p-2.5 rounded-lg bg-gray-950 border border-gray-850">
+                <div class="text-[10px] text-gray-400">BTC Spot Index</div>
+                <div id="kpi-risk-spot-index" class="text-sm font-bold text-amber-400 mt-0.5">,048.30</div>
+                <div id="kpi-risk-spot-shift" class="text-[10px] text-gray-400">Shift: 0.0% (zsh)</div>
+              </div>
+              <div class="p-2.5 rounded-lg bg-gray-950 border border-gray-850">
+                <div class="text-[10px] text-gray-400">Target Date P&amp;L</div>
+                <div id="kpi-risk-projected-pnl" class="text-sm font-bold text-emerald-400 mt-0.5">+,744.11 USD</div>
+                <div id="kpi-risk-target-date-desc" class="text-[10px] text-sky-400">Live T+0 (0 days)</div>
+              </div>
             </div>
-            <input type="range" id="dateScrubberSlider" min="0" max="71" step="1" value="0" class="w-full custom-range cursor-pointer" oninput="onDateScrubberInput(this.value)" />
-            <div class="flex justify-between text-[10px] text-gray-500 mono">
-              <span>Today (T+0)</span>
-              <span id="date-elapsed-label" class="text-sky-300">0 days elapsed</span>
-              <span id="date-final-label">Final Expiry</span>
+
+            <!-- SVG Corridors & P&L Curve Canvas -->
+            <div id="corridor-chart-container" class="relative w-full h-[320px] rounded-xl bg-gray-950 border border-gray-850 overflow-hidden">
+              <div id="safezone-chart-tooltip" class="hidden absolute pointer-events-none z-30 p-2.5 rounded-lg bg-gray-900/95 border border-gray-700 shadow-xl text-xs font-mono space-y-1"></div>
+              <!-- Floating Projected Profit Badge (Delta Exchange Style) -->
+              <div id="corridor-target-profit-pill" class="absolute bottom-2.5 left-1/2 -translate-x-1/2 z-20 px-3 py-1 rounded-md bg-emerald-950/90 border border-emerald-500/40 text-[11px] font-mono font-bold text-emerald-400 shadow-lg pointer-events-none">
+                Projected Profit (on Target Date): <span id="lbl-projected-target-profit">+,744.11 (0%)</span>
+              </div>
+              <!-- SVG Generated via renderSafeZoneCorridor() -->
             </div>
-          </div>
-        </div>
 
-        <!-- 6. Live Theoretical Greeks Ribbon -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
-          <div class="p-2 rounded-lg bg-gray-950/60 border border-gray-900">
-            <div class="text-[10px] text-gray-500">Portfolio Delta (Δ)</div>
-            <div id="greek-delta" class="text-sm font-bold text-gray-200 mt-0.5">+0.002 BTC</div>
-          </div>
-          <div class="p-2 rounded-lg bg-gray-950/60 border border-gray-900">
-            <div class="text-[10px] text-gray-500">Gamma (Γ)</div>
-            <div id="greek-gamma" class="text-sm font-bold text-gray-200 mt-0.5">-0.0001 / $</div>
-          </div>
-          <div class="p-2 rounded-lg bg-gray-950/60 border border-gray-900">
-            <div class="text-[10px] text-gray-500">Theta (Θ Decay / Day)</div>
-            <div id="greek-theta" class="text-sm font-bold text-emerald-400 mt-0.5">+$42.50 / day</div>
-          </div>
-          <div class="p-2 rounded-lg bg-gray-950/60 border border-gray-900">
-            <div class="text-[10px] text-gray-500">Vega (ν Risk / 1% IV)</div>
-            <div id="greek-vega" class="text-sm font-bold text-rose-400 mt-0.5">-$3.80 / %</div>
-          </div>
-        </div>
+            <!-- Legend Ribbon Below Canvas -->
+            <div class="flex items-center justify-between text-xs text-gray-400 px-1 flex-wrap gap-2 font-mono">
+              <div class="flex items-center gap-3">
+                <span class="flex items-center gap-1.5">
+                  <span class="w-3 h-0.5 bg-[#10B981]"></span> At Expiry
+                </span>
+                <span class="flex items-center gap-1.5">
+                  <span class="w-3 h-0.5 bg-[#F97316]"></span> On Target Date (Theoretical)
+                </span>
+                <span class="flex items-center gap-1.5">
+                  <span class="w-2.5 h-2.5 rounded bg-emerald-500/20 border border-emerald-500/40"></span> Profit Zone
+                </span>
+                <span class="flex items-center gap-1.5">
+                  <span class="w-2.5 h-2.5 bg-emerald-600/40"></span> Strike OI
+                </span>
+              </div>
+              <div class="text-[11px] text-gray-500">
+                Hover canvas for crosshair evaluation • Drag sliders to stress-test
+              </div>
+            </div>
 
-        <!-- 7. SVG Corridors & P&L Curve Canvas -->
-        <div id="corridor-chart-container" class="relative w-full h-[320px] rounded-xl bg-gray-950/90 border border-gray-900 overflow-hidden">
-          <div id="safezone-chart-tooltip" class="hidden absolute pointer-events-none z-30 p-2.5 rounded-lg bg-gray-900/95 border border-gray-700 shadow-xl text-xs font-mono space-y-1"></div>
-          <!-- SVG Generated via renderSafeZoneCorridor() -->
-        </div>
+            <!-- Dual Sliders: Spot Price Simulation & Continuous Target Date Scrubber -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-gray-950 p-3 rounded-xl border border-gray-850 text-xs">
+              <!-- Spot Simulation Slider -->
+              <div class="space-y-1.5">
+                <div class="flex justify-between items-center">
+                  <span class="text-gray-400 flex items-center gap-1.5">
+                    <span class="font-semibold text-gray-300">Simulate Spot Price:</span>
+                    <input type="number" id="whatif-spot-input" onchange="onWhatIfSpotInput(this.value)" class="w-24 px-1.5 py-0.5 rounded bg-gray-900 border border-gray-800 text-amber-400 mono text-xs font-bold" />
+                  </span>
+                  <button onclick="resetWhatIfSpot()" class="text-gray-400 hover:text-white text-[11px] flex items-center gap-1">
+                    <span>↺</span> Reset
+                  </button>
+                </div>
+                <input type="range" id="spotSlider" min="60000" max="105000" step="50" value="81048" class="w-full custom-range cursor-pointer" oninput="onWhatIfSpotInput(this.value)" />
+                <div class="flex justify-between text-[10px] text-gray-500 mono">
+                  <span id="slider-min-label">-25%</span>
+                  <span id="spot-slider-status" class="text-gray-300">Live Spot: ,048</span>
+                  <span id="slider-max-label">+30%</span>
+                </div>
+                <!-- Quick Snap Shortcuts -->
+                <div class="flex items-center gap-1 flex-wrap pt-1">
+                  <span class="text-[10px] text-gray-500 font-semibold mr-0.5">Snap:</span>
+                  <button onclick="snapSpotTo('live')" class="px-1.5 py-0.5 rounded bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 text-[10px] font-mono">Live</button>
+                  <button onclick="snapSpotTo('put')" class="px-1.5 py-0.5 rounded bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 text-[10px] font-mono">Put Strike</button>
+                  <button onclick="snapSpotTo('call')" class="px-1.5 py-0.5 rounded bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 text-[10px] font-mono">Call Strike</button>
+                  <button onclick="snapSpotTo('lowerBe')" class="px-1.5 py-0.5 rounded bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-[10px] font-mono">Lower BE</button>
+                  <button onclick="snapSpotTo('upperBe')" class="px-1.5 py-0.5 rounded bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/30 text-[10px] font-mono">Upper BE</button>
+                </div>
+              </div>
 
-        <!-- 8. Legend Ribbon Below Canvas -->
-        <div class="flex items-center justify-between text-xs text-gray-400 px-2 flex-wrap gap-2 font-mono">
-          <div class="flex items-center gap-3">
-            <span class="flex items-center gap-1.5">
-              <span class="w-3 h-0.5 bg-[#10B981]"></span> At Expiry
-            </span>
-            <span class="flex items-center gap-1.5">
-              <span class="w-3 h-0.5 bg-[#F97316]"></span> On Target Date (Theoretical)
-            </span>
-            <span class="flex items-center gap-1.5">
-              <span class="w-2.5 h-2.5 rounded bg-emerald-500/20 border border-emerald-500/40"></span> Profit Zone
-            </span>
-            <span class="flex items-center gap-1.5">
-              <span class="w-2.5 h-2.5 bg-emerald-600/40"></span> Open Interest ($ OI)
-            </span>
-          </div>
-          <div class="text-[11px] text-gray-500">
-            Hover over canvas for crosshair evaluation • Drag sliders to stress-test
+              <!-- Target Date Continuous Scrubber Slider -->
+              <div class="space-y-1.5">
+                <div class="flex justify-between items-center">
+                  <span class="text-gray-400 flex items-center gap-1.5">
+                    <span class="font-semibold text-gray-300">Target Date &amp; Time:</span>
+                    <span id="target-date-label" class="font-mono font-bold text-sky-400 text-xs">Live (Today)</span>
+                  </span>
+                  <button onclick="resetDateScrubber()" class="text-gray-400 hover:text-white text-[11px] flex items-center gap-1">
+                    <span>↺</span> Reset
+                  </button>
+                </div>
+                <input type="range" id="dateScrubberSlider" min="0" max="71" step="1" value="0" class="w-full custom-range cursor-pointer" oninput="onDateScrubberInput(this.value)" />
+                <div class="flex justify-between text-[10px] text-gray-500 mono">
+                  <span>Today (T+0)</span>
+                  <span id="date-elapsed-label" class="text-sky-300">0 days elapsed</span>
+                  <span id="date-final-label">Final Expiry</span>
+                </div>
+                <!-- Greeks Ribbon -->
+                <div class="grid grid-cols-4 gap-1.5 pt-1 text-[10px] font-mono text-center">
+                  <div class="bg-gray-900/80 p-1 rounded border border-gray-800">
+                    <div class="text-gray-500">Δ Delta</div>
+                    <div id="greek-delta" class="font-bold text-gray-200">+0.002</div>
+                  </div>
+                  <div class="bg-gray-900/80 p-1 rounded border border-gray-800">
+                    <div class="text-gray-500">Γ Gamma</div>
+                    <div id="greek-gamma" class="font-bold text-gray-200">-0.0001</div>
+                  </div>
+                  <div class="bg-gray-900/80 p-1 rounded border border-gray-800">
+                    <div class="text-gray-500">Θ Theta</div>
+                    <div id="greek-theta" class="font-bold text-emerald-400">+.50</div>
+                  </div>
+                  <div class="bg-gray-900/80 p-1 rounded border border-gray-800">
+                    <div class="text-gray-500">ν Vega</div>
+                    <div id="greek-vega" class="font-bold text-rose-400">-.80</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
 
@@ -2841,9 +2861,19 @@
       // Local fallback
       try {
         const localResp = await fetch('dashboard_data.json');
-        if (localResp.ok) dashboardState = await localResp.json();
+        if (localResp.ok) {
+          const localData = await localResp.json();
+          if (localData && (localData.open_positions && localData.open_positions.length > 0 || !dashboardState)) {
+            dashboardState = localData;
+            return;
+          }
+        }
       } catch (e) {
         console.warn('No local fallback available');
+      }
+      if ((!dashboardState || !dashboardState.open_positions || dashboardState.open_positions.length === 0) &&
+          typeof window.FALLBACK_DASHBOARD_DATA !== 'undefined' && window.FALLBACK_DASHBOARD_DATA) {
+        dashboardState = window.FALLBACK_DASHBOARD_DATA;
       }
     }
 
@@ -3249,12 +3279,79 @@
       };
     }
 
+    function parsePositionLeg(p) {
+      const parsed = parseOptionSymbol(p.symbol);
+      const ticker = liveTickersBySymbol[p.symbol] || {};
+      const entryPx = Number(p.entry_price || p.entry_px || 0);
+      const slTrigger = Number(p.sl_trigger || p.stop_loss_price || (entryPx > 0 ? entryPx * 2 : 0));
+      const lots = Number(p.lots || p.size || -500);
+      const isLong = lots > 0;
+      const multiplier = p.contract_multiplier || (parsed.underlying === 'ETH' ? 0.01 : 0.001);
+      const assetUnit = parsed.underlying || 'BTC';
+      const cryptoQty = Math.abs(lots) * multiplier;
+      const markPx = Number(ticker.mark_price || p.mark_price || (entryPx > 0 ? entryPx * 0.35 : 10.0));
+      
+      let upnl = 0;
+      let entryCredit = 0;
+      let decayPct = 0;
+
+      if (p.unrealized_pnl_usd !== undefined && !isNaN(parseFloat(p.unrealized_pnl_usd))) {
+        upnl = parseFloat(p.unrealized_pnl_usd);
+      } else if (p.realized_cashflow !== undefined && p.unrealized_cashflow !== undefined) {
+        upnl = parseFloat(p.realized_cashflow) + parseFloat(p.unrealized_cashflow);
+      } else if (p.realized_cashflow_usd !== undefined && p.unrealized_cashflow_usd !== undefined) {
+        upnl = parseFloat(p.realized_cashflow_usd) + parseFloat(p.unrealized_cashflow_usd);
+      } else if (isLong) {
+        upnl = (markPx - entryPx) * cryptoQty;
+      } else {
+        upnl = (entryPx - markPx) * cryptoQty;
+      }
+
+      if (ticker.mark_price && p.mark_price && !isNaN(parseFloat(ticker.mark_price)) && !isNaN(parseFloat(p.mark_price))) {
+        const snapMark = parseFloat(p.mark_price);
+        const liveMark = parseFloat(ticker.mark_price);
+        const incrementalMove = isLong ? (liveMark - snapMark) : (snapMark - liveMark);
+        upnl += incrementalMove * cryptoQty;
+      }
+
+      if (isLong) {
+        entryCredit = -(entryPx * cryptoQty);
+        decayPct = 0;
+      } else {
+        entryCredit = entryPx * cryptoQty;
+        decayPct = entryPx > 0 ? Math.min(100, Math.max(0, ((entryPx - markPx) / entryPx) * 100)) : 0;
+      }
+      const slDist = slTrigger - markPx;
+      const ivPct = p.ivPct || (ticker.implied_volatility ? parseFloat(ticker.implied_volatility) * 100 : 38.5);
+
+      return {
+        ...p,
+        parsed,
+        lots,
+        isLong,
+        multiplier,
+        assetUnit,
+        cryptoQty,
+        entryPx,
+        slTrigger,
+        markPx,
+        upnl,
+        decayPct,
+        slDist,
+        entryCredit,
+        btcQty: cryptoQty,
+        ivPct
+      };
+    }
+
     function renderLivePositions() {
       const allPositions = (dashboardState && Array.isArray(dashboardState.open_positions))
         ? dashboardState.open_positions
         : [];
 
-      const rawPositions = allPositions.filter(p => {
+      const allParsedPositions = allPositions.map(parsePositionLeg);
+
+      const rawPositions = allParsedPositions.filter(p => {
         if (currentStrategy === 'all') return true;
         const sId = p.strategy_id || (p.symbol.includes('-ETH-') ? 'eth_1dte' : 'btc_1dte');
         return sId === currentStrategy;
@@ -3317,54 +3414,10 @@
       let totalUpnl = 0;
       let totalCredit = 0;
 
-      const parsedPositions = rawPositions.map(p => {
-        const parsed = parseOptionSymbol(p.symbol);
-        const ticker = liveTickersBySymbol[p.symbol] || {};
-        const entryPx = Number(p.entry_price || p.entry_px || 0);
-        const slTrigger = Number(p.sl_trigger || p.stop_loss_price || (entryPx > 0 ? entryPx * 2 : 0));
-        const lots = Number(p.lots || p.size || -500);
-        const isLong = lots > 0;
-        const multiplier = p.contract_multiplier || (parsed.underlying === 'ETH' ? 0.01 : 0.001);
-        const assetUnit = parsed.underlying || 'BTC';
-        const cryptoQty = Math.abs(lots) * multiplier;
-        const markPx = Number(ticker.mark_price || p.mark_price || (entryPx > 0 ? entryPx * 0.35 : 10.0));
-        
-        let upnl = 0;
-        let entryCredit = 0;
-        let decayPct = 0;
-
-        if (p.unrealized_pnl_usd !== undefined && !isNaN(parseFloat(p.unrealized_pnl_usd))) {
-          upnl = parseFloat(p.unrealized_pnl_usd);
-        } else if (p.realized_cashflow !== undefined && p.unrealized_cashflow !== undefined) {
-          upnl = parseFloat(p.realized_cashflow) + parseFloat(p.unrealized_cashflow);
-        } else if (p.realized_cashflow_usd !== undefined && p.unrealized_cashflow_usd !== undefined) {
-          upnl = parseFloat(p.realized_cashflow_usd) + parseFloat(p.unrealized_cashflow_usd);
-        } else if (isLong) {
-          upnl = (markPx - entryPx) * cryptoQty;
-        } else {
-          upnl = (entryPx - markPx) * cryptoQty;
-        }
-
-        if (ticker.mark_price && p.mark_price && !isNaN(parseFloat(ticker.mark_price)) && !isNaN(parseFloat(p.mark_price))) {
-          const snapMark = parseFloat(p.mark_price);
-          const liveMark = parseFloat(ticker.mark_price);
-          const incrementalMove = isLong ? (liveMark - snapMark) : (snapMark - liveMark);
-          upnl += incrementalMove * cryptoQty;
-        }
-
-        if (isLong) {
-          entryCredit = -(entryPx * cryptoQty);
-          decayPct = 0;
-        } else {
-          entryCredit = entryPx * cryptoQty;
-          decayPct = entryPx > 0 ? Math.min(100, Math.max(0, ((entryPx - markPx) / entryPx) * 100)) : 0;
-        }
-        const slDist = slTrigger - markPx;
-
-        totalUpnl += upnl;
-        totalCredit += entryCredit;
-
-        return { ...p, parsed, lots, isLong, multiplier, assetUnit, cryptoQty, entryPx, slTrigger, markPx, upnl, decayPct, slDist, entryCredit, btcQty: cryptoQty };
+      const parsedPositions = rawPositions;
+      parsedPositions.forEach(p => {
+        totalUpnl += (p.upnl || 0);
+        totalCredit += (p.entryCredit || 0);
       });
 
       // Update KPI Card 2
@@ -3431,12 +3484,17 @@
         tbody.appendChild(tr);
       });
 
-      const hasEth = parsedPositions.some(p => p.assetUnit === 'ETH');
-      const activeSpotPx = (hasEth && (currentStrategy === 'eth_1dte' || !parsedPositions.some(p => p.assetUnit === 'BTC')))
+      const hasEth = allParsedPositions.some(p => p.assetUnit === 'ETH');
+      const activeSpotPx = (hasEth && (currentStrategy === 'eth_1dte' || !allParsedPositions.some(p => p.assetUnit === 'BTC')))
         ? liveEthSpotPriceNumeric
         : liveSpotPriceNumeric;
 
-      renderSafeZoneCorridor(parsedPositions, activeSpotPx);
+      const corridorOptionPositions = allParsedPositions.filter(p => {
+        const s = p.symbol || '';
+        return s.startsWith('C-') || s.startsWith('P-');
+      });
+
+      renderSafeZoneCorridor(corridorOptionPositions, activeSpotPx);
     }
 
     // 4b. Options Math Engine (Black-Scholes Theoretical Pricing & Greeks)
@@ -3536,11 +3594,17 @@
     }
 
     function toggleAllCorridorLegs(enable) {
-      if (enable) {
-        corridorLegsDisabled.clear();
-      } else {
-        currentCorridorPositions.forEach(p => corridorLegsDisabled.add(p.symbol));
-      }
+      const cohortPositions = (currentCorridorPositions || []).filter(p => {
+        if (currentCorridorCohort === 'all') return true;
+        return p.parsed && p.parsed.expCode === currentCorridorCohort;
+      });
+      cohortPositions.forEach(p => {
+        if (enable) {
+          corridorLegsDisabled.delete(p.symbol);
+        } else {
+          corridorLegsDisabled.add(p.symbol);
+        }
+      });
       renderLivePositions();
     }
 
@@ -3644,31 +3708,36 @@
           const code = p.parsed.expCode;
           if (!distinctCohorts.has(code)) {
             const dte = Math.round(p.parsed.dteDays || 0);
-            const label = p.parsed.expFormatted ? `${p.parsed.expFormatted} (${dte}D)` : `${code} (${dte}D)`;
-            distinctCohorts.set(code, label);
+            const label = p.parsed.expFormatted ? p.parsed.expFormatted : code;
+            distinctCohorts.set(code, { label, dte, count: 1 });
+          } else {
+            distinctCohorts.get(code).count++;
           }
         }
       });
 
-      // Render cohort filter pills
+      // Render prominent primary cohort filter pills (Delta Exchange Style)
       const cohortContainer = document.getElementById('corridor-cohort-pills');
       if (cohortContainer) {
+        const allIsActive = currentCorridorCohort === 'all';
         let cohortHtml = `
-          <span class="text-gray-400 font-semibold mr-1">📅 Cohort:</span>
-          <button onclick="setCorridorCohort('all')" id="btn-cohort-all" class="px-2.5 py-1 rounded-lg text-xs transition ${currentCorridorCohort === 'all' ? 'bg-orange-600 text-white font-semibold shadow' : 'text-gray-400 hover:text-white'}">
-            All Expiries
+          <button onclick="setCorridorCohort('all')" id="btn-cohort-all" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${allIsActive ? 'bg-orange-600 text-white shadow-md ring-2 ring-orange-500/50' : 'bg-gray-900 hover:bg-gray-800 text-gray-300 border border-gray-750 font-medium'}">
+            <span>🌐</span> All Expiries (${(positions || []).length})
           </button>
         `;
-        distinctCohorts.forEach((label, code) => {
+        distinctCohorts.forEach((cData, code) => {
           const isActive = currentCorridorCohort === code;
           cohortHtml += `
-            <button onclick="setCorridorCohort('${code}')" class="px-2.5 py-1 rounded-lg text-xs transition ${isActive ? 'bg-orange-600 text-white font-semibold shadow' : 'text-gray-400 hover:text-white'}">
-              ${label}
+            <button onclick="setCorridorCohort('${code}')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${isActive ? 'bg-orange-600 text-white shadow-md ring-2 ring-orange-500/50' : 'bg-gray-900 hover:bg-gray-800 text-gray-300 border border-gray-750 font-medium'}">
+              <span>📅</span> ${cData.label} (${cData.count} Legs • ${cData.dte}D)
             </button>
           `;
         });
         cohortContainer.innerHTML = cohortHtml;
       }
+
+      const allCohortCountEl = document.getElementById('lbl-all-cohort-count');
+      if (allCohortCountEl) allCohortCountEl.textContent = (positions || []).length;
 
       // Filter cohort positions
       const cohortPositions = (positions || []).filter(p => {
@@ -3679,49 +3748,86 @@
       // Filter active positions by what-if matrix
       const activePositions = cohortPositions.filter(p => !corridorLegsDisabled.has(p.symbol));
 
-      // Update active count badge
+      // Update active count badge & cohort tag
       const activeLegsCountEl = document.getElementById('lbl-active-legs-count');
       if (activeLegsCountEl) {
         activeLegsCountEl.textContent = `${activePositions.length}/${cohortPositions.length}`;
       }
-
-      // Populate Contract Matrix Drawer
-      const drawerGrid = document.getElementById('corridor-legs-checkbox-grid');
-      if (drawerGrid) {
-        drawerGrid.innerHTML = '';
-        (positions || []).forEach(p => {
-          const isSelected = !corridorLegsDisabled.has(p.symbol);
-          const inCohort = currentCorridorCohort === 'all' || (p.parsed && p.parsed.expCode === currentCorridorCohort);
-          const row = document.createElement('div');
-          row.className = `p-2 rounded-lg border text-xs transition flex items-center justify-between ${isSelected && inCohort ? 'bg-gray-900/90 border-gray-750' : 'bg-gray-950/40 border-gray-900 opacity-50'}`;
-          row.innerHTML = `
-            <div class="flex items-center gap-2">
-              <input type="checkbox" ${isSelected ? 'checked' : ''} onchange="toggleCorridorLeg('${p.symbol}', this.checked)" class="w-4 h-4 rounded cursor-pointer text-orange-500" />
-              <div>
-                <div class="font-medium flex items-center gap-1.5">
-                  <span class="${p.parsed.isCall ? 'text-rose-400' : 'text-purple-400'} font-bold">${p.parsed.isCall ? 'CALL' : 'PUT'}</span>
-                  <span class="text-gray-200 font-mono">$${p.parsed.strike.toLocaleString()}</span>
-                  <span class="text-[10px] font-mono px-1 rounded bg-gray-800 text-gray-400 border border-gray-700">${p.parsed.expCode || ''}</span>
-                </div>
-                <div class="text-[10px] text-gray-500 font-mono">
-                  Entry $${p.entryPx.toFixed(0)} • Mark $${p.markPx.toFixed(0)} • IV ${((p.ivPct || 35)).toFixed(1)}%
-                </div>
-              </div>
-            </div>
-            <div class="text-right font-mono">
-              <div class="${p.upnl >= 0 ? 'text-emerald-400' : 'text-rose-400'} font-semibold">
-                ${formatMoney(p.upnl, true)}
-              </div>
-              <div class="text-[10px] text-gray-500">${p.cryptoQty ? p.cryptoQty.toFixed(2) : '0.50'} ${p.assetUnit || 'BTC'}</div>
-            </div>
-          `;
-          drawerGrid.appendChild(row);
-        });
+      const activeCohortTagEl = document.getElementById('lbl-active-cohort-tag');
+      if (activeCohortTagEl) {
+        if (currentCorridorCohort === 'all') {
+          activeCohortTagEl.textContent = 'All Positions';
+        } else {
+          const cInfo = distinctCohorts.get(currentCorridorCohort);
+          activeCohortTagEl.textContent = cInfo ? `${cInfo.label} Cohort` : currentCorridorCohort;
+        }
       }
 
-      // Determine max DTE across positions for the Date Scrubber slider
+      // Populate Contract Matrix Table (Left Column)
+      const drawerGrid = document.getElementById('corridor-legs-checkbox-grid');
+      let totalCohortNotional = 0;
+      let totalCohortUpnl = 0;
+
+      if (drawerGrid) {
+        drawerGrid.innerHTML = '';
+        if (cohortPositions.length === 0) {
+          drawerGrid.innerHTML = `
+            <div class="py-12 text-center text-gray-500 font-mono text-xs">
+              No open contracts for this expiry cohort.
+            </div>
+          `;
+        } else {
+          cohortPositions.forEach(p => {
+            const isSelected = !corridorLegsDisabled.has(p.symbol);
+            const qtyBtc = p.cryptoQty || p.btcQty || 0.5;
+            if (isSelected) {
+              totalCohortNotional += qtyBtc;
+              totalCohortUpnl += (p.upnl || 0);
+            }
+            const row = document.createElement('div');
+            row.className = `p-2.5 rounded-lg border text-xs transition flex items-center justify-between ${isSelected ? 'bg-gray-900 border-gray-750 hover:border-gray-650' : 'bg-gray-950/60 border-gray-900 opacity-40'}`;
+            row.innerHTML = `
+              <div class="flex items-center gap-2.5">
+                <input type="checkbox" ${isSelected ? 'checked' : ''} onchange="toggleCorridorLeg('${p.symbol}', this.checked)" class="w-4 h-4 rounded cursor-pointer text-orange-500 focus:ring-orange-500 bg-gray-950 border-gray-700" />
+                <div>
+                  <div class="font-medium flex items-center gap-1.5">
+                    <span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${p.parsed.isCall ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'bg-purple-500/20 text-purple-400 border border-purple-500/30'}">
+                      ${p.parsed.isCall ? 'CALL' : 'PUT'}
+                    </span>
+                    <span class="text-gray-100 font-bold font-mono text-sm">$${p.parsed.strike.toLocaleString()}</span>
+                    <span class="text-[10px] font-mono px-1 rounded bg-gray-800 text-gray-400 border border-gray-700">${p.parsed.expFormatted || p.parsed.expCode || ''}</span>
+                  </div>
+                  <div class="text-[11px] text-gray-400 font-mono mt-0.5">
+                    Entry $${p.entryPx.toFixed(0)} • Mark $${p.markPx.toFixed(1)} • IV ${((p.ivPct || 38.5)).toFixed(1)}%
+                  </div>
+                </div>
+              </div>
+              <div class="text-right font-mono">
+                <div class="${p.upnl >= 0 ? 'text-emerald-400' : 'text-rose-400'} font-bold text-sm">
+                  ${formatMoney(p.upnl, true)}
+                </div>
+                <div class="text-[10px] text-gray-500">${qtyBtc.toFixed(2)} ${p.assetUnit || 'BTC'} (${p.lots || -500}L)</div>
+              </div>
+            `;
+            drawerGrid.appendChild(row);
+          });
+        }
+      }
+
+      // Update Column Footer Summary
+      const notionalTotalEl = document.getElementById('lbl-corridor-notional-total');
+      if (notionalTotalEl) {
+        notionalTotalEl.textContent = `∑ Notional: ${totalCohortNotional.toFixed(2)} BTC (${activePositions.length} Active)`;
+      }
+      const upnlTotalEl = document.getElementById('lbl-corridor-upnl-total');
+      if (upnlTotalEl) {
+        upnlTotalEl.textContent = `Net uPnL: ${formatMoney(totalCohortUpnl, true)}`;
+        upnlTotalEl.className = `font-bold ${totalCohortUpnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+      }
+
+      // Determine max DTE across current cohort positions for the Date Scrubber slider
       let maxDte = 1;
-      (positions || []).forEach(p => {
+      (cohortPositions || []).forEach(p => {
         if (p.parsed && p.parsed.dteDays && p.parsed.dteDays > maxDte) {
           maxDte = Math.ceil(p.parsed.dteDays);
         }
@@ -3729,7 +3835,7 @@
       const dateSlider = document.getElementById('dateScrubberSlider');
       if (dateSlider) {
         dateSlider.max = Math.max(1, maxDte);
-        dateSlider.value = dateScrubberDays;
+        dateSlider.value = Math.min(dateScrubberDays, maxDte);
       }
       const dateFinalLbl = document.getElementById('date-final-label');
       if (dateFinalLbl) {
@@ -3946,6 +4052,13 @@
         projPnlEl.className = `text-sm font-bold mt-0.5 ${targetPnlAtEval >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
       }
       setSafeText('kpi-risk-target-date-desc', dateScrubberDays === 0 ? 'Live T+0 (0 days)' : `+${dateScrubberDays} days elapsed`);
+
+      const projTargetProfitPill = document.getElementById('lbl-projected-target-profit');
+      if (projTargetProfitPill) {
+        const sign = targetPnlAtEval >= 0 ? '+' : '';
+        const pct = spotPx > 0 ? (((evalSpot - spotPx) / spotPx) * 100).toFixed(0) : '0';
+        projTargetProfitPill.textContent = `${sign}$${Math.round(targetPnlAtEval).toLocaleString()} (${pct}%)`;
+      }
 
       // Update Slider bounds
       const slider = document.getElementById('spotSlider');
