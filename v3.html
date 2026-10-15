@@ -980,9 +980,9 @@
           </div>
         </div>
 
-        <!-- Sleeves Hub Header & Category Filter Tabs -->
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-gray-800">
-          <div class="flex items-center gap-2">
+        <!-- Sleeves Hub Header, Category Filters, Quick Actions, and View Toggle -->
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 pt-2 border-t border-gray-800">
+          <div class="flex items-center gap-2 flex-wrap">
             <span class="text-xs font-semibold text-gray-300">Strategy Hub:</span>
             <div class="inline-flex rounded-lg bg-gray-950 p-0.5 border border-gray-800 text-xs">
               <button id="sleeve-cat-all" onclick="setSleeveCategoryFilter('all')" class="px-3 py-1 rounded-md font-semibold bg-blue-600 text-white shadow-sm transition">
@@ -996,9 +996,102 @@
               </button>
             </div>
           </div>
-          <div class="text-[11px] text-gray-400 font-mono">
-            <span>Precision Clocks: </span>
-            <span class="text-blue-400 font-semibold">09:30 AM</span> • <span class="text-purple-400 font-semibold">10:30 PM IST</span> • <span class="text-emerald-400 font-semibold">1H Cadence</span>
+
+          <!-- Quick Action Master Controls & Layout View Switcher -->
+          <div class="flex items-center gap-2 flex-wrap">
+            <div class="flex items-center gap-1.5 bg-gray-950 p-1 rounded-lg border border-gray-800 text-xs">
+              <button onclick="emergencyPauseAllSleeves()" class="px-2.5 py-1 rounded-md font-semibold bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 transition flex items-center gap-1" title="Emergency Pause new entry triggers across all sleeves">
+                <span>⏸</span> Pause All
+              </button>
+              <button onclick="batchDryRunAllSleeves()" class="px-2.5 py-1 rounded-md font-semibold bg-blue-500/15 hover:bg-blue-500/25 text-blue-300 border border-blue-500/30 transition flex items-center gap-1" title="Simulate strike selection and risk budget checks across all sleeves">
+                <span>▶</span> Batch Dry-Run
+              </button>
+              <button onclick="restoreProductionDefaults()" class="px-2 py-1 rounded-md font-medium bg-gray-900 hover:bg-gray-800 text-gray-400 hover:text-gray-200 border border-gray-800 transition flex items-center gap-1" title="Restore default production sleeves & risk sizing">
+                <span>🔄</span> Defaults
+              </button>
+            </div>
+
+            <!-- Cards vs Dense Table View Toggle -->
+            <div class="flex items-center bg-gray-950 p-1 rounded-lg border border-gray-800 text-xs font-semibold">
+              <button id="btn-view-cards" onclick="setSleevesViewMode('cards')" class="px-2.5 py-1 rounded-md bg-blue-600 text-white shadow-sm transition flex items-center gap-1">
+                <span>🎛️</span> Cards
+              </button>
+              <button id="btn-view-table" onclick="setSleevesViewMode('table')" class="px-2.5 py-1 rounded-md text-gray-400 hover:text-gray-200 transition flex items-center gap-1">
+                <span>🗂️</span> Dense Table
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 1. Capital Allocation Segmented Bar & Interactive Risk Budget Legend -->
+        <div class="p-3.5 rounded-xl bg-gray-950/90 border border-gray-850 space-y-2.5">
+          <div class="flex items-center justify-between text-xs flex-wrap gap-2">
+            <span class="font-bold text-gray-200 flex items-center gap-1.5">
+              <span>📊</span> Portfolio Risk Capital Distribution (<span id="alloc-total-wallet" class="text-emerald-400 font-mono">$5,189.05 Total</span>)
+            </span>
+            <div class="flex items-center gap-3 text-[11px] font-mono text-gray-400">
+              <span>Dynamic Budget: <span class="text-emerald-400 font-bold">100% Assigned</span></span>
+              <span>•</span>
+              <span>Active Clocks: <span class="text-blue-400">09:30 AM</span> • <span class="text-purple-400">10:30 PM IST</span> • <span class="text-emerald-400">1H</span></span>
+            </div>
+          </div>
+
+          <!-- Segmented Multi-Color Progress Bar -->
+          <div class="h-3.5 w-full bg-gray-900 rounded-full border border-gray-800 overflow-hidden flex p-0.5 gap-0.5">
+            <div id="alloc-bar-btc_1dte" style="width: 40%;" class="h-full bg-blue-500 rounded-l-full transition-all flex items-center justify-center text-[9px] font-bold text-white tracking-tighter" title="BTC 1DTE: 40%">
+              40% BTC
+            </div>
+            <div id="alloc-bar-eth_1dte" style="width: 20%;" class="h-full bg-cyan-500 transition-all flex items-center justify-center text-[9px] font-bold text-gray-950 tracking-tighter" title="ETH 1DTE: 20%">
+              20% ETH
+            </div>
+            <div id="alloc-bar-btc_0dte" style="width: 15%;" class="h-full bg-amber-500 transition-all flex items-center justify-center text-[9px] font-bold text-gray-950 tracking-tighter" title="BTC 0DTE: 15%">
+              15% 0DTE
+            </div>
+            <div id="alloc-bar-regime_condor" style="width: 15%;" class="h-full bg-purple-500 transition-all flex items-center justify-center text-[9px] font-bold text-white tracking-tighter" title="Iron Condor: 15%">
+              15% Condor
+            </div>
+            <div id="alloc-bar-btc_trend_breakout" style="width: 10%;" class="h-full bg-emerald-500 rounded-r-full transition-all flex items-center justify-center text-[9px] font-bold text-gray-950 tracking-tighter" title="Trend Breakout: 10%">
+              10%
+            </div>
+          </div>
+
+          <!-- Interactive Budget Allocation Cards -->
+          <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs font-mono">
+            <div onclick="jumpToRiskStudio('btc_1dte')" class="p-2 rounded-lg bg-gray-900/60 hover:bg-gray-900 border border-blue-500/20 hover:border-blue-500/50 cursor-pointer transition text-center space-y-0.5" title="Click to inspect BTC 1DTE in Risk Studio">
+              <div class="text-gray-400 text-[10px] flex items-center justify-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-blue-400"></span> BTC 1DTE (40%)
+              </div>
+              <div id="alloc-val-btc_1dte" class="font-bold text-blue-400 text-xs">$2,075.62</div>
+              <div id="alloc-status-btc_1dte" class="text-[9px] text-emerald-400 font-bold">2 Legs Active</div>
+            </div>
+            <div onclick="jumpToRiskStudio('eth_1dte')" class="p-2 rounded-lg bg-gray-900/60 hover:bg-gray-900 border border-cyan-500/20 hover:border-cyan-500/50 cursor-pointer transition text-center space-y-0.5" title="Click to inspect ETH 1DTE in Risk Studio">
+              <div class="text-gray-400 text-[10px] flex items-center justify-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span> ETH 1DTE (20%)
+              </div>
+              <div id="alloc-val-eth_1dte" class="font-bold text-cyan-400 text-xs">$1,037.81</div>
+              <div id="alloc-status-eth_1dte" class="text-[9px] text-gray-500">0 Legs</div>
+            </div>
+            <div onclick="jumpToRiskStudio('btc_0dte')" class="p-2 rounded-lg bg-gray-900/60 hover:bg-gray-900 border border-amber-500/20 hover:border-amber-500/50 cursor-pointer transition text-center space-y-0.5" title="Click to inspect BTC 0DTE in Risk Studio">
+              <div class="text-gray-400 text-[10px] flex items-center justify-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span> BTC 0DTE (15%)
+              </div>
+              <div id="alloc-val-btc_0dte" class="font-bold text-amber-400 text-xs">$778.36</div>
+              <div id="alloc-status-btc_0dte" class="text-[9px] text-amber-400">Standby</div>
+            </div>
+            <div onclick="jumpToRiskStudio('regime_condor')" class="p-2 rounded-lg bg-gray-900/60 hover:bg-gray-900 border border-purple-500/20 hover:border-purple-500/50 cursor-pointer transition text-center space-y-0.5" title="Click to inspect Iron Condor in Vol Regime Studio">
+              <div class="text-gray-400 text-[10px] flex items-center justify-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span> Iron Condor (15%)
+              </div>
+              <div id="alloc-val-regime_condor" class="font-bold text-purple-300 text-xs">$778.36</div>
+              <div id="alloc-status-regime_condor" class="text-[9px] text-purple-400">IV &ge; 45%</div>
+            </div>
+            <div onclick="jumpToRiskStudio('btc_trend_breakout')" class="p-2 rounded-lg bg-gray-900/60 hover:bg-gray-900 border border-emerald-500/20 hover:border-emerald-500/50 cursor-pointer transition text-center space-y-0.5" title="Click to inspect Donchian Trend Studio">
+              <div class="text-gray-400 text-[10px] flex items-center justify-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Trend Breakout (10%)
+              </div>
+              <div id="alloc-val-btc_trend_breakout" class="font-bold text-emerald-400 text-xs">$518.91</div>
+              <div id="alloc-status-btc_trend_breakout" class="text-[9px] text-gray-500">Hourly :37</div>
+            </div>
           </div>
         </div>
 
@@ -1015,7 +1108,8 @@
                 </div>
                 <div class="text-[10px] text-gray-400 mt-0.5">Sell 10-15Δ Strangle + 2.0x SL • 10:30 PM IST</div>
               </div>
-              <div class="flex items-center gap-1.5">
+              <div class="flex items-center gap-1.5 flex-wrap justify-end">
+                <span id="sleeve-countdown-btc_1dte" class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-blue-500/10 text-blue-300 border border-blue-500/20">🕒 --h --m</span>
                 <span id="sleeve-badge-btc_1dte" class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 uppercase">
                   ACTIVE
                 </span>
@@ -1124,7 +1218,8 @@
                 </div>
                 <div class="text-[10px] text-gray-400 mt-0.5">Sell 10-15Δ ETH Strangle + 2.0x SL • 10:30 PM IST</div>
               </div>
-              <div class="flex items-center gap-1.5">
+              <div class="flex items-center gap-1.5 flex-wrap justify-end">
+                <span id="sleeve-countdown-eth_1dte" class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">🕒 --h --m</span>
                 <span id="sleeve-badge-eth_1dte" class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 uppercase">
                   ACTIVE
                 </span>
@@ -1233,7 +1328,8 @@
                 </div>
                 <div class="text-[10px] text-gray-400 mt-0.5">Same-Day Expiry Premium • 09:30 AM IST</div>
               </div>
-              <div class="flex items-center gap-1.5">
+              <div class="flex items-center gap-1.5 flex-wrap justify-end">
+                <span id="sleeve-countdown-btc_0dte" class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/10 text-amber-300 border border-amber-500/20">🕒 --h --m</span>
                 <span id="sleeve-badge-btc_0dte" class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 uppercase">
                   STANDBY
                 </span>
@@ -1342,7 +1438,8 @@
                 </div>
                 <div class="text-[10px] text-gray-400 mt-0.5">Defined Risk Wings + 50% TP • IV Gated</div>
               </div>
-              <div class="flex items-center gap-1.5">
+              <div class="flex items-center gap-1.5 flex-wrap justify-end">
+                <span id="sleeve-countdown-regime_condor" class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-purple-500/10 text-purple-300 border border-purple-500/20">🕒 --h --m</span>
                 <span id="sleeve-badge-regime_condor" class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 uppercase">
                   STANDBY
                 </span>
@@ -1454,7 +1551,8 @@
                 </div>
                 <div class="text-[10px] text-gray-400 mt-0.5">20-H Donchian Channel + 2x ATR SL • 1H</div>
               </div>
-              <div class="flex items-center gap-1.5">
+              <div class="flex items-center gap-1.5 flex-wrap justify-end">
+                <span id="sleeve-countdown-btc_trend_breakout" class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">🕒 --m --s</span>
                 <span id="sleeve-badge-btc_trend_breakout" class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 uppercase">
                   STANDBY
                 </span>
@@ -1550,6 +1648,232 @@
             </div>
           </div>
 
+        </div>
+
+        <!-- Alternative High-Density Tabular View for Sleeves -->
+        <div id="sleeves-dense-table" class="hidden overflow-x-auto rounded-xl border border-gray-800 bg-gray-950 pt-1">
+          <table class="w-full text-xs font-mono text-left">
+            <thead class="bg-gray-900/90 text-gray-400 border-b border-gray-800 text-[11px] uppercase tracking-wider">
+              <tr>
+                <th class="p-3">Strategy</th>
+                <th class="p-3">Status</th>
+                <th class="p-3">Next Trigger</th>
+                <th class="p-3">Budget &amp; Pool</th>
+                <th class="p-3">Lots</th>
+                <th class="p-3">Open Legs / U-PnL</th>
+                <th class="p-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-850 bg-gray-950 text-xs">
+              <!-- Row 1: BTC 1DTE -->
+              <tr class="hover:bg-gray-900/40 transition">
+                <td class="p-3">
+                  <div class="font-bold text-gray-100 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-blue-400"></span>
+                    <span>₿ BTC 1DTE Strangle</span>
+                  </div>
+                  <div class="text-[10px] text-gray-500 font-sans">Sell 10-15Δ Strangle + 2.0x SL</div>
+                </td>
+                <td class="p-3">
+                  <span id="table-badge-btc_1dte" class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 uppercase">ACTIVE</span>
+                </td>
+                <td class="p-3">
+                  <span id="table-cd-btc_1dte" class="text-blue-400 font-bold">--h --m</span>
+                  <div class="text-[10px] text-gray-500">10:30 PM IST Daily</div>
+                </td>
+                <td class="p-3">
+                  <div id="table-budget-btc_1dte" class="text-gray-200 font-bold">$2,075.62</div>
+                  <div class="text-[10px] text-blue-400">40% Capital Pool</div>
+                </td>
+                <td class="p-3">
+                  <div class="flex items-center gap-1">
+                    <input type="number" id="table-input-btc_1dte-lots" value="500" step="50" class="w-16 bg-gray-900 border border-gray-700 rounded px-1.5 py-0.5 text-gray-100 font-bold text-[11px]" />
+                    <button onclick="saveSleeveLots('BOT_LOTS', 'table-input-btc_1dte-lots')" class="px-2 py-0.5 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 text-[10px]">Save</button>
+                  </div>
+                </td>
+                <td class="p-3">
+                  <div id="table-pos-btc_1dte" class="text-gray-200 font-bold">2 Legs Active</div>
+                  <div id="table-pnl-btc_1dte" class="text-rose-400 font-bold">-$4.54</div>
+                </td>
+                <td class="p-3 text-right">
+                  <div class="flex items-center justify-end gap-1.5">
+                    <button onclick="jumpToRiskStudio('btc_1dte')" class="px-2.5 py-1 rounded bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 text-[11px] font-semibold transition">
+                      Studio ↗
+                    </button>
+                    <button onclick="dispatchSleeveAction('btc_1dte', 'dry-run')" class="px-2 py-1 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 text-[11px]">
+                      Dry-Run
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              <!-- Row 2: ETH 1DTE -->
+              <tr class="hover:bg-gray-900/40 transition">
+                <td class="p-3">
+                  <div class="font-bold text-gray-100 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+                    <span>⟠ ETH 1DTE Strangle</span>
+                  </div>
+                  <div class="text-[10px] text-gray-500 font-sans">Sell 10-15Δ ETH Strangle + 2.0x SL</div>
+                </td>
+                <td class="p-3">
+                  <span id="table-badge-eth_1dte" class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 uppercase">ACTIVE</span>
+                </td>
+                <td class="p-3">
+                  <span id="table-cd-eth_1dte" class="text-cyan-400 font-bold">--h --m</span>
+                  <div class="text-[10px] text-gray-500">10:30 PM IST Daily</div>
+                </td>
+                <td class="p-3">
+                  <div id="table-budget-eth_1dte" class="text-gray-200 font-bold">$1,037.81</div>
+                  <div class="text-[10px] text-cyan-400">20% Capital Pool</div>
+                </td>
+                <td class="p-3">
+                  <div class="flex items-center gap-1">
+                    <input type="number" id="table-input-eth_1dte-lots" value="250" step="25" class="w-16 bg-gray-900 border border-gray-700 rounded px-1.5 py-0.5 text-gray-100 font-bold text-[11px]" />
+                    <button onclick="saveSleeveLots('ETH_BOT_LOTS', 'table-input-eth_1dte-lots')" class="px-2 py-0.5 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 text-[10px]">Save</button>
+                  </div>
+                </td>
+                <td class="p-3">
+                  <div id="table-pos-eth_1dte" class="text-gray-400 font-bold">0 Legs</div>
+                  <div id="table-pnl-eth_1dte" class="text-gray-400 font-bold">$0.00</div>
+                </td>
+                <td class="p-3 text-right">
+                  <div class="flex items-center justify-end gap-1.5">
+                    <button onclick="jumpToRiskStudio('eth_1dte')" class="px-2.5 py-1 rounded bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 border border-cyan-500/30 text-[11px] font-semibold transition">
+                      Studio ↗
+                    </button>
+                    <button onclick="dispatchSleeveAction('eth_1dte', 'dry-run')" class="px-2 py-1 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 text-[11px]">
+                      Dry-Run
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              <!-- Row 3: BTC 0DTE -->
+              <tr class="hover:bg-gray-900/40 transition">
+                <td class="p-3">
+                  <div class="font-bold text-gray-100 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+                    <span>⚡ BTC 0DTE Intraday</span>
+                  </div>
+                  <div class="text-[10px] text-gray-500 font-sans">Same-Day 8-12Δ Premium Harvest</div>
+                </td>
+                <td class="p-3">
+                  <span id="table-badge-btc_0dte" class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 uppercase">STANDBY</span>
+                </td>
+                <td class="p-3">
+                  <span id="table-cd-btc_0dte" class="text-amber-400 font-bold">--h --m</span>
+                  <div class="text-[10px] text-gray-500">09:30 AM IST Daily</div>
+                </td>
+                <td class="p-3">
+                  <div id="table-budget-btc_0dte" class="text-gray-200 font-bold">$778.36</div>
+                  <div class="text-[10px] text-amber-400">15% Capital Pool</div>
+                </td>
+                <td class="p-3">
+                  <div class="flex items-center gap-1">
+                    <input type="number" id="table-input-btc_0dte-lots" value="200" step="50" class="w-16 bg-gray-900 border border-gray-700 rounded px-1.5 py-0.5 text-gray-100 font-bold text-[11px]" />
+                    <button onclick="saveSleeveLots('ZERO_DTE_LOTS', 'table-input-btc_0dte-lots')" class="px-2 py-0.5 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 text-[10px]">Save</button>
+                  </div>
+                </td>
+                <td class="p-3">
+                  <div id="table-pos-btc_0dte" class="text-gray-400 font-bold">0 Legs</div>
+                  <div id="table-pnl-btc_0dte" class="text-gray-400 font-bold">$0.00</div>
+                </td>
+                <td class="p-3 text-right">
+                  <div class="flex items-center justify-end gap-1.5">
+                    <button onclick="jumpToRiskStudio('btc_0dte')" class="px-2.5 py-1 rounded bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/30 text-[11px] font-semibold transition">
+                      Studio ↗
+                    </button>
+                    <button onclick="dispatchSleeveAction('btc_0dte', 'dry-run')" class="px-2 py-1 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 text-[11px]">
+                      Dry-Run
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              <!-- Row 4: Iron Condor -->
+              <tr class="hover:bg-gray-900/40 transition">
+                <td class="p-3">
+                  <div class="font-bold text-gray-100 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-purple-400"></span>
+                    <span>🎯 Regime Iron Condor</span>
+                  </div>
+                  <div class="text-[10px] text-gray-500 font-sans">Defined Risk Wings + 50% TP • IV Gated</div>
+                </td>
+                <td class="p-3">
+                  <span id="table-badge-regime_condor" class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 uppercase">STANDBY</span>
+                </td>
+                <td class="p-3">
+                  <span id="table-cd-regime_condor" class="text-purple-400 font-bold">--h --m</span>
+                  <div class="text-[10px] text-gray-500">10:30 PM IST Daily</div>
+                </td>
+                <td class="p-3">
+                  <div id="table-budget-regime_condor" class="text-gray-200 font-bold">$778.36</div>
+                  <div class="text-[10px] text-purple-400">15% Capital Pool</div>
+                </td>
+                <td class="p-3">
+                  <div class="flex items-center gap-1">
+                    <input type="number" id="table-input-regime_condor-lots" value="300" step="50" class="w-16 bg-gray-900 border border-gray-700 rounded px-1.5 py-0.5 text-gray-100 font-bold text-[11px]" />
+                    <button onclick="saveSleeveLots('CONDOR_LOTS', 'table-input-regime_condor-lots')" class="px-2 py-0.5 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 text-[10px]">Save</button>
+                  </div>
+                </td>
+                <td class="p-3">
+                  <div id="table-gate-regime_condor" class="text-emerald-400 font-bold flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> PASS
+                  </div>
+                  <div id="table-iv-regime_condor" class="text-[10px] text-purple-300">IV &ge; 45%</div>
+                </td>
+                <td class="p-3 text-right">
+                  <div class="flex items-center justify-end gap-1.5">
+                    <button onclick="jumpToRiskStudio('regime_condor')" class="px-2.5 py-1 rounded bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 text-[11px] font-semibold transition">
+                      Studio ↗
+                    </button>
+                    <button onclick="dispatchSleeveAction('regime_condor', 'dry-run')" class="px-2 py-1 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 text-[11px]">
+                      Dry-Run
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              <!-- Row 5: Trend Breakout -->
+              <tr class="hover:bg-gray-900/40 transition">
+                <td class="p-3">
+                  <div class="font-bold text-gray-100 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                    <span>📈 BTC Trend Breakout</span>
+                  </div>
+                  <div class="text-[10px] text-gray-500 font-sans">20-H Donchian Channel + 3x ATR SL</div>
+                </td>
+                <td class="p-3">
+                  <span id="table-badge-btc_trend_breakout" class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 uppercase">STANDBY</span>
+                </td>
+                <td class="p-3">
+                  <span id="table-cd-btc_trend_breakout" class="text-emerald-400 font-bold">--m --s</span>
+                  <div class="text-[10px] text-gray-500">Hourly :37 Cadence</div>
+                </td>
+                <td class="p-3">
+                  <div id="table-budget-btc_trend_breakout" class="text-gray-200 font-bold">$518.91</div>
+                  <div class="text-[10px] text-emerald-400">10% Capital Pool</div>
+                </td>
+                <td class="p-3">
+                  <div class="flex items-center gap-1">
+                    <input type="number" id="table-input-btc_trend_breakout-lots" value="100" step="25" class="w-16 bg-gray-900 border border-gray-700 rounded px-1.5 py-0.5 text-gray-100 font-bold text-[11px]" />
+                    <button onclick="saveSleeveLots('TREND_LOTS', 'table-input-btc_trend_breakout-lots')" class="px-2 py-0.5 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 text-[10px]">Save</button>
+                  </div>
+                </td>
+                <td class="p-3">
+                  <div id="table-trend-btc_trend_breakout" class="text-gray-400 font-bold">NEUTRAL</div>
+                  <div class="text-[10px] text-gray-500">Trailing ATR</div>
+                </td>
+                <td class="p-3 text-right">
+                  <div class="flex items-center justify-end gap-1.5">
+                    <button onclick="jumpToRiskStudio('btc_trend_breakout')" class="px-2.5 py-1 rounded bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-[11px] font-semibold transition">
+                      Studio ↗
+                    </button>
+                    <button onclick="dispatchSleeveAction('btc_trend_breakout', 'dry-run')" class="px-2 py-1 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 text-[11px]">
+                      Dry-Run
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -2476,6 +2800,68 @@
         sleeveState.ENABLE_TREND_BREAKOUT = sTrend.enabled;
       }
 
+      // Capital Allocation Segmented Bar & Legend Data
+      const totalBal = parseFloat(dashboardState?.wallet_balance || dashboardState?.portfolio_margin?.balance || 5189.05);
+      const allocWalletEl = document.getElementById('alloc-total-wallet');
+      if (allocWalletEl) allocWalletEl.textContent = `${formatMoney(totalBal, false)} Total`;
+
+      const btc1Bud = totalBal * 0.40;
+      const eth1Bud = totalBal * 0.20;
+      const btc0Bud = totalBal * 0.15;
+      const cndBud = totalBal * 0.15;
+      const trdBud = totalBal * 0.10;
+
+      const setDomTxt = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+      setDomTxt('alloc-val-btc_1dte', formatMoney(btc1Bud, false));
+      setDomTxt('alloc-val-eth_1dte', formatMoney(eth1Bud, false));
+      setDomTxt('alloc-val-btc_0dte', formatMoney(btc0Bud, false));
+      setDomTxt('alloc-val-regime_condor', formatMoney(cndBud, false));
+      setDomTxt('alloc-val-btc_trend_breakout', formatMoney(trdBud, false));
+
+      setDomTxt('table-budget-btc_1dte', formatMoney(btc1Bud, false));
+      setDomTxt('table-budget-eth_1dte', formatMoney(eth1Bud, false));
+      setDomTxt('table-budget-btc_0dte', formatMoney(btc0Bud, false));
+      setDomTxt('table-budget-regime_condor', formatMoney(cndBud, false));
+      setDomTxt('table-budget-btc_trend_breakout', formatMoney(trdBud, false));
+
+      // Dense Table Inputs Sync
+      const tblLotsBtc = document.getElementById('table-input-btc_1dte-lots');
+      if (tblLotsBtc && !tblLotsBtc.dataset.edited) tblLotsBtc.value = sleeveState.BOT_LOTS || sStrangle.configured_lots || 500;
+      const tblLotsEth = document.getElementById('table-input-eth_1dte-lots');
+      if (tblLotsEth && !tblLotsEth.dataset.edited) tblLotsEth.value = sleeveState.ETH_BOT_LOTS || sEth.configured_lots || 250;
+      const tblLots0Dte = document.getElementById('table-input-btc_0dte-lots');
+      if (tblLots0Dte && !tblLots0Dte.dataset.edited) tblLots0Dte.value = sleeveState.ZERO_DTE_LOTS || s0Dte.configured_lots || 200;
+      const tblLotsCnd = document.getElementById('table-input-regime_condor-lots');
+      if (tblLotsCnd && !tblLotsCnd.dataset.edited) tblLotsCnd.value = sleeveState.CONDOR_LOTS || sCondor.configured_lots || 300;
+      const tblLotsTrd = document.getElementById('table-input-btc_trend_breakout-lots');
+      if (tblLotsTrd && !tblLotsTrd.dataset.edited) tblLotsTrd.value = sleeveState.TREND_LOTS || sTrend.configured_lots || 100;
+
+      // Dense Table Status Badges
+      const setTblBadge = (id, enabled, active, activeText, activeClass) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (!enabled) {
+          el.textContent = 'PAUSED';
+          el.className = 'px-1.5 py-0.5 rounded text-[10px] font-bold bg-gray-800 text-gray-400 border border-gray-700 uppercase';
+        } else if (active) {
+          el.textContent = activeText || 'ACTIVE';
+          el.className = activeClass || 'px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 uppercase';
+        } else {
+          el.textContent = 'STANDBY';
+          el.className = 'px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 uppercase';
+        }
+      };
+
+      setTblBadge('table-badge-btc_1dte', sleeveState.ENABLE_STRANGLE, sStrangle.active, 'ACTIVE', 'px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 uppercase');
+      setTblBadge('table-badge-eth_1dte', sleeveState.ENABLE_ETH_STRANGLE, sEth.active, 'ACTIVE', 'px-1.5 py-0.5 rounded text-[10px] font-bold bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 uppercase');
+      setTblBadge('table-badge-btc_0dte', sleeveState.ENABLE_0DTE, s0Dte.active, 'ACTIVE', 'px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 uppercase');
+      setTblBadge('table-badge-regime_condor', sleeveState.ENABLE_CONDOR, sCondor.active, 'ACTIVE', 'px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-500/15 text-purple-300 border border-purple-500/30 uppercase');
+      setTblBadge('table-badge-btc_trend_breakout', sleeveState.ENABLE_TREND_BREAKOUT, sTrend.active, 'ACTIVE', 'px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 uppercase');
+
+      const openLegsCount = dashboardState?.open_positions?.length || 2;
+      setDomTxt('table-pos-btc_1dte', `${openLegsCount} Legs Active`);
+      setDomTxt('alloc-status-btc_1dte', `${openLegsCount} Legs Active`);
+
       // Sleeve 1: btc_1dte Strangle
       const btnStrangle = document.getElementById('btn-toggle-sleeve-strangle');
       if (btnStrangle) {
@@ -2875,6 +3261,190 @@
         target.scrollIntoView({ behavior: 'smooth', block: 'center' });
         target.classList.add('ring-2', 'ring-blue-500/50');
         setTimeout(() => target.classList.remove('ring-2', 'ring-blue-500/50'), 1500);
+      }
+    }
+
+    // 🎛️ Strategy Sleeves Layout View Mode (Cards vs Dense Table)
+    let currentSleevesViewMode = localStorage.getItem('sleeves_view_mode') || 'cards';
+
+    function setSleevesViewMode(mode) {
+      currentSleevesViewMode = mode;
+      localStorage.setItem('sleeves_view_mode', mode);
+      const cardsGrid = document.getElementById('sleeves-cards-grid');
+      const denseTable = document.getElementById('sleeves-dense-table');
+      const btnCards = document.getElementById('btn-view-cards');
+      const btnTable = document.getElementById('btn-view-table');
+
+      if (mode === 'table') {
+        if (cardsGrid) cardsGrid.classList.add('hidden');
+        if (denseTable) denseTable.classList.remove('hidden');
+        if (btnTable) btnTable.className = 'px-2.5 py-1 rounded-md bg-blue-600 text-white shadow-sm transition flex items-center gap-1';
+        if (btnCards) btnCards.className = 'px-2.5 py-1 rounded-md text-gray-400 hover:text-gray-200 transition flex items-center gap-1';
+      } else {
+        if (cardsGrid) cardsGrid.classList.remove('hidden');
+        if (denseTable) denseTable.classList.add('hidden');
+        if (btnCards) btnCards.className = 'px-2.5 py-1 rounded-md bg-blue-600 text-white shadow-sm transition flex items-center gap-1';
+        if (btnTable) btnTable.className = 'px-2.5 py-1 rounded-md text-gray-400 hover:text-gray-200 transition flex items-center gap-1';
+      }
+    }
+
+    // 🕒 Live Per-Sleeve Execution Milestone Countdowns (IST Timers)
+    function getIstTime() {
+      const now = new Date();
+      const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+      return new Date(utc + (3600000 * 5.5));
+    }
+
+    function formatCountdownTime(diffMs) {
+      if (diffMs <= 0) return '00h 00m 00s';
+      const hours = Math.floor(diffMs / 3600000);
+      const mins = Math.floor((diffMs % 3600000) / 60000);
+      const secs = Math.floor((diffMs % 60000) / 1000);
+      if (hours > 0) {
+        return `${hours}h ${String(mins).padStart(2, '0')}m ${String(secs).padStart(2, '0')}s`;
+      }
+      return `${mins}m ${String(secs).padStart(2, '0')}s`;
+    }
+
+    function updateSleeveCountdowns() {
+      const ist = getIstTime();
+
+      // 1. 22:30 IST Target (btc_1dte, eth_1dte, regime_condor)
+      const target2230 = new Date(ist);
+      target2230.setHours(22, 30, 0, 0);
+      if (ist.getTime() >= target2230.getTime()) {
+        target2230.setDate(target2230.getDate() + 1);
+      }
+      const diff2230 = target2230.getTime() - ist.getTime();
+      const cd2230 = formatCountdownTime(diff2230);
+
+      // 2. 09:30 IST Target (btc_0dte)
+      const target0930 = new Date(ist);
+      target0930.setHours(9, 30, 0, 0);
+      if (ist.getTime() >= target0930.getTime()) {
+        target0930.setDate(target0930.getDate() + 1);
+      }
+      const diff0930 = target0930.getTime() - ist.getTime();
+      const cd0930 = formatCountdownTime(diff0930);
+
+      // 3. Hourly :37 Target (btc_trend_breakout)
+      const targetTrend = new Date(ist);
+      if (ist.getMinutes() >= 37) {
+        targetTrend.setHours(targetTrend.getHours() + 1);
+      }
+      targetTrend.setMinutes(37, 0, 0);
+      const diffTrend = targetTrend.getTime() - ist.getTime();
+      const cdTrend = formatCountdownTime(diffTrend);
+
+      const setTxt = (id, txt) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = txt;
+      };
+
+      // Card Header Badges
+      setTxt('sleeve-countdown-btc_1dte', `🕒 ${cd2230}`);
+      setTxt('sleeve-countdown-eth_1dte', `🕒 ${cd2230}`);
+      setTxt('sleeve-countdown-regime_condor', `🕒 ${cd2230}`);
+      setTxt('sleeve-countdown-btc_0dte', `🕒 ${cd0930}`);
+      setTxt('sleeve-countdown-btc_trend_breakout', `🕒 ${cdTrend}`);
+
+      // Dense Table Cells
+      setTxt('table-cd-btc_1dte', cd2230);
+      setTxt('table-cd-eth_1dte', cd2230);
+      setTxt('table-cd-regime_condor', cd2230);
+      setTxt('table-cd-btc_0dte', cd0930);
+      setTxt('table-cd-btc_trend_breakout', cdTrend);
+    }
+
+    // ⚡ Master Quick Actions
+    async function emergencyPauseAllSleeves() {
+      if (!confirm('🛡️ Emergency Pause All Sleeves:\nAre you sure you want to pause automated new entries across ALL 5 strategy sleeves?\n\n(Existing exchange-native Stop-Loss orders remain active and untouched.)')) {
+        return;
+      }
+      const token = getSavedToken();
+      sleeveState.ENABLE_STRANGLE = false;
+      sleeveState.ENABLE_ETH_STRANGLE = false;
+      sleeveState.ENABLE_0DTE = false;
+      sleeveState.ENABLE_CONDOR = false;
+      sleeveState.ENABLE_TREND_BREAKOUT = false;
+
+      ['ENABLE_STRANGLE', 'ENABLE_ETH_STRANGLE', 'ENABLE_0DTE', 'ENABLE_CONDOR', 'ENABLE_TREND_BREAKOUT'].forEach(k => {
+        localStorage.setItem(`sleeve_${k}`, 'false');
+      });
+
+      renderMultiStrategySleeves();
+      showToast('🛡️ All 5 strategy sleeves set to PAUSED!', 'info');
+
+      if (token) {
+        showToast('Syncing pause state to GitHub Repository Variables...', 'info');
+        try {
+          await Promise.all([
+            upsertGitHubVariable(token, 'ENABLE_STRANGLE', 'false'),
+            upsertGitHubVariable(token, 'ENABLE_ETH_STRANGLE', 'false'),
+            upsertGitHubVariable(token, 'ENABLE_0DTE', 'false'),
+            upsertGitHubVariable(token, 'ENABLE_CONDOR', 'false'),
+            upsertGitHubVariable(token, 'ENABLE_TREND_BREAKOUT', 'false')
+          ]);
+          showToast('✅ Cloudflare & GitHub Actions entry triggers paused successfully!', 'success');
+        } catch (e) {
+          showToast(`Warning: Failed to sync some cloud variables: ${e.message}`, 'error');
+        }
+      } else {
+        showToast('Saved locally. (Configure GitHub PAT in Settings to persist to cloud actions).', 'info');
+      }
+    }
+
+    async function batchDryRunAllSleeves() {
+      const token = getSavedToken();
+      if (!token) {
+        openSettingsModal();
+        showToast('🔑 Please configure GitHub PAT with Actions permission first', 'info');
+        return;
+      }
+      showToast('🚀 Dispatching batch dry-run across all sleeves...', 'info');
+      try {
+        await dispatchWorkflow(token, 'btc_1dte', true);
+        showToast('✅ Multi-strategy dry-run dispatched! Inspect logs in Actions Hub below.', 'success');
+      } catch (err) {
+        showToast(`Batch dry-run dispatch failed: ${err.message}`, 'error');
+      }
+    }
+
+    async function restoreProductionDefaults() {
+      if (!confirm('🔄 Restore Production Defaults:\nReset sleeves to default setup? (BTC 1DTE Enabled 500L, ETH 1DTE Enabled 250L, others Standby)')) {
+        return;
+      }
+      const token = getSavedToken();
+      sleeveState.ENABLE_STRANGLE = true;
+      sleeveState.ENABLE_ETH_STRANGLE = true;
+      sleeveState.ENABLE_0DTE = false;
+      sleeveState.ENABLE_CONDOR = false;
+      sleeveState.ENABLE_TREND_BREAKOUT = false;
+      sleeveState.BOT_LOTS = 500;
+      sleeveState.ETH_BOT_LOTS = 250;
+
+      localStorage.setItem('sleeve_ENABLE_STRANGLE', 'true');
+      localStorage.setItem('sleeve_ENABLE_ETH_STRANGLE', 'true');
+      localStorage.setItem('sleeve_ENABLE_0DTE', 'false');
+      localStorage.setItem('sleeve_ENABLE_CONDOR', 'false');
+      localStorage.setItem('sleeve_ENABLE_TREND_BREAKOUT', 'false');
+
+      renderMultiStrategySleeves();
+      showToast('🔄 Production sleeve defaults restored!', 'success');
+
+      if (token) {
+        try {
+          await Promise.all([
+            upsertGitHubVariable(token, 'ENABLE_STRANGLE', 'true'),
+            upsertGitHubVariable(token, 'ENABLE_ETH_STRANGLE', 'true'),
+            upsertGitHubVariable(token, 'ENABLE_0DTE', 'false'),
+            upsertGitHubVariable(token, 'ENABLE_CONDOR', 'false'),
+            upsertGitHubVariable(token, 'ENABLE_TREND_BREAKOUT', 'false')
+          ]);
+          showToast('✅ Synced production defaults to GitHub Actions!', 'success');
+        } catch (e) {
+          console.warn('Sync failed:', e);
+        }
       }
     }
 
@@ -5839,6 +6409,7 @@
     // Auto-refresh timers
     setInterval(fetchLiveDeltaTickers, 3000);
     setInterval(updateMilestoneCountdown, 30000);
+    setInterval(updateSleeveCountdowns, 1000);
 
     // Initial Load Sequence (Concurrent Hydration)
     (async () => {
@@ -5859,6 +6430,8 @@
       renderPortfolioPerformanceChart();
       renderCalendarHeatmap();
       renderMultiStrategySleeves();
+      setSleevesViewMode(currentSleevesViewMode);
+      updateSleeveCountdowns();
     })();
   </script>
 </body>
