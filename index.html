@@ -109,9 +109,9 @@
         </button>
 
         <button onclick="sendTestWhatsAppFromDashboard()" id="btn-test-whatsapp"
-          class="px-3 py-2 text-xs font-semibold rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 transition flex items-center gap-1.5"
-          title="Send a live portfolio status message to your WhatsApp">
-          <span>📲 Test WhatsApp</span>
+          class="px-3 py-2 text-xs font-semibold rounded-lg bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/40 transition flex items-center gap-1.5"
+          title="Send a live test alert to Telegram & WhatsApp">
+          <span>🔔 Test Alerts (TG / WA)</span>
         </button>
 
         <button onclick="syncNow()" id="btn-sync-cloud"
@@ -1340,6 +1340,32 @@
                 class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white mono" />
             </div>
           </div>
+          <!-- Provider C: Telegram Bot (Zero-Restriction, Instant 24/7 Delivery) -->
+          <div class="p-3 rounded-lg bg-slate-950/90 border border-sky-500/30 space-y-2.5">
+            <div class="flex flex-wrap items-center justify-between gap-1.5">
+              <span class="text-[11px] font-bold text-sky-300">Option C (Recommended): ✈️ Telegram Bot (Instant 24/7 Alerts)</span>
+              <span class="text-[10px] text-sky-400 font-mono">Zero Restrictions • Instant Ping</span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+              <div>
+                <label class="block text-[10px] font-semibold text-slate-300 mb-1">Telegram Bot Token (`TELEGRAM_BOT_TOKEN`):</label>
+                <div class="relative flex items-center">
+                  <input type="password" id="tg-bot-token-input" placeholder="7123456789:AAH..."
+                    class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-2.5 pr-8 py-1.5 text-xs text-white mono" />
+                  <button type="button" onclick="togglePasswordVisibility('tg-bot-token-input', this)"
+                    class="absolute right-1.5 px-1 py-0.5 text-xs text-slate-400 hover:text-white rounded" title="Show/Hide Token">👁️</button>
+                </div>
+              </div>
+              <div>
+                <label class="block text-[10px] font-semibold text-slate-300 mb-1">Telegram Chat ID (`TELEGRAM_CHAT_ID`):</label>
+                <input type="text" id="tg-chat-id-input" placeholder="e.g. 123456789"
+                  class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white mono" />
+              </div>
+            </div>
+            <p class="text-[10px] text-slate-400">
+              💡 <strong>Quick Setup:</strong> Create bot with <a href="https://t.me/BotFather" target="_blank" rel="noopener" class="text-sky-300 underline">@BotFather</a> on Telegram, then get your Chat ID with <a href="https://t.me/userinfobot" target="_blank" rel="noopener" class="text-sky-300 underline">@userinfobot</a>.
+            </p>
+          </div>
         </div>
 
         <div class="p-3 rounded-lg bg-slate-900/90 border border-slate-800 text-[11px] text-slate-400">
@@ -1352,8 +1378,8 @@
           <button onclick="copyBookmarkUrl()" class="px-3 py-2 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">
             🔗 Copy Bookmarkable URL
           </button>
-          <button onclick="sendTestWhatsAppFromDashboard()" class="px-3 py-2 text-xs font-semibold rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40">
-            📲 Send Test WhatsApp
+          <button onclick="sendTestWhatsAppFromDashboard()" class="px-3 py-2 text-xs font-semibold rounded-lg bg-sky-600/20 hover:bg-sky-600/30 text-sky-300 border border-sky-500/40">
+            🔔 Send Test Alert
           </button>
         </div>
         <div class="flex items-center gap-2">
@@ -1380,6 +1406,8 @@
     const STORAGE_WA_APIKEY_KEY = 'delta_strangle_wa_apikey';
     const STORAGE_META_PHONE_ID_KEY = 'delta_strangle_meta_phone_id';
     const STORAGE_META_TOKEN_KEY = 'delta_strangle_meta_wa_token';
+    const STORAGE_TG_BOT_TOKEN_KEY = 'delta_strangle_tg_bot_token';
+    const STORAGE_TG_CHAT_ID_KEY = 'delta_strangle_tg_chat_id';
     const ONE_MONTH_MS = 30 * 24 * 60 * 60 * 1000;
 
     let dashboardState = null;
@@ -1431,20 +1459,30 @@
       return document.activeElement === inputEl || inputEl.dataset.userEdited === '1';
     }
 
-    // Check URL hash for #token=...&waphone=...&wakey=...&metapid=...&metatok=...
+    // Check URL hash for #token=...&waphone=...&wakey=...&metapid=...&metatok=...&tgtoken=...&tgchatid=...
     (function checkHashToken() {
-      if (window.location.hash && (window.location.hash.includes('token=') || window.location.hash.includes('waphone='))) {
+      if (window.location.hash && (window.location.hash.includes('token=') || window.location.hash.includes('waphone=') || window.location.hash.includes('tgtoken='))) {
         const params = new URLSearchParams(window.location.hash.slice(1));
         const tok = params.get('token');
         const waPhone = params.get('waphone');
         const waKey = params.get('wakey');
         const metaPid = params.get('metapid');
         const metaTok = params.get('metatok');
+        const tgTok = params.get('tgtoken');
+        const tgCid = params.get('tgchatid');
         if (tok) localStorage.setItem(STORAGE_TOKEN_KEY, tok.trim());
         if (waPhone) localStorage.setItem(STORAGE_WA_PHONE_KEY, waPhone.trim());
         if (waKey) localStorage.setItem(STORAGE_WA_APIKEY_KEY, waKey.trim());
         if (metaPid) localStorage.setItem(STORAGE_META_PHONE_ID_KEY, sanitizeMetaPhoneId(metaPid));
         if (metaTok) localStorage.setItem(STORAGE_META_TOKEN_KEY, sanitizeMetaToken(metaTok));
+        if (tgTok) {
+          localStorage.setItem(STORAGE_TG_BOT_TOKEN_KEY, tgTok.trim());
+          localStorage.setItem('tg_bot_token', tgTok.trim());
+        }
+        if (tgCid) {
+          localStorage.setItem(STORAGE_TG_CHAT_ID_KEY, tgCid.trim());
+          localStorage.setItem('tg_chat_id', tgCid.trim());
+        }
         history.replaceState(null, '', window.location.pathname + window.location.search);
       }
     })();
@@ -1467,6 +1505,14 @@
 
     function getSavedMetaToken() {
       return sanitizeMetaToken(localStorage.getItem(STORAGE_META_TOKEN_KEY) || '');
+    }
+
+    function getSavedTgBotToken() {
+      return localStorage.getItem(STORAGE_TG_BOT_TOKEN_KEY) || localStorage.getItem('tg_bot_token') || '';
+    }
+
+    function getSavedTgChatId() {
+      return localStorage.getItem(STORAGE_TG_CHAT_ID_KEY) || localStorage.getItem('tg_chat_id') || '';
     }
 
     function showToast(msg, type = 'info') {
@@ -4058,11 +4104,15 @@
         const waKeyEl = document.getElementById('wa-apikey-input');
         const metaPidEl = document.getElementById('meta-phone-id-input');
         const metaTokEl = document.getElementById('meta-wa-token-input');
+        const tgTokEl = document.getElementById('tg-bot-token-input');
+        const tgCidEl = document.getElementById('tg-chat-id-input');
         const varSpecs = [
           ['WHATSAPP_PHONE', STORAGE_WA_PHONE_KEY, waPhoneEl, v => String(v || '').trim()],
           ['WHATSAPP_API_KEY', STORAGE_WA_APIKEY_KEY, waKeyEl, v => String(v || '').trim()],
           ['META_WA_PHONE_ID', STORAGE_META_PHONE_ID_KEY, metaPidEl, sanitizeMetaPhoneId],
-          ['META_WA_TOKEN', STORAGE_META_TOKEN_KEY, metaTokEl, sanitizeMetaToken]
+          ['META_WA_TOKEN', STORAGE_META_TOKEN_KEY, metaTokEl, sanitizeMetaToken],
+          ['TELEGRAM_BOT_TOKEN', STORAGE_TG_BOT_TOKEN_KEY, tgTokEl, v => String(v || '').trim()],
+          ['TELEGRAM_CHAT_ID', STORAGE_TG_CHAT_ID_KEY, tgCidEl, v => String(v || '').trim()]
         ];
         await Promise.all(varSpecs.map(async ([varName, storageKey, inputEl, cleanFn]) => {
           const res = await fetch(`https://api.github.com/repos/${REPO_SLUG}/actions/variables/${varName}`, { headers });
@@ -4812,7 +4862,9 @@
       const waKeyEl = document.getElementById('wa-apikey-input');
       const metaPidEl = document.getElementById('meta-phone-id-input');
       const metaTokEl = document.getElementById('meta-wa-token-input');
-      [patEl, waPhoneEl, waKeyEl, metaPidEl, metaTokEl].forEach(el => {
+      const tgTokEl = document.getElementById('tg-bot-token-input');
+      const tgCidEl = document.getElementById('tg-chat-id-input');
+      [patEl, waPhoneEl, waKeyEl, metaPidEl, metaTokEl, tgTokEl, tgCidEl].forEach(el => {
         if (!el) return;
         el.dataset.userEdited = '0';
         if (!el.dataset.editListenerAttached) {
@@ -4825,6 +4877,8 @@
       if (waKeyEl) waKeyEl.value = getSavedWaApiKey();
       if (metaPidEl) metaPidEl.value = getSavedMetaPhoneId();
       if (metaTokEl) metaTokEl.value = getSavedMetaToken();
+      if (tgTokEl) tgTokEl.value = getSavedTgBotToken();
+      if (tgCidEl) tgCidEl.value = getSavedTgChatId();
       document.getElementById('settings-modal').classList.remove('hidden');
 
       // If PAT is saved, fetch latest GitHub Actions variables and refresh localStorage if non-empty
@@ -4869,6 +4923,8 @@
       const waKey = (document.getElementById('wa-apikey-input')?.value || '').trim();
       const metaPid = sanitizeMetaPhoneId(document.getElementById('meta-phone-id-input')?.value || '');
       const metaTok = sanitizeMetaToken(document.getElementById('meta-wa-token-input')?.value || '');
+      const tgTok = (document.getElementById('tg-bot-token-input')?.value || '').trim();
+      const tgCid = (document.getElementById('tg-chat-id-input')?.value || '').trim();
 
       const metaPidEl = document.getElementById('meta-phone-id-input');
       const metaTokEl = document.getElementById('meta-wa-token-input');
@@ -4880,29 +4936,39 @@
       if (waKey) localStorage.setItem(STORAGE_WA_APIKEY_KEY, waKey);
       if (metaPid) localStorage.setItem(STORAGE_META_PHONE_ID_KEY, metaPid);
       if (metaTok) localStorage.setItem(STORAGE_META_TOKEN_KEY, metaTok);
+      if (tgTok) {
+        localStorage.setItem(STORAGE_TG_BOT_TOKEN_KEY, tgTok);
+        localStorage.setItem('tg_bot_token', tgTok);
+      }
+      if (tgCid) {
+        localStorage.setItem(STORAGE_TG_CHAT_ID_KEY, tgCid);
+        localStorage.setItem('tg_chat_id', tgCid);
+      }
 
-      ['gh-pat-input', 'wa-phone-input', 'wa-apikey-input', 'meta-phone-id-input', 'meta-wa-token-input'].forEach(id => {
+      ['gh-pat-input', 'wa-phone-input', 'wa-apikey-input', 'meta-phone-id-input', 'meta-wa-token-input', 'tg-bot-token-input', 'tg-chat-id-input'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.dataset.userEdited = '0';
       });
 
       const activeToken = val || getSavedToken();
-      if (activeToken && (waPhone || waKey || metaPid || metaTok)) {
+      if (activeToken && (waPhone || waKey || metaPid || metaTok || tgTok || tgCid)) {
         try {
           await Promise.all([
             waPhone ? upsertGitHubVariable(activeToken, 'WHATSAPP_PHONE', waPhone) : Promise.resolve(true),
             waKey ? upsertGitHubVariable(activeToken, 'WHATSAPP_API_KEY', waKey) : Promise.resolve(true),
             metaPid ? upsertGitHubVariable(activeToken, 'META_WA_PHONE_ID', metaPid) : Promise.resolve(true),
-            metaTok ? upsertGitHubVariable(activeToken, 'META_WA_TOKEN', metaTok) : Promise.resolve(true)
+            metaTok ? upsertGitHubVariable(activeToken, 'META_WA_TOKEN', metaTok) : Promise.resolve(true),
+            tgTok ? upsertGitHubVariable(activeToken, 'TELEGRAM_BOT_TOKEN', tgTok) : Promise.resolve(true),
+            tgCid ? upsertGitHubVariable(activeToken, 'TELEGRAM_CHAT_ID', tgCid) : Promise.resolve(true)
           ]);
-          showToast('Saved & synced GitHub PAT + WhatsApp settings to GitHub Actions!', 'success');
+          showToast('Saved & synced GitHub PAT + alert settings to GitHub Actions!', 'success');
         } catch (err) {
           showToast('Saved locally in browser! (GitHub variable sync skipped)', 'info');
         }
       } else if (val) {
         showToast('GitHub PAT saved locally! Connecting to GitHub API...', 'success');
       } else {
-        showToast('WhatsApp credentials saved locally!', 'success');
+        showToast('Credentials saved locally!', 'success');
       }
       closeSettingsModal();
       loadDashboardSnapshot();
@@ -4914,15 +4980,19 @@
       localStorage.removeItem(STORAGE_WA_APIKEY_KEY);
       localStorage.removeItem(STORAGE_META_PHONE_ID_KEY);
       localStorage.removeItem(STORAGE_META_TOKEN_KEY);
+      localStorage.removeItem(STORAGE_TG_BOT_TOKEN_KEY);
+      localStorage.removeItem('tg_bot_token');
+      localStorage.removeItem(STORAGE_TG_CHAT_ID_KEY);
+      localStorage.removeItem('tg_chat_id');
       document.getElementById('gh-pat-input').value = '';
-      ['wa-phone-input', 'wa-apikey-input', 'meta-phone-id-input', 'meta-wa-token-input'].forEach(id => {
+      ['wa-phone-input', 'wa-apikey-input', 'meta-phone-id-input', 'meta-wa-token-input', 'tg-bot-token-input', 'tg-chat-id-input'].forEach(id => {
         const el = document.getElementById(id);
         if (el) {
           el.value = '';
           el.dataset.userEdited = '0';
         }
       });
-      showToast('Saved token & WhatsApp credentials cleared from browser.', 'info');
+      showToast('Saved token & all alert credentials cleared from browser.', 'info');
     }
 
     function copyBookmarkUrl() {
@@ -4931,6 +5001,8 @@
       const waKey = (document.getElementById('wa-apikey-input')?.value || getSavedWaApiKey()).trim();
       const metaPid = sanitizeMetaPhoneId(document.getElementById('meta-phone-id-input')?.value || getSavedMetaPhoneId());
       const metaTok = sanitizeMetaToken(document.getElementById('meta-wa-token-input')?.value || getSavedMetaToken());
+      const tgTok = (document.getElementById('tg-bot-token-input')?.value || getSavedTgBotToken()).trim();
+      const tgCid = (document.getElementById('tg-chat-id-input')?.value || getSavedTgChatId()).trim();
       if (!val) {
         showToast('Enter a GitHub PAT first to generate a bookmarkable URL.', 'error');
         return;
@@ -4940,9 +5012,11 @@
       if (waKey) hash += `&wakey=${encodeURIComponent(waKey)}`;
       if (metaPid) hash += `&metapid=${encodeURIComponent(metaPid)}`;
       if (metaTok) hash += `&metatok=${encodeURIComponent(metaTok)}`;
+      if (tgTok) hash += `&tgtoken=${encodeURIComponent(tgTok)}`;
+      if (tgCid) hash += `&tgchatid=${encodeURIComponent(tgCid)}`;
       const url = `${window.location.origin}${window.location.pathname}#${hash}`;
       navigator.clipboard.writeText(url);
-      showToast('Bookmarkable URL (with Token & WhatsApp config) copied!', 'success');
+      showToast('Bookmarkable URL (with Token & alert config) copied!', 'success');
     }
 
     async function sendTestWhatsAppFromDashboard() {
@@ -4951,21 +5025,26 @@
       let waKey = (document.getElementById('wa-apikey-input')?.value || getSavedWaApiKey()).trim();
       let metaPid = sanitizeMetaPhoneId(document.getElementById('meta-phone-id-input')?.value || getSavedMetaPhoneId());
       let metaTok = sanitizeMetaToken(document.getElementById('meta-wa-token-input')?.value || getSavedMetaToken());
+      let tgTok = (document.getElementById('tg-bot-token-input')?.value || getSavedTgBotToken()).trim();
+      let tgCid = (document.getElementById('tg-chat-id-input')?.value || getSavedTgChatId()).trim();
 
-      if (!(waPhone && metaPid && metaTok) && !(waPhone && waKey) && token) {
+      if (!tgTok && !tgCid && !(waPhone && metaPid && metaTok) && !(waPhone && waKey) && token) {
         await syncWhatsAppVariablesFromGitHub(token);
         waPhone = (document.getElementById('wa-phone-input')?.value || getSavedWaPhone()).trim().replace(/\s+/g, '');
         waKey = (document.getElementById('wa-apikey-input')?.value || getSavedWaApiKey()).trim();
         metaPid = sanitizeMetaPhoneId(document.getElementById('meta-phone-id-input')?.value || getSavedMetaPhoneId());
         metaTok = sanitizeMetaToken(document.getElementById('meta-wa-token-input')?.value || getSavedMetaToken());
+        tgTok = (document.getElementById('tg-bot-token-input')?.value || getSavedTgBotToken()).trim();
+        tgCid = (document.getElementById('tg-chat-id-input')?.value || getSavedTgChatId()).trim();
       }
 
+      const hasTelegram = Boolean(tgTok && tgCid);
       const hasMeta = Boolean(waPhone && metaPid && metaTok);
       const hasCallMeBot = Boolean(waPhone && waKey);
 
-      if (!hasMeta && !hasCallMeBot) {
+      if (!hasTelegram && !hasMeta && !hasCallMeBot) {
         openSettingsModal();
-        showToast('Enter your WhatsApp Number + Meta Cloud API (or CallMeBot) credentials first!', 'info');
+        showToast('Enter Telegram credentials or WhatsApp (Meta/CallMeBot) credentials first!', 'info');
         return;
       }
 
@@ -4974,13 +5053,23 @@
       if (waKey) localStorage.setItem(STORAGE_WA_APIKEY_KEY, waKey);
       if (metaPid) localStorage.setItem(STORAGE_META_PHONE_ID_KEY, metaPid);
       if (metaTok) localStorage.setItem(STORAGE_META_TOKEN_KEY, metaTok);
+      if (tgTok) {
+        localStorage.setItem(STORAGE_TG_BOT_TOKEN_KEY, tgTok);
+        localStorage.setItem('tg_bot_token', tgTok);
+      }
+      if (tgCid) {
+        localStorage.setItem(STORAGE_TG_CHAT_ID_KEY, tgCid);
+        localStorage.setItem('tg_chat_id', tgCid);
+      }
 
-      // Sync non-expiring variables to GitHub Actions; META_WA_TOKEN is only synced after Meta API validation succeeds
+      // Sync non-expiring variables to GitHub Actions
       if (token) {
         Promise.all([
           waPhone ? upsertGitHubVariable(token, 'WHATSAPP_PHONE', waPhone) : Promise.resolve(true),
           waKey ? upsertGitHubVariable(token, 'WHATSAPP_API_KEY', waKey) : Promise.resolve(true),
-          metaPid ? upsertGitHubVariable(token, 'META_WA_PHONE_ID', metaPid) : Promise.resolve(true)
+          metaPid ? upsertGitHubVariable(token, 'META_WA_PHONE_ID', metaPid) : Promise.resolve(true),
+          tgTok ? upsertGitHubVariable(token, 'TELEGRAM_BOT_TOKEN', tgTok) : Promise.resolve(true),
+          tgCid ? upsertGitHubVariable(token, 'TELEGRAM_CHAT_ID', tgCid) : Promise.resolve(true)
         ]).catch(() => {});
       }
 
@@ -5016,7 +5105,37 @@
         '🌐 https://ajay14sharma.github.io/'
       ].join('\n');
 
-      showToast('Sending test WhatsApp notification...', 'info');
+      // 1. Telegram (Priority: Instant, Zero Restrictions)
+      if (hasTelegram) {
+        showToast('✈️ Dispatching alert via Telegram Bot API...', 'info');
+        try {
+          const tgRes = await fetch(`https://api.telegram.org/bot${tgTok}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: tgCid, text: msg, parse_mode: 'Markdown' })
+          });
+          if (tgRes.ok) {
+            showToast('✈️ Telegram alert delivered instantly!', 'success');
+          } else {
+            const errData = await tgRes.json().catch(() => ({}));
+            // Fallback to plain text
+            const plainRes = await fetch(`https://api.telegram.org/bot${tgTok}/sendMessage`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ chat_id: tgCid, text: msg.replace(/[*_`]/g, '') })
+            });
+            if (plainRes.ok) {
+              showToast('✈️ Telegram alert delivered (plain text)!', 'success');
+            } else {
+              showToast(`Telegram API error: ${errData.description || 'Check Bot Token & Chat ID'}`, 'error');
+            }
+          }
+        } catch (tgErr) {
+          showToast(`Telegram fetch error: ${tgErr.message}`, 'error');
+        }
+      }
+
+      showToast('Sending test notification...', 'info');
 
       const isMetaAuthError = (status, errCode, errMsg) =>
         status === 401 ||
@@ -5146,17 +5265,19 @@
               showToast(`Meta WhatsApp rich status sent to +${metaOutcome.toDigits}!`, 'success');
             }
           } else if (metaOutcome.isAuthErr) {
-            openSettingsModal();
-            const focusMetaInput = () => {
-              const metaTokInput = document.getElementById('meta-wa-token-input');
-              if (metaTokInput) {
-                metaTokInput.focus();
-                if (typeof metaTokInput.select === 'function') metaTokInput.select();
-              }
-            };
-            focusMetaInput();
-            setTimeout(focusMetaInput, 50);
-            showToast("Meta Access Token expired! Click 'Open Meta API Console ↗' in the modal to copy a fresh or Permanent System User token.", 'error');
+            if (!hasTelegram) {
+              openSettingsModal();
+              const focusMetaInput = () => {
+                const metaTokInput = document.getElementById('meta-wa-token-input');
+                if (metaTokInput) {
+                  metaTokInput.focus();
+                  if (typeof metaTokInput.select === 'function') metaTokInput.select();
+                }
+              };
+              focusMetaInput();
+              setTimeout(focusMetaInput, 50);
+              showToast("Meta Access Token expired! Click 'Open Meta API Console ↗' in the modal to copy a fresh or Permanent System User token.", 'error');
+            }
           } else {
             showToast(`WhatsApp test error: ${metaOutcome.error}`, 'error');
           }
