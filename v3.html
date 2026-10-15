@@ -443,8 +443,8 @@
             <button id="btn-toggle-oi" onclick="toggleStrikeOi()" class="px-2.5 py-1.5 rounded-lg bg-gray-900 hover:bg-gray-800 text-gray-300 border border-gray-750 text-[11px] font-mono flex items-center gap-1">
               <span>📊</span> Strike OI: <span id="lbl-oi-status" class="text-amber-400 font-bold">ON</span>
             </button>
-            <button id="btn-toggle-sl-cap" onclick="toggleSlCap()" class="px-2.5 py-1.5 rounded-lg bg-gray-900 hover:bg-gray-800 text-gray-300 border border-gray-750 text-[11px] font-mono flex items-center gap-1" title="Toggle 2.0x SL bracket cutoff in simulation">
-              <span>🛡️</span> 2x SL Cap: <span id="sl-status-label" class="text-gray-400 font-bold">OFF</span>
+            <button id="btn-toggle-sl-cap" onclick="toggleDynamicBrackets()" class="px-2.5 py-1.5 rounded-lg bg-gray-900 hover:bg-gray-800 text-gray-300 border border-gray-750 text-[11px] font-mono flex items-center gap-1" title="Model dynamic Stop-Loss & Take-Profit order execution in payoff curves">
+              <span>🛡️</span> Dynamic Brackets: <span id="sl-status-label" class="text-gray-400 font-bold">OFF</span>
             </button>
           </div>
         </div>
@@ -3283,9 +3283,15 @@
       const parsed = parseOptionSymbol(p.symbol);
       const ticker = liveTickersBySymbol[p.symbol] || {};
       const entryPx = Number(p.entry_price || p.entry_px || 0);
-      const slTrigger = Number(p.sl_trigger || p.stop_loss_price || (entryPx > 0 ? entryPx * 2 : 0));
       const lots = Number(p.lots || p.size || -500);
       const isLong = lots > 0;
+      const defaultSl = isLong ? (entryPx > 0 ? entryPx * 0.5 : 0) : (entryPx > 0 ? entryPx * 2.0 : 0);
+      const defaultTp = isLong ? (entryPx > 0 ? entryPx * 2.0 : 0) : (entryPx > 0 ? entryPx * 0.5 : 0);
+
+      const slTrigger = Number(p.sl_trigger || p.stop_loss_price || defaultSl);
+      const tpTrigger = Number(p.tp_trigger || p.take_profit_price || defaultTp);
+      const hasSlOrder = Boolean(p.sl_active || p.sl_order_id);
+      const hasTpOrder = Boolean(p.tp_active || p.tp_order_id);
       const multiplier = p.contract_multiplier || (parsed.underlying === 'ETH' ? 0.01 : 0.001);
       const assetUnit = parsed.underlying || 'BTC';
       const cryptoQty = Math.abs(lots) * multiplier;
@@ -3334,6 +3340,9 @@
         cryptoQty,
         entryPx,
         slTrigger,
+        tpTrigger,
+        hasSlOrder,
+        hasTpOrder,
         markPx,
         upnl,
         decayPct,
@@ -3544,7 +3553,8 @@
     // Simulation Scenario & Pro Risk Studio Controls
     let simTimeHoursOverride = null;
     let simIvOffset = 0.0;
-    let simCapAt2xSl = false;
+    let simCapAt2xSl = false; // legacy alias
+    let simDynamicBrackets = false;
     let showStrikeOi = true;
     let isContractsDrawerOpen = false;
     let currentCorridorCohort = 'all'; // 'all' or specific expCode e.g. '271126', '251226'
@@ -3683,18 +3693,23 @@
       renderLivePositions();
     }
 
-    function toggleSlCap() {
-      simCapAt2xSl = !simCapAt2xSl;
+    function toggleDynamicBrackets() {
+      simDynamicBrackets = !simDynamicBrackets;
+      simCapAt2xSl = simDynamicBrackets;
       const lbl = document.getElementById('sl-status-label');
       if (lbl) {
-        lbl.textContent = simCapAt2xSl ? 'ON' : 'OFF';
-        lbl.className = simCapAt2xSl ? 'text-emerald-400 font-bold' : 'text-gray-400 font-bold';
+        lbl.textContent = simDynamicBrackets ? 'ON' : 'OFF';
+        lbl.className = simDynamicBrackets ? 'text-emerald-400 font-bold' : 'text-gray-400 font-bold';
       }
       const kpiSlStatus = document.getElementById('kpi-risk-sl-status');
       if (kpiSlStatus) {
-        kpiSlStatus.textContent = `2x SL Capping: ${simCapAt2xSl ? 'ON' : 'OFF'}`;
+        kpiSlStatus.textContent = `Dynamic Brackets: ${simDynamicBrackets ? 'ON' : 'OFF'}`;
       }
       renderLivePositions();
+    }
+
+    function toggleSlCap() {
+      toggleDynamicBrackets();
     }
 
     // 5. Delta Exchange Pro Risk Studio Corridor & Dual-Curve Payoff Visualizer
@@ -3784,13 +3799,21 @@
               totalCohortNotional += qtyBtc;
               totalCohortUpnl += (p.upnl || 0);
             }
+            const slBadge = p.hasSlOrder
+              ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-emerald-500/15 text-emerald-300 border border-emerald-500/30" title="Active Stop-Loss Order on Delta Exchange">🟢 Live SL: $${p.slTrigger.toFixed(1)}</span>`
+              : `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-gray-800 text-gray-400 border border-gray-700" title="Scheduled Bot Stop-Loss Trigger (2.0x)">⏱️ Bot SL: $${p.slTrigger.toFixed(1)}</span>`;
+
+            const tpBadge = p.hasTpOrder
+              ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-cyan-500/15 text-cyan-300 border border-cyan-500/30" title="Active Take-Profit Order on Delta Exchange">🎯 Live TP: $${p.tpTrigger.toFixed(1)}</span>`
+              : `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-gray-800 text-gray-400 border border-gray-700" title="Scheduled Profit Target (50% Decay)">💡 50% TP: $${p.tpTrigger.toFixed(1)}</span>`;
+
             const row = document.createElement('div');
             row.className = `p-2.5 rounded-lg border text-xs transition flex items-center justify-between ${isSelected ? 'bg-gray-900 border-gray-750 hover:border-gray-650' : 'bg-gray-950/60 border-gray-900 opacity-40'}`;
             row.innerHTML = `
               <div class="flex items-center gap-2.5">
                 <input type="checkbox" ${isSelected ? 'checked' : ''} onchange="toggleCorridorLeg('${p.symbol}', this.checked)" class="w-4 h-4 rounded cursor-pointer text-orange-500 focus:ring-orange-500 bg-gray-950 border-gray-700" />
                 <div>
-                  <div class="font-medium flex items-center gap-1.5">
+                  <div class="font-medium flex items-center gap-1.5 flex-wrap">
                     <span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${p.parsed.isCall ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'bg-purple-500/20 text-purple-400 border border-purple-500/30'}">
                       ${p.parsed.isCall ? 'CALL' : 'PUT'}
                     </span>
@@ -3800,9 +3823,13 @@
                   <div class="text-[11px] text-gray-400 font-mono mt-0.5">
                     Entry $${p.entryPx.toFixed(0)} • Mark $${p.markPx.toFixed(1)} • IV ${((p.ivPct || 38.5)).toFixed(1)}%
                   </div>
+                  <div class="flex items-center gap-1.5 mt-1 flex-wrap">
+                    ${slBadge}
+                    ${tpBadge}
+                  </div>
                 </div>
               </div>
-              <div class="text-right font-mono">
+              <div class="text-right font-mono self-start pt-0.5">
                 <div class="${p.upnl >= 0 ? 'text-emerald-400' : 'text-rose-400'} font-bold text-sm">
                   ${formatMoney(p.upnl, true)}
                 </div>
@@ -3892,8 +3919,8 @@
           const putPnl = (previewLegCredit - pPut) * qty;
           const callPnl = (previewLegCredit - pCall) * qty;
           const maxLoss = -(previewLegCredit * qty);
-          const pnlPut = simCapAt2xSl ? Math.max(maxLoss, putPnl) : putPnl;
-          const pnlCall = simCapAt2xSl ? Math.max(maxLoss, callPnl) : callPnl;
+          const pnlPut = simDynamicBrackets ? Math.max(maxLoss, putPnl) : putPnl;
+          const pnlCall = simDynamicBrackets ? Math.max(maxLoss, callPnl) : callPnl;
           return pnlPut + pnlCall;
         }
         let pnl = 0;
@@ -3902,9 +3929,30 @@
           const intrinsic = p.parsed.isCall ? Math.max(0, S - k) : Math.max(0, k - S);
           const isLong = (p.lots || 0) > 0;
           const qty = p.cryptoQty || p.btcQty || (isEth ? 2.5 : 0.5);
-          const legPnl = isLong ? (intrinsic - p.entryPx) * qty : (p.entryPx - intrinsic) * qty;
-          const maxLoss = -(p.entryPx * qty);
-          pnl += (!isLong && simCapAt2xSl && p.sl_active !== false) ? Math.max(maxLoss, legPnl) : legPnl;
+          let legPnl = isLong ? (intrinsic - p.entryPx) * qty : (p.entryPx - intrinsic) * qty;
+
+          if (simDynamicBrackets) {
+            if (!isLong) {
+              if (p.slTrigger > 0 && intrinsic >= p.slTrigger) {
+                const maxLoss = -(p.slTrigger - p.entryPx) * qty;
+                legPnl = Math.max(maxLoss, legPnl);
+              }
+              if (p.hasTpOrder && p.tpTrigger > 0 && intrinsic <= p.tpTrigger) {
+                const maxGain = (p.entryPx - p.tpTrigger) * qty;
+                legPnl = Math.min(maxGain, legPnl);
+              }
+            } else {
+              if (p.slTrigger > 0 && intrinsic <= p.slTrigger) {
+                const maxLoss = -(p.entryPx - p.slTrigger) * qty;
+                legPnl = Math.max(maxLoss, legPnl);
+              }
+              if (p.hasTpOrder && p.tpTrigger > 0 && intrinsic >= p.tpTrigger) {
+                const maxGain = (p.tpTrigger - p.entryPx) * qty;
+                legPnl = Math.min(maxGain, legPnl);
+              }
+            }
+          }
+          pnl += legPnl;
         }
         return pnl;
       };
@@ -3936,9 +3984,30 @@
           const optVal = bsPrice(S, k, effectiveIv, T_years, p.parsed.isCall);
           const isLong = (p.lots || 0) > 0;
           const qty = p.cryptoQty || p.btcQty || (isEth ? 2.5 : 0.5);
-          const legPnl = isLong ? (optVal - p.entryPx) * qty : (p.entryPx - optVal) * qty;
-          const maxLoss = -(p.entryPx * qty);
-          pnl += (!isLong && simCapAt2xSl && p.sl_active !== false) ? Math.max(maxLoss, legPnl) : legPnl;
+          let legPnl = isLong ? (optVal - p.entryPx) * qty : (p.entryPx - optVal) * qty;
+
+          if (simDynamicBrackets) {
+            if (!isLong) {
+              if (p.slTrigger > 0 && optVal >= p.slTrigger) {
+                const maxLoss = -(p.slTrigger - p.entryPx) * qty;
+                legPnl = Math.max(maxLoss, legPnl);
+              }
+              if (p.hasTpOrder && p.tpTrigger > 0 && optVal <= p.tpTrigger) {
+                const maxGain = (p.entryPx - p.tpTrigger) * qty;
+                legPnl = Math.min(maxGain, legPnl);
+              }
+            } else {
+              if (p.slTrigger > 0 && optVal <= p.slTrigger) {
+                const maxLoss = -(p.entryPx - p.slTrigger) * qty;
+                legPnl = Math.max(maxLoss, legPnl);
+              }
+              if (p.hasTpOrder && p.tpTrigger > 0 && optVal >= p.tpTrigger) {
+                const maxGain = (p.tpTrigger - p.entryPx) * qty;
+                legPnl = Math.min(maxGain, legPnl);
+              }
+            }
+          }
+          pnl += legPnl;
         }
         return pnl;
       };
@@ -4023,13 +4092,45 @@
         if (el) el.textContent = txt;
       };
 
+      let totalBracketMaxLoss = 0;
+      let hasUncappedShortLeg = false;
+      let hasActiveBracketOrder = false;
+
+      activePositions.forEach(p => {
+        const isLong = (p.lots || 0) > 0;
+        const qty = p.cryptoQty || p.btcQty || (isEth ? 2.5 : 0.5);
+        if (!isLong) {
+          if (p.slTrigger > 0) {
+            const legLoss = (p.slTrigger - p.entryPx) * qty;
+            totalBracketMaxLoss += Math.max(0, legLoss);
+            if (p.hasSlOrder) hasActiveBracketOrder = true;
+          } else {
+            hasUncappedShortLeg = true;
+          }
+        } else {
+          totalBracketMaxLoss += (p.entryPx * qty);
+        }
+      });
+
+      let maxLossDisplay = 'Unlimited (Tail Risk)';
+      if (simDynamicBrackets) {
+        if (hasUncappedShortLeg) {
+          maxLossDisplay = `-$${Math.round(totalBracketMaxLoss).toLocaleString()} (Partial Cap)`;
+        } else {
+          maxLossDisplay = `-$${Math.round(totalBracketMaxLoss).toLocaleString()} (Dynamic Brackets)`;
+        }
+      } else {
+        const hasShorts = activePositions.some(p => (p.lots || 0) < 0);
+        maxLossDisplay = (hasUncappedShortLeg || hasShorts) ? 'Unlimited (Tail Risk)' : `-$${Math.round(totalBracketMaxLoss).toLocaleString()}`;
+      }
+
       const bufferPts = callBreakeven - putBreakeven;
       const bufferPct = ((bufferPts / spotPx) * 100).toFixed(1);
 
       setSafeText('kpi-risk-max-profit', `+$${Math.round(maxExpiryPnl).toLocaleString()} USD`);
       setSafeText('kpi-risk-target-profit', `Target Date: +$${Math.round(targetPnlAtEval).toLocaleString()}`);
-      setSafeText('kpi-risk-max-loss', simCapAt2xSl ? `-$${Math.round(Math.abs(maxExpiryPnl)).toLocaleString()} (Capped)` : 'Unlimited');
-      setSafeText('kpi-risk-sl-status', `2x SL Capping: ${simCapAt2xSl ? 'ON' : 'OFF'}`);
+      setSafeText('kpi-risk-max-loss', maxLossDisplay);
+      setSafeText('kpi-risk-sl-status', `Dynamic Brackets: ${simDynamicBrackets ? (hasActiveBracketOrder ? 'ON (Live Orders)' : 'ON (Bot SL/TP)') : 'OFF'}`);
       setSafeText('kpi-risk-breakevens', `$${Math.round(putBreakeven).toLocaleString()} — $${Math.round(callBreakeven).toLocaleString()}`);
       setSafeText('kpi-risk-safe-range', `${Math.round(bufferPts).toLocaleString()} pts (${bufferPct}%)`);
 
@@ -4130,8 +4231,8 @@
 
       // Vertical Scaling
       const maxPnl = Math.max(50, Math.ceil(maxExpiryPnl * 1.15 / 50) * 50);
-      const minPnl = simCapAt2xSl
-        ? Math.min(-50, -Math.abs(maxExpiryPnl) * 1.2)
+      const minPnl = simDynamicBrackets
+        ? Math.min(-50, -Math.abs(totalBracketMaxLoss || maxExpiryPnl) * 1.15)
         : Math.min(-100, Math.max(Math.floor(minExpiryPnl * 1.05 / 50) * 50, -6000));
       const pnlSpan = Math.max(40, maxPnl - minPnl);
 
@@ -4438,7 +4539,7 @@
               </div>
             </div>
             <div class="text-[9px] mt-1.5 pt-1 border-t border-gray-800 text-gray-500">
-              ${isFlat ? '🛡️ Preview Model (Flat Capital Reserve)' : (isSafe ? '🟢 Inside Safe Corridor' : (simCapAt2xSl ? '🛡️ Protected by 2.0x SL' : '🔴 Unhedged Tail Risk'))}
+              ${isFlat ? '🛡️ Preview Model (Flat Capital Reserve)' : (isSafe ? '🟢 Inside Safe Corridor' : (simDynamicBrackets ? '🛡️ Protected by Dynamic Brackets' : '🔴 Unhedged Tail Risk'))}
             </div>
           `;
         });
