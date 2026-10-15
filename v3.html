@@ -1287,7 +1287,11 @@
           </h2>
           <p class="text-xs text-gray-400 mt-0.5">Dispatch workflows, manage dual-main release branches, toggle live execution, and inspect edge scheduler health.</p>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span id="orchestrator-tg-badge" onclick="openSettingsModal()" class="px-2.5 py-1 rounded-md text-xs font-bold mono bg-sky-500/15 text-sky-300 border border-sky-500/30 flex items-center gap-1.5 cursor-pointer shadow-sm" title="Telegram Alerts Status">
+            <span class="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse"></span>
+            <span>✈️ TG: Connected (@ajay_delta_strangle_bot)</span>
+          </span>
           <span id="orchestrator-bot-mode-badge" class="px-2.5 py-1 rounded-md text-xs font-bold mono bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
             BOT_MODE: LIVE
           </span>
@@ -1321,8 +1325,9 @@
             <div>
               <label class="block text-[11px] text-gray-400 mb-1">Execution Mode</label>
               <select id="dispatch-mode-select" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-2.5 py-1.5 text-xs text-gray-200 mono">
+                <option value="heartbeat">heartbeat (09:00 AM IST Morning Health Heartbeat)</option>
                 <option value="sync-dashboard">sync-dashboard (Safe Cloud P&L Sync)</option>
-                <option value="test-whatsapp">test-whatsapp (Send WhatsApp Status)</option>
+                <option value="test-whatsapp">test-whatsapp (Send WhatsApp & Telegram Status)</option>
                 <option value="check-sl">check-sl (Intraday 2.0x SL Check)</option>
                 <option value="dry-run">dry-run (Preview Strikes Without Orders)</option>
                 <option value="verify-auth">verify-auth (Test Delta API & Proxy)</option>
@@ -1728,14 +1733,32 @@
 
     function showToast(msg, type = 'info') {
       const banner = document.getElementById('toast-banner');
-      banner.textContent = msg;
+      if (!banner) return;
+
+      // Intelligent Error Interceptor: Map cryptic API error codes to clear, actionable guidance
+      let cleanMsg = msg;
+      if (typeof msg === 'string') {
+        if (msg.includes('135000') || msg.includes('OAuthException') || msg.includes('Cannot parse message') || msg.includes('Unsupported post request')) {
+          cleanMsg = '⚠️ WhatsApp Cloud API: Token expired or template unapproved. Telegram alerts (@ajay_delta_strangle_bot) are active and recommended.';
+          type = 'error';
+        } else if (msg.includes('Bad credentials') || (msg.includes('401') && (msg.includes('GitHub') || msg.includes('token')))) {
+          cleanMsg = '⚠️ GitHub PAT Invalid or Expired: Please update your GitHub PAT in Settings ⚙️.';
+          type = 'error';
+        } else if (msg.includes('Resource not accessible by personal access token') || msg.includes('403')) {
+          cleanMsg = '⚠️ GitHub PAT Permissions: Please ensure your PAT has "repo" (variables) and "workflow" (actions) write permissions.';
+          type = 'error';
+        }
+      }
+
+      banner.textContent = cleanMsg;
       banner.className = `fixed bottom-5 right-5 z-50 max-w-md px-4 py-3 rounded-xl shadow-2xl border text-xs font-medium transition-all ${
         type === 'success' ? 'bg-emerald-950/90 text-emerald-300 border-emerald-500/40' :
         type === 'error' ? 'bg-rose-950/90 text-rose-300 border-rose-500/40' :
+        type === 'warning' ? 'bg-amber-950/90 text-amber-300 border-amber-500/40' :
         'bg-gray-900/90 text-gray-200 border-gray-700'
       }`;
       banner.classList.remove('hidden');
-      setTimeout(() => banner.classList.add('hidden'), 4500);
+      setTimeout(() => banner.classList.add('hidden'), 5500);
     }
 
     function toggleActionMenu() {
@@ -2925,6 +2948,21 @@
             ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
             : 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
         }`;
+      }
+
+      // Telegram Status Badge
+      const tgBadge = document.getElementById('orchestrator-tg-badge');
+      if (tgBadge) {
+        const hasTg = Boolean(getSavedTgBotToken() && getSavedTgChatId());
+        if (hasTg) {
+          tgBadge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse"></span><span>✈️ TG: Connected (@ajay_delta_strangle_bot)</span>';
+          tgBadge.className = 'px-2.5 py-1 rounded-md text-xs font-bold mono bg-sky-500/15 text-sky-300 border border-sky-500/30 flex items-center gap-1.5 cursor-pointer shadow-sm';
+          tgBadge.title = 'Telegram alerts connected and verified';
+        } else {
+          tgBadge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span><span>✈️ TG: Not Configured</span>';
+          tgBadge.className = 'px-2.5 py-1 rounded-md text-xs font-bold mono bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1.5 cursor-pointer shadow-sm';
+          tgBadge.title = 'Click to configure Telegram Bot Token & Chat ID in Settings';
+        }
       }
 
       // BOT_LOTS Input
@@ -4644,6 +4682,7 @@
       }
 
       closeSettingsModal();
+      updateOverviewUI();
       showToast('Settings saved successfully across browser & GitHub!', 'success');
     }
 
@@ -4663,6 +4702,7 @@
       if (tgTokInput) tgTokInput.value = '';
       const tgCidInput = document.getElementById('input-tg-chat-id');
       if (tgCidInput) tgCidInput.value = '';
+      updateOverviewUI();
       showToast('Credentials cleared from browser.', 'info');
     }
 
