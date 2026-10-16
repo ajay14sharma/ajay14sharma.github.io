@@ -2193,7 +2193,7 @@
       </div>
 
       <!-- Closed Orders & Fills Table -->
-      <div class="flex-1 overflow-y-auto min-h-0 border border-gray-800 rounded-lg">
+      <div class="flex-1 overflow-auto min-h-0 border border-gray-800 rounded-lg">
         <table class="w-full text-left text-xs">
           <thead class="sticky top-0 bg-[#111827] border-b border-gray-800 text-gray-400 font-semibold shadow-sm z-10">
             <tr>
@@ -3819,15 +3819,10 @@
     }
 
     function formatMoney(usdVal, showSign = false) {
-      if (usdVal === null || usdVal === undefined || isNaN(usdVal)) return currentCurrency === 'INR' ? '₹0' : '$0.00';
       if (currentCurrency === 'INR') {
-        const inr = Math.round(usdVal * fxRate);
-        const inrSign = inr < 0 ? '-' : (showSign && inr > 0 ? '+' : '');
-        return `${inrSign}₹${Math.abs(inr).toLocaleString('en-IN')}`;
+        return formatInr(usdVal, showSign);
       }
-      const rounded = Math.round(usdVal * 100) / 100;
-      const usdSign = rounded < 0 ? '-' : (showSign && rounded > 0 ? '+' : '');
-      return `${usdSign}$${Math.abs(usdVal).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      return formatUsd(usdVal, showSign);
     }
 
     // 2. Fetch Data from Cloudflare Edge KV & Delta Exchange
@@ -4273,6 +4268,10 @@
       if (rawSid) {
         if (rawSid === 'btc_condor' || rawSid === 'condor') return 'regime_condor';
         if (rawSid === 'trend_breakout' || rawSid === 'btc_trend' || rawSid === 'trend') return 'btc_trend_breakout';
+        if (rawSid === 'btc_1dte' || rawSid === 'strangle' || rawSid === 'btc_strangle') return 'btc_1dte';
+        if (rawSid === 'eth_1dte' || rawSid === 'eth' || rawSid === 'eth_strangle') return 'eth_1dte';
+        if (rawSid === 'btc_0dte' || rawSid === '0dte' || rawSid === 'intraday' || rawSid === 'btc_intraday') return 'btc_0dte';
+        if (rawSid === 'btc_leaps' || rawSid === 'leaps') return 'btc_leaps';
         return rawSid;
       }
       const cid = String(item.client_order_id || '').toUpperCase();
@@ -6126,6 +6125,11 @@
       for (const d of daily) {
         if (d.date && d.date.length >= 7) monthSet.add(d.date.slice(0, 7));
       }
+      const allAudit = (dashboardState && Array.isArray(dashboardState.audit_orders)) ? dashboardState.audit_orders : [];
+      for (const o of allAudit) {
+        const dStr = o.date_ist || formatIstDateTime(o.created_at || o.updated_at, '').slice(0, 10);
+        if (dStr && dStr.length >= 7) monthSet.add(dStr.slice(0, 7));
+      }
       const nowMonth = new Date().toISOString().slice(0, 7);
       monthSet.add(nowMonth);
       if (currentCalendarMonth) {
@@ -6198,8 +6202,12 @@
         const isLiveDate = dateStr === latestSyncDate && hasOpenLegs;
         const hasAuditOrders = auditDatesSet.has(dateStr);
 
-        if (info) {
-          const net = Number(info.net_pnl_usd || 0);
+        const dayOrders = (!info && hasAuditOrders) ? allAudit.filter(o => (o.date_ist || formatIstDateTime(o.created_at || o.updated_at, '').slice(0, 10)) === dateStr) : [];
+        const net = info ? Number(info.net_pnl_usd || 0) : (dayOrders.length > 0 ? dayOrders.reduce((sum, o) => sum + Number((o.pnl_usd !== undefined && o.pnl_usd !== null && Number(o.pnl_usd) !== 0) ? o.pnl_usd : (o.net_pnl_usd || 0)), 0) : 0);
+        const cf = info ? Number(info.cashflow_usd || 0) : 0;
+        const trades = info ? Number(info.closed_orders_count || 0) : dayOrders.length;
+
+        if (info || (hasAuditOrders && dayOrders.length > 0)) {
           monthNet += net;
           if (net > 0) {
             monthWinsCount++;
@@ -6218,11 +6226,6 @@
             </div>
           `);
         } else {
-          const dayOrders = (!info && hasAuditOrders) ? allAudit.filter(o => (o.date_ist || formatIstDateTime(o.created_at || o.updated_at, '').slice(0, 10)) === dateStr) : [];
-          const net = info ? Number(info.net_pnl_usd || 0) : dayOrders.reduce((sum, o) => sum + Number(o.pnl_usd || 0), 0);
-          const cf = info ? Number(info.cashflow_usd || 0) : 0;
-          const trades = info ? Number(info.closed_orders_count || 0) : dayOrders.length;
-
           const isGreen = net >= 0;
           const bgCls = isGreen
             ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400 hover:border-emerald-400/50 hover:bg-emerald-500/20'
@@ -6252,7 +6255,9 @@
       }
       const grossBreakdownEl = document.getElementById('calendar-gross-breakdown');
       if (grossBreakdownEl) {
-        grossBreakdownEl.textContent = `+${formatMoney(monthGrossWinsUsd, false)} / -${formatMoney(monthGrossLossesUsd, false)}`;
+        const winsFormatted = monthGrossWinsUsd > 0 ? `+${formatMoney(monthGrossWinsUsd, false)}` : formatMoney(0, false);
+        const lossesFormatted = monthGrossLossesUsd > 0 ? `-${formatMoney(monthGrossLossesUsd, false)}` : formatMoney(0, false);
+        grossBreakdownEl.textContent = `${winsFormatted} / ${lossesFormatted}`;
       }
 
       const monthLabel = new Date(year, month - 1, 1).toLocaleString('en-US', { month: 'short', year: 'numeric' });
@@ -6304,25 +6309,25 @@
 
       // Filter closed/filled orders strictly for that calendar date (IST)
       const dayOrders = allAudit.filter(o => {
-        const orderDate = (o.date_ist || (o.updated_at ? new Date(o.updated_at).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }) : '') || (o.created_at ? new Date(o.created_at).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }) : '')).slice(0, 10);
+        const orderDate = (o.date_ist || formatIstDateTime(o.created_at || o.updated_at, '')).slice(0, 10);
         return orderDate === dateStr;
       });
 
       const closedOrders = dayOrders.filter(o => {
         const st = String(o.audit_status || o.state || '').toUpperCase();
-        const fill = Number(o.avg_fill_price || o.price || 0);
-        const pnl = Number(o.pnl_usd || 0);
+        const fill = Number((o.avg_fill_price && Number(o.avg_fill_price) > 0) ? o.avg_fill_price : (o.price || 0));
+        const pnl = Number((o.pnl_usd !== undefined && o.pnl_usd !== null && Number(o.pnl_usd) !== 0) ? o.pnl_usd : (o.net_pnl_usd || o.realized_pnl || 0));
         if (st.includes('CANCEL') && fill === 0 && pnl === 0) return false;
-        return st === 'CLOSED' || st === 'FILLED' || st === 'SUCCESS' || fill > 0 || pnl !== 0;
+        return st === 'CLOSED' || st === 'FILLED' || st === 'SUCCESS' || st.includes('TRIGGERED') || fill > 0 || pnl !== 0;
       });
       const displayOrders = closedOrders;
 
       // Net PnL and Fees
-      let netUsd = dayInfo ? Number(dayInfo.net_pnl_usd || 0) : displayOrders.reduce((sum, o) => sum + Number(o.pnl_usd || o.net_pnl_usd || 0), 0);
+      let netUsd = dayInfo ? Number(dayInfo.net_pnl_usd || 0) : displayOrders.reduce((sum, o) => sum + Number((o.pnl_usd !== undefined && o.pnl_usd !== null && Number(o.pnl_usd) !== 0) ? o.pnl_usd : (o.net_pnl_usd || 0)), 0);
       let feesUsd = dayInfo ? Math.abs(Number(dayInfo.commissions_usd || 0)) : displayOrders.reduce((sum, o) => sum + Math.abs(Number(o.paid_commission || o.fee || 0)), 0);
-      let legCount = (dayInfo && dayInfo.closed_orders_count !== undefined && dayInfo.closed_orders_count !== null) ? dayInfo.closed_orders_count : displayOrders.length;
+      let legCount = (dayInfo && dayInfo.closed_orders_count !== undefined && dayInfo.closed_orders_count !== null) ? Math.max(Number(dayInfo.closed_orders_count), displayOrders.length) : displayOrders.length;
       let netInr = Math.round(netUsd * fxRate);
-      const formattedInr = netInr < 0 ? `-₹${Math.abs(netInr).toLocaleString('en-IN')}` : (netInr > 0 ? `+₹${netInr.toLocaleString('en-IN')}` : '₹0');
+      const formattedInr = formatInr(netUsd, true);
 
       // Date Header & Badge
       let formattedDate = dateStr;
@@ -6386,7 +6391,7 @@
           displayOrders.forEach(o => {
             const side = String(o.side || o.action || (o.stop_order_type ? 'BUY (SL)' : 'SELL')).toUpperCase();
             const price = Number((o.avg_fill_price && o.avg_fill_price > 0) ? o.avg_fill_price : (o.stop_price || o.limit_price || o.price || 0));
-            const pnl = Number(o.pnl_usd || 0);
+            const pnl = Number((o.pnl_usd !== undefined && o.pnl_usd !== null && Number(o.pnl_usd) !== 0) ? o.pnl_usd : (o.net_pnl_usd || o.realized_pnl || 0));
             const timeStr = formatIstDateTime(o.created_at || o.updated_at, o.date_ist);
             const lots = o.size || 500;
             const sId = resolveStrategyId(o);
@@ -6503,7 +6508,7 @@
       const rawReason = String(o.reason || o.cancellation_reason || '').toUpperCase();
       const isStop = Boolean(o.stop_order_type) || rawReason.includes('STOP-LOSS TRIGGERED') || rawReason.includes('TRIGGERED');
 
-      if (isStop && (rawStatus.includes('SUCCESS') || rawStatus.includes('FILLED') || rawStatus.includes('CLOSED') || rawStatus.includes('TRIGGERED'))) {
+      if (rawStatus.includes('TRIGGERED') || (isStop && (rawStatus.includes('SUCCESS') || rawStatus.includes('FILLED') || rawStatus.includes('CLOSED')))) {
         return '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 uppercase tracking-wider">TRIGGERED</span>';
       }
       if (rawStatus.includes('SUCCESS') || rawStatus.includes('FILLED') || rawStatus === 'CLOSED') {
@@ -6561,7 +6566,11 @@
                              (sId === 'btc_trend_breakout' || sId === 'trend_breakout');
           const matchStrangle = (currentAuditStrategy === 'btc_1dte' || currentAuditStrategy === 'strangle') &&
                                 (sId === 'btc_1dte' || sId === 'strangle' || sId === 'btc_strangle');
-          if (sId !== currentAuditStrategy && !matchCondor && !matchTrend && !matchStrangle) return false;
+          const matchEth = (currentAuditStrategy === 'eth_1dte' || currentAuditStrategy === 'eth') &&
+                           (sId === 'eth_1dte' || sId === 'eth' || sId === 'eth_strangle');
+          const match0Dte = (currentAuditStrategy === 'btc_0dte' || currentAuditStrategy === '0dte') &&
+                            (sId === 'btc_0dte' || sId === '0dte' || sId === 'intraday');
+          if (sId !== currentAuditStrategy && !matchCondor && !matchTrend && !matchStrangle && !matchEth && !match0Dte) return false;
         }
         // 1. Status filter
         if (currentAuditStatusTab !== 'ALL') {
@@ -6634,7 +6643,7 @@
           price,
           o.stop_price || '',
           fee,
-          o.pnl_usd || 0,
+          Number((o.pnl_usd !== undefined && o.pnl_usd !== null && Number(o.pnl_usd) !== 0) ? o.pnl_usd : (o.net_pnl_usd || o.realized_pnl || 0)),
           `"${safeReason}"`
         ];
       });
@@ -6676,7 +6685,7 @@
         const side = String(o.side || o.action || (o.stop_order_type ? 'BUY (SL)' : 'SELL')).toUpperCase();
         const price = Number((o.avg_fill_price && o.avg_fill_price > 0) ? o.avg_fill_price : (o.stop_price || o.limit_price || o.price || 0));
         const fee = Number(o.paid_commission ? -Math.abs(o.paid_commission) : (o.fee || 0));
-        const pnl = Number(o.pnl_usd || 0);
+        const pnl = Number((o.pnl_usd !== undefined && o.pnl_usd !== null && Number(o.pnl_usd) !== 0) ? o.pnl_usd : (o.net_pnl_usd || o.realized_pnl || 0));
         const dateStr = formatIstDateTime(o.created_at || o.updated_at, o.date_ist);
         const lots = o.size || 500;
         const multiplier = o.contract_multiplier || (String(o.symbol || '').includes('-ETH-') ? 0.01 : 0.001);
