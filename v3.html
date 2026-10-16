@@ -808,9 +808,9 @@
             <h2 class="font-semibold text-gray-100 text-sm">📈 Cumulative Performance &amp; Strategy Attribution Studio</h2>
             <p class="text-xs text-gray-400 mt-0.5">Realized &amp; Unrealized Multi-Strategy Equity Curves and Institutional Metrics</p>
           </div>
-          <div class="flex flex-wrap items-center gap-2">
+          <div class="flex flex-wrap items-center gap-2 max-w-full">
             <!-- Strategy Filter Pills -->
-            <div class="inline-flex rounded-lg bg-gray-900 p-0.5 border border-gray-800 text-xs font-medium">
+            <div class="flex flex-wrap items-center gap-1 bg-gray-900 p-1 rounded-lg border border-gray-800 text-xs font-medium">
               <button id="perf-strat-all" onclick="setEquityStrategyFilter('all')" class="px-2.5 py-1 rounded-md bg-blue-600 text-white font-semibold shadow-sm transition">All (Portfolio)</button>
               <button id="perf-strat-strangle" onclick="setEquityStrategyFilter('btc_1dte')" class="px-2.5 py-1 rounded-md text-gray-400 hover:text-gray-200 transition">BTC 1DTE</button>
               <button id="perf-strat-eth" onclick="setEquityStrategyFilter('eth_1dte')" class="px-2.5 py-1 rounded-md text-gray-400 hover:text-gray-200 transition">ETH 1DTE</button>
@@ -3642,15 +3642,21 @@
       renderLivePositions();
     }
 
-    function triggerAttachSlOnly(symbol) {
+    function triggerAttachSlOnly(symbol, strategyId) {
       const modeSelect = document.getElementById('dispatch-mode-select');
       if (modeSelect) modeSelect.value = 'attach-sl-only';
       const stratSelect = document.getElementById('dispatch-strategy-select');
-      if (stratSelect && symbol) {
-        if (symbol.includes('-ETH-')) {
-          stratSelect.value = 'eth_1dte';
-        } else {
-          stratSelect.value = 'btc_1dte';
+      if (stratSelect) {
+        if (strategyId) {
+          stratSelect.value = strategyId;
+        } else if (symbol) {
+          if (symbol.includes('-ETH-')) {
+            stratSelect.value = 'eth_1dte';
+          } else {
+            stratSelect.value = 'btc_1dte';
+          }
+        } else if (currentPositionSleeve && currentPositionSleeve !== 'all' && currentPositionSleeve !== 'btc_leaps') {
+          stratSelect.value = currentPositionSleeve === 'condor' ? 'regime_condor' : currentPositionSleeve;
         }
       }
       if (symbol) {
@@ -3987,7 +3993,7 @@
 
       // BOT_LOTS Input
       const botLotsInput = document.getElementById('bot-lots-input');
-      if (botLotsInput && !botLotsInput.dataset.edited) {
+      if (botLotsInput && !botLotsInput.dataset?.edited) {
         botLotsInput.value = gh.bot_lots || 500;
       }
 
@@ -4390,7 +4396,7 @@
               <div class="w-full h-1.5 rounded-full bg-gray-800 overflow-hidden">
                 <div class="h-full bg-rose-500 rounded-full animate-pulse" style="width: 100%"></div>
               </div>
-              <button onclick="triggerAttachSlOnly('${p.symbol}')" class="w-full py-1 px-2 rounded bg-rose-600 hover:bg-rose-500 text-white font-bold text-[10px] flex items-center justify-center gap-1 shadow-md transition" title="Trigger workflow dispatch in attach-sl-only mode">
+              <button onclick="triggerAttachSlOnly('${p.symbol}', '${p.strategy_id || ''}')" class="w-full py-1 px-2 rounded bg-rose-600 hover:bg-rose-500 text-white font-bold text-[10px] flex items-center justify-center gap-1 shadow-md transition" title="Trigger workflow dispatch in attach-sl-only mode">
                 <span>🛡️</span> Attach SL
               </button>
             </div>
@@ -4445,7 +4451,7 @@
               <div class="flex items-center justify-between text-[9px]">
                 <span class="px-1 py-0.2 rounded border text-[9px] font-semibold ${bufBadgeCls}">${bufLabel}</span>
                 ${bufferPct < 10 ? `
-                  <button onclick="triggerAttachSlOnly('${p.symbol}')" class="px-1.5 py-0.5 rounded bg-rose-600 hover:bg-rose-500 text-white font-bold text-[9px] transition">
+                  <button onclick="triggerAttachSlOnly('${p.symbol}', '${p.strategy_id || ''}')" class="px-1.5 py-0.5 rounded bg-rose-600 hover:bg-rose-500 text-white font-bold text-[9px] transition">
                     🛡️ Attach SL
                   </button>` : ''}
               </div>
@@ -5651,7 +5657,9 @@
           // Check audit orders for this strategy
           const matchingOrders = (dashboardState?.audit_orders || []).filter(o => {
             const sid = resolveStrategyId(o);
-            return sid === currentEquityStrategy && (o.state || '').toLowerCase() === 'closed';
+            const matchCondor = (currentEquityStrategy === 'regime_condor' || currentEquityStrategy === 'btc_condor') &&
+                                (sid === 'regime_condor' || sid === 'btc_condor');
+            return (sid === currentEquityStrategy || matchCondor) && (o.state || '').toLowerCase() === 'closed';
           });
           if (matchingOrders.length > 0) {
             const dayMap = {};
@@ -6106,9 +6114,13 @@
         // 0. Strategy filter
         const sId = resolveStrategyId(o);
         if (currentAuditStrategy !== 'ALL') {
-          if (sId !== currentAuditStrategy) return false;
+          const matchCondor = (currentAuditStrategy === 'regime_condor' || currentAuditStrategy === 'btc_condor') &&
+                              (sId === 'regime_condor' || sId === 'btc_condor');
+          if (sId !== currentAuditStrategy && !matchCondor) return false;
         } else if (currentStrategy !== 'all') {
-          if (sId !== currentStrategy) return false;
+          const matchCondor = (currentStrategy === 'regime_condor' || currentStrategy === 'btc_condor') &&
+                              (sId === 'regime_condor' || sId === 'btc_condor');
+          if (sId !== currentStrategy && !matchCondor) return false;
         }
         // 1. Status filter
         if (currentAuditStatusTab !== 'ALL') {
@@ -6204,7 +6216,7 @@
         const assetUnit = String(o.symbol || '').includes('-ETH-') ? 'ETH' : 'BTC';
         const cryptoQty = (Math.abs(lots) * multiplier).toFixed(3);
 
-        const sId = o.strategy_id || (String(o.symbol || '').includes('-ETH-') ? 'eth_1dte' : 'btc_1dte');
+        const sId = resolveStrategyId(o);
         let stratBadge = '<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">Strangle</span>';
         if (sId === 'regime_condor' || sId === 'btc_condor') {
           stratBadge = '<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-500/10 text-purple-400 border border-purple-500/20">Condor</span>';
@@ -6212,6 +6224,10 @@
           stratBadge = '<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Trend</span>';
         } else if (sId === 'eth_1dte') {
           stratBadge = '<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">ETH Strangle</span>';
+        } else if (sId === 'btc_0dte') {
+          stratBadge = '<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">0DTE Intraday</span>';
+        } else if (sId === 'btc_leaps') {
+          stratBadge = '<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">LEAPS</span>';
         }
 
         const isBuy = side.includes('BUY');
@@ -6353,6 +6369,9 @@
         return;
       }
       if (mode === 'live' && !confirm(`⚠️ Trigger LIVE ${strat} execution (${lotsStr} lots) right now? Real orders will be sent to Delta Exchange!`)) {
+        return;
+      }
+      if (mode === 'attach-sl-only' && !confirm(`🛡️ Dispatch 2.0x SL Bracket Attachment (${strat})?\n\nThis will trigger GitHub Actions to audit open positions and attach exchange-native 2.0x Stop-Loss bracket orders on Delta Exchange.`)) {
         return;
       }
       showToast(`Dispatching workflow to branch '${getActiveBranch()}' (mode: ${mode}, strat: ${strat})...`, 'info');
