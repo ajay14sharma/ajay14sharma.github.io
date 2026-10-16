@@ -3804,15 +3804,30 @@
       renderAuditLedger();
     }
 
-    function formatMoney(usdVal, showSign = false) {
+    function formatUsd(usdVal, showSign = false) {
       if (usdVal === null || usdVal === undefined || isNaN(usdVal)) return '$0.00';
-      const sign = showSign && usdVal > 0 ? '+' : '';
+      const rounded = Math.round(usdVal * 100) / 100;
+      const usdSign = rounded < 0 ? '-' : (showSign && rounded > 0 ? '+' : '');
+      return `${usdSign}$${Math.abs(usdVal).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+
+    function formatInr(usdVal, showSign = false) {
+      if (usdVal === null || usdVal === undefined || isNaN(usdVal)) return '₹0';
+      const inr = Math.round(usdVal * fxRate);
+      const inrSign = inr < 0 ? '-' : (showSign && inr > 0 ? '+' : '');
+      return `${inrSign}₹${Math.abs(inr).toLocaleString('en-IN')}`;
+    }
+
+    function formatMoney(usdVal, showSign = false) {
+      if (usdVal === null || usdVal === undefined || isNaN(usdVal)) return currentCurrency === 'INR' ? '₹0' : '$0.00';
       if (currentCurrency === 'INR') {
         const inr = Math.round(usdVal * fxRate);
         const inrSign = inr < 0 ? '-' : (showSign && inr > 0 ? '+' : '');
         return `${inrSign}₹${Math.abs(inr).toLocaleString('en-IN')}`;
       }
-      return `${sign}$${usdVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      const rounded = Math.round(usdVal * 100) / 100;
+      const usdSign = rounded < 0 ? '-' : (showSign && rounded > 0 ? '+' : '');
+      return `${usdSign}$${Math.abs(usdVal).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
 
     // 2. Fetch Data from Cloudflare Edge KV & Delta Exchange
@@ -5773,7 +5788,7 @@
           if (matchingOrders.length > 0) {
             const dayMap = {};
             matchingOrders.forEach(o => {
-              const d = o.date_ist || (o.updated_at ? o.updated_at.slice(0, 10) : (o.created_at ? o.created_at.slice(0, 10) : ''));
+              const d = o.date_ist || (formatIstDateTime(o.updated_at || o.created_at, '').slice(0, 10));
               if (!d) return;
               if (!dayMap[d]) dayMap[d] = { date: d, net: 0, trades: 0 };
               const pnl = Number(o.pnl_usd || 0);
@@ -5919,11 +5934,14 @@
       }
       if (kpiNetInr) {
         if (isStandby) {
-          kpiNetInr.textContent = 'Model: ₹' + Math.round((standbyMeta?.total_net || 0) * fxRate).toLocaleString('en-IN');
+          const sNet = standbyMeta?.total_net || 0;
+          kpiNetInr.textContent = 'Model: ' + (sNet * fxRate < 0 ? '-' : '') + '₹' + Math.abs(Math.round(sNet * fxRate)).toLocaleString('en-IN');
         } else if (currentCurrency === 'INR') {
           kpiNetInr.textContent = `($${combinedNetPnl >= 0 ? '+' : ''}${combinedNetPnl.toFixed(2)})${liveUpnl !== 0 ? ` • uPnL: ${formatMoney(liveUpnl, true)}` : ''}`;
         } else {
-          kpiNetInr.textContent = `₹${Math.round(combinedNetPnl * fxRate).toLocaleString('en-IN')}${liveUpnl !== 0 ? ` • uPnL: ${formatMoney(liveUpnl, true)}` : ''}`;
+          const inrVal = Math.round(combinedNetPnl * fxRate);
+          const inrSign = inrVal < 0 ? '-' : '';
+          kpiNetInr.textContent = `${inrSign}₹${Math.abs(inrVal).toLocaleString('en-IN')}${liveUpnl !== 0 ? ` • uPnL: ${formatMoney(liveUpnl, true)}` : ''}`;
         }
       }
       if (kpiSharpe) {
@@ -6110,6 +6128,9 @@
       }
       const nowMonth = new Date().toISOString().slice(0, 7);
       monthSet.add(nowMonth);
+      if (currentCalendarMonth) {
+        monthSet.add(currentCalendarMonth);
+      }
       availableMonths = Array.from(monthSet).sort();
       if (!currentCalendarMonth) {
         currentCalendarMonth = availableMonths[availableMonths.length - 1] || nowMonth;
@@ -6154,6 +6175,9 @@
         dailyMap[d.date] = d;
       }
 
+      const allAudit = (dashboardState && Array.isArray(dashboardState.audit_orders)) ? dashboardState.audit_orders : [];
+      const auditDatesSet = new Set(allAudit.map(o => (o.date_ist || formatIstDateTime(o.created_at || o.updated_at, '').slice(0, 10))));
+
       let monthNet = 0;
       let monthGrossWinsUsd = 0;
       let monthGrossLossesUsd = 0;
@@ -6172,6 +6196,7 @@
         const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         const info = dailyMap[dateStr];
         const isLiveDate = dateStr === latestSyncDate && hasOpenLegs;
+        const hasAuditOrders = auditDatesSet.has(dateStr);
 
         if (info) {
           const net = Number(info.net_pnl_usd || 0);
@@ -6185,7 +6210,7 @@
           }
         }
 
-        if (!info && !isLiveDate) {
+        if (!info && !isLiveDate && !hasAuditOrders) {
           cells.push(`
             <div class="p-1.5 rounded-lg bg-gray-900/40 border border-gray-800 text-center text-gray-600 text-[10px] transition hover:border-gray-700 select-none">
               <div class="text-[9px] text-gray-600">${day}</div>
@@ -6193,9 +6218,10 @@
             </div>
           `);
         } else {
-          const net = info ? Number(info.net_pnl_usd || 0) : 0;
+          const dayOrders = (!info && hasAuditOrders) ? allAudit.filter(o => (o.date_ist || formatIstDateTime(o.created_at || o.updated_at, '').slice(0, 10)) === dateStr) : [];
+          const net = info ? Number(info.net_pnl_usd || 0) : dayOrders.reduce((sum, o) => sum + Number(o.pnl_usd || 0), 0);
           const cf = info ? Number(info.cashflow_usd || 0) : 0;
-          const trades = info ? Number(info.closed_orders_count || 0) : 0;
+          const trades = info ? Number(info.closed_orders_count || 0) : dayOrders.length;
 
           const isGreen = net >= 0;
           const bgCls = isGreen
@@ -6247,7 +6273,15 @@
       if (!isoStr && !dateFallback) return '—';
       if (isoStr) {
         try {
-          const dt = new Date(isoStr);
+          let dt;
+          if (typeof isoStr === 'number') {
+            dt = new Date(isoStr > 1e12 && isoStr < 1e15 ? isoStr : (isoStr >= 1e15 ? isoStr / 1000 : isoStr * 1000));
+          } else if (typeof isoStr === 'string' && /^\d+$/.test(isoStr)) {
+            const num = Number(isoStr);
+            dt = new Date(num > 1e12 && num < 1e15 ? num : (num >= 1e15 ? num / 1000 : num * 1000));
+          } else {
+            dt = new Date(isoStr);
+          }
           if (!isNaN(dt.getTime())) {
             const d = dt.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
             const t = dt.toLocaleTimeString('en-GB', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: false });
@@ -6285,7 +6319,7 @@
 
       // Net PnL and Fees
       let netUsd = dayInfo ? Number(dayInfo.net_pnl_usd || 0) : displayOrders.reduce((sum, o) => sum + Number(o.pnl_usd || o.net_pnl_usd || 0), 0);
-      let feesUsd = dayInfo ? Number(dayInfo.commissions_usd || 0) : displayOrders.reduce((sum, o) => sum + Math.abs(Number(o.paid_commission || o.fee || 0)), 0);
+      let feesUsd = dayInfo ? Math.abs(Number(dayInfo.commissions_usd || 0)) : displayOrders.reduce((sum, o) => sum + Math.abs(Number(o.paid_commission || o.fee || 0)), 0);
       let legCount = (dayInfo && dayInfo.closed_orders_count !== undefined && dayInfo.closed_orders_count !== null) ? dayInfo.closed_orders_count : displayOrders.length;
       let netInr = Math.round(netUsd * fxRate);
       const formattedInr = netInr < 0 ? `-₹${Math.abs(netInr).toLocaleString('en-IN')}` : (netInr > 0 ? `+₹${netInr.toLocaleString('en-IN')}` : '₹0');
@@ -6310,7 +6344,7 @@
       const pnlBadgeEl = document.getElementById('day-modal-pnl-badge');
       if (pnlBadgeEl) {
         const isProfit = netUsd >= 0;
-        pnlBadgeEl.textContent = `${formatMoney(netUsd, true)} (${formattedInr})`;
+        pnlBadgeEl.textContent = `${formatUsd(netUsd, true)} (${formattedInr})`;
         pnlBadgeEl.className = `px-2.5 py-1 rounded-lg text-xs font-mono font-bold border ${
           isProfit ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' : 'bg-rose-500/15 text-rose-400 border-rose-500/30'
         }`;
@@ -6319,7 +6353,7 @@
       // Summary KPIs
       const netUsdEl = document.getElementById('day-modal-net-usd');
       if (netUsdEl) {
-        netUsdEl.textContent = formatMoney(netUsd, true);
+        netUsdEl.textContent = formatUsd(netUsd, true);
         netUsdEl.className = `font-bold font-mono text-base mt-0.5 ${netUsd >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
       }
       const netInrEl = document.getElementById('day-modal-net-inr');
@@ -6329,7 +6363,7 @@
       }
       const feesEl = document.getElementById('day-modal-fees');
       if (feesEl) {
-        feesEl.textContent = `$${feesUsd.toFixed(2)}`;
+        feesEl.textContent = formatUsd(feesUsd, false);
       }
       const legsCountEl = document.getElementById('day-modal-legs-count');
       if (legsCountEl) {
@@ -6525,13 +6559,17 @@
                               (sId === 'regime_condor' || sId === 'btc_condor');
           const matchTrend = (currentAuditStrategy === 'btc_trend_breakout' || currentAuditStrategy === 'trend_breakout') &&
                              (sId === 'btc_trend_breakout' || sId === 'trend_breakout');
-          if (sId !== currentAuditStrategy && !matchCondor && !matchTrend) return false;
+          const matchStrangle = (currentAuditStrategy === 'btc_1dte' || currentAuditStrategy === 'strangle') &&
+                                (sId === 'btc_1dte' || sId === 'strangle' || sId === 'btc_strangle');
+          if (sId !== currentAuditStrategy && !matchCondor && !matchTrend && !matchStrangle) return false;
         }
         // 1. Status filter
         if (currentAuditStatusTab !== 'ALL') {
           const st = String(o.audit_status || o.state || '').toUpperCase();
-          if (currentAuditStatusTab === 'SUCCESS' && !st.includes('SUCCESS') && !st.includes('FILLED') && !st.includes('CLOSED')) return false;
-          if (currentAuditStatusTab === 'PENDING_SL' && !st.includes('PENDING') && !st.includes('SL')) return false;
+          const rawReason = String(o.reason || o.cancellation_reason || '').toUpperCase();
+          const isStop = Boolean(o.stop_order_type) || rawReason.includes('STOP-LOSS TRIGGERED') || rawReason.includes('TRIGGERED');
+          if (currentAuditStatusTab === 'SUCCESS' && !st.includes('SUCCESS') && !st.includes('FILLED') && !st.includes('CLOSED') && !st.includes('TRIGGERED')) return false;
+          if (currentAuditStatusTab === 'PENDING_SL' && !st.includes('PENDING') && !st.includes('SL') && !(st.includes('OPEN') && (Boolean(o.stop_order_type) || isStop))) return false;
           if (currentAuditStatusTab === 'CANCELLED' && !st.includes('CANCEL')) return false;
           if (currentAuditStatusTab === 'FAILED' && !st.includes('FAIL') && !st.includes('REJECT')) return false;
         }
@@ -6578,21 +6616,28 @@
         return;
       }
       const headers = ['Date_IST', 'Strategy', 'Timestamp_UTC', 'Order_ID', 'Symbol', 'Side', 'Status', 'Size_Lots', 'Avg_Fill_Price', 'Stop_Price', 'Fee_USD', 'Realized_PnL_USD', 'Reason'];
-      const rows = filtered.map(o => [
-        o.date_ist || '',
-        resolveStrategyId(o),
-        o.created_at || '',
-        o.id || '',
-        o.symbol || '',
-        o.side || '',
-        o.audit_status || o.state || '',
-        o.size || 500,
-        o.avg_fill_price || o.price || 0,
-        o.stop_price || '',
-        o.paid_commission || o.fee || 0,
-        o.pnl_usd || 0,
-        `"${(o.reason || '').replace(/"/g, '""')}"`
-      ]);
+      const rows = filtered.map(o => {
+        const side = String(o.side || o.action || (o.stop_order_type ? 'BUY (SL)' : 'SELL')).toUpperCase();
+        const price = Number((o.avg_fill_price && Number(o.avg_fill_price) > 0) ? o.avg_fill_price : (o.stop_price || o.limit_price || o.price || 0));
+        const fee = Number(o.paid_commission ? -Math.abs(Number(o.paid_commission)) : (o.fee || 0));
+        const dateIst = o.date_ist || (formatIstDateTime(o.created_at || o.updated_at, '').slice(0, 10));
+        const safeReason = String(o.reason || o.cancellation_reason || o.audit_status || '').replace(/\r?\n/g, ' ').replace(/"/g, '""');
+        return [
+          dateIst || '',
+          resolveStrategyId(o),
+          o.created_at || o.updated_at || '',
+          o.id || '',
+          o.symbol || '',
+          side,
+          o.audit_status || o.state || '',
+          o.size || 500,
+          price,
+          o.stop_price || '',
+          fee,
+          o.pnl_usd || 0,
+          `"${safeReason}"`
+        ];
+      });
       const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
