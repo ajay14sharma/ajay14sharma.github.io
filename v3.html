@@ -3645,6 +3645,14 @@
     function triggerAttachSlOnly(symbol) {
       const modeSelect = document.getElementById('dispatch-mode-select');
       if (modeSelect) modeSelect.value = 'attach-sl-only';
+      const stratSelect = document.getElementById('dispatch-strategy-select');
+      if (stratSelect && symbol) {
+        if (symbol.includes('-ETH-')) {
+          stratSelect.value = 'eth_1dte';
+        } else {
+          stratSelect.value = 'btc_1dte';
+        }
+      }
       if (symbol) {
         showToast(`Preparing 2.0x SL bracket placement for ${symbol}...`, 'info');
       }
@@ -4138,6 +4146,33 @@
       };
     }
 
+    function resolveStrategyId(item) {
+      if (!item) return 'btc_1dte';
+      if (item.strategy_id) return item.strategy_id;
+      const cid = String(item.client_order_id || '').toUpperCase();
+      if (cid.startsWith('CDR-')) return 'regime_condor';
+      if (cid.startsWith('TRD-')) return 'btc_trend_breakout';
+      if (cid.startsWith('0DT-')) return 'btc_0dte';
+      if (cid.startsWith('ETH-')) return 'eth_1dte';
+      if (cid.startsWith('STG-')) return 'btc_1dte';
+      const sym = String(item.symbol || item.product_symbol || '').toUpperCase();
+      if (sym === 'BTCUSD' || sym === 'BTCUSDT' || sym === 'BTC_USDT') return 'btc_trend_breakout';
+      if (sym.includes('-ETH-')) return 'eth_1dte';
+      const parts = sym.split('-');
+      if (parts.length >= 4) {
+        const expCode = parts[3];
+        if (expCode.length === 6 && /^\d+$/.test(expCode)) {
+          const d = parseInt(expCode.substring(0, 2), 10);
+          const m = parseInt(expCode.substring(2, 4), 10) - 1;
+          const y = 2000 + parseInt(expCode.substring(4, 6), 10);
+          const expDate = new Date(Date.UTC(y, m, d, 12, 0, 0));
+          const diffDays = (expDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24);
+          if (diffDays > 7) return 'btc_leaps';
+        }
+      }
+      return 'btc_1dte';
+    }
+
     function parsePositionLeg(p) {
       const parsed = parseOptionSymbol(p.symbol);
       const ticker = liveTickersBySymbol[p.symbol] || {};
@@ -4186,9 +4221,11 @@
       }
       const slDist = slTrigger !== null ? (slTrigger - markPx) : null;
       const ivPct = p.ivPct || (ticker.implied_volatility ? parseFloat(ticker.implied_volatility) * 100 : 38.5);
+      const strategyId = resolveStrategyId(p);
 
       return {
         ...p,
+        strategy_id: strategyId,
         parsed,
         lots,
         isLong,
@@ -4218,7 +4255,7 @@
       const allParsedPositions = allPositions.map(parsePositionLeg);
 
       const rawPositions = allParsedPositions.filter(p => {
-        const sId = p.strategy_id || (p.symbol.includes('-ETH-') ? 'eth_1dte' : 'btc_1dte');
+        const sId = p.strategy_id || resolveStrategyId(p);
         if (currentPositionSleeve !== 'all') {
           if (currentPositionSleeve === 'condor') {
             return sId === 'regime_condor' || sId === 'btc_condor';
@@ -4237,33 +4274,34 @@
         sleeveCountEl.textContent = `${rawPositions.length} Legs Open`;
       }
 
-      // Update Card Header dynamically
+      // Update Card Header dynamically (Sleeve filter takes precedence when active)
       const titleEl = document.getElementById('positions-card-title');
       const subtitleEl = document.getElementById('positions-card-subtitle');
       const badgeEl = document.getElementById('positions-card-badge');
 
       if (titleEl && subtitleEl && badgeEl) {
-        if (currentPositionSleeve === 'btc_1dte' || currentStrategy === 'btc_1dte') {
+        const effectiveSleeve = currentPositionSleeve !== 'all' ? currentPositionSleeve : currentStrategy;
+        if (effectiveSleeve === 'btc_1dte') {
           titleEl.textContent = '⚡ 1DTE BTC Short Strangle Cohort';
           subtitleEl.textContent = 'Daily 5:30 PM IST settlement with exchange-native 2.0x mark-price Stop-Loss protection';
           badgeEl.textContent = '1DTE Strangle';
           badgeEl.className = 'text-xs font-mono px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20';
-        } else if (currentPositionSleeve === 'eth_1dte' || currentStrategy === 'eth_1dte') {
+        } else if (effectiveSleeve === 'eth_1dte') {
           titleEl.textContent = '⟠ 1DTE ETH Short Strangle Cohort';
           subtitleEl.textContent = 'Daily 5:30 PM IST settlement with exchange-native 2.0x mark-price Stop-Loss protection';
           badgeEl.textContent = 'ETH 1DTE';
           badgeEl.className = 'text-xs font-mono px-2 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20';
-        } else if (currentPositionSleeve === 'btc_0dte' || currentStrategy === 'btc_0dte') {
+        } else if (effectiveSleeve === 'btc_0dte') {
           titleEl.textContent = '⚡ 0DTE BTC Intraday Strangle Cohort';
           subtitleEl.textContent = 'Same-day 5:30 PM IST expiry with rapid theta decay capture and native SL';
           badgeEl.textContent = '0DTE Intraday';
           badgeEl.className = 'text-xs font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20';
-        } else if (currentPositionSleeve === 'btc_leaps' || currentStrategy === 'btc_leaps') {
+        } else if (effectiveSleeve === 'btc_leaps') {
           titleEl.textContent = '📅 BTC Quarterly / LEAPS Sleeve Positions';
           subtitleEl.textContent = 'Discretionary long-dated options margined on Delta Exchange (multi-month expiry cohorts)';
           badgeEl.textContent = 'BTC LEAPS';
           badgeEl.className = 'text-xs font-mono px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20';
-        } else if (currentPositionSleeve === 'condor' || currentStrategy === 'regime_condor') {
+        } else if (effectiveSleeve === 'condor' || effectiveSleeve === 'regime_condor' || effectiveSleeve === 'btc_condor') {
           titleEl.textContent = '🎯 BTC Regime Iron Condor Cohort';
           subtitleEl.textContent = 'IV Rank gated condor positions with defined risk outer wings and 50% profit target';
           badgeEl.textContent = 'Regime Condor';
@@ -4304,7 +4342,8 @@
       document.getElementById('kpi-open-pnl').textContent = formatMoney(totalUpnl, true);
       const overallDecayPct = totalCredit > 0 ? (totalUpnl / totalCredit) * 100 : 0;
       document.getElementById('kpi-theta-pct').textContent = `${totalCredit > 0 ? '+' : ''}${overallDecayPct.toFixed(1)}% Theta`;
-      document.getElementById('kpi-open-details').textContent = `Credit: ${formatMoney(Math.max(0, totalCredit))} • Active Strategy: ${currentStrategy.toUpperCase()}`;
+      const activeLabel = currentPositionSleeve !== 'all' ? currentPositionSleeve.toUpperCase() : currentStrategy.toUpperCase();
+      document.getElementById('kpi-open-details').textContent = `Credit: ${formatMoney(Math.max(0, totalCredit))} • Sleeve: ${activeLabel}`;
       document.getElementById('kpi-open-legs-count').textContent = `${rawPositions.length} Open Legs`;
 
       // Render Table Rows (7 Columns)
@@ -4368,26 +4407,40 @@
           let bufColor = 'emerald';
           let bufLabel = 'Safe Buffer (>30%)';
           let bufBadgeCls = 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30';
-          if (bufferPct < 10) {
+          let barBgCls = 'bg-emerald-500';
+          let textCls = 'text-emerald-400';
+
+          if (bufferPct <= 0) {
+            bufColor = 'rose';
+            bufLabel = 'SL Breached (<0%)';
+            bufBadgeCls = 'bg-rose-500/15 text-rose-400 border-rose-500/30';
+            barBgCls = 'bg-rose-500';
+            textCls = 'text-rose-400';
+          } else if (bufferPct < 10) {
             bufColor = 'rose';
             bufLabel = 'Critical Buffer (<10%)';
             bufBadgeCls = 'bg-rose-500/15 text-rose-400 border-rose-500/30';
+            barBgCls = 'bg-rose-500';
+            textCls = 'text-rose-400';
           } else if (bufferPct <= 30) {
             bufColor = 'amber';
             bufLabel = 'Warning (10-30%)';
             bufBadgeCls = 'bg-amber-500/15 text-amber-400 border-amber-500/30';
+            barBgCls = 'bg-amber-500';
+            textCls = 'text-amber-400';
           }
 
-          const barWidth = Math.min(100, Math.max(5, bufferPct));
+          const barWidth = Math.min(100, Math.max(5, bufferPct <= 0 ? 100 : bufferPct));
+          const bufDisplayStr = bufferPct > 0 ? `+${bufferPct.toFixed(1)}%` : `${bufferPct.toFixed(1)}%`;
 
           slBufferColHtml = `
             <div class="w-36 space-y-1">
               <div class="flex items-center justify-between text-[10px]">
-                <span class="font-mono font-bold text-${bufColor}-400">+${bufferPct.toFixed(1)}% buffer</span>
+                <span class="font-mono font-bold ${textCls}">${bufDisplayStr} buffer</span>
                 <span class="text-gray-400 font-mono text-[9px]">$${distDollar.toFixed(1)} dist</span>
               </div>
               <div class="w-full h-1.5 rounded-full bg-gray-800 overflow-hidden">
-                <div class="h-full bg-${bufColor}-500 rounded-full transition-all duration-300" style="width: ${barWidth}%"></div>
+                <div class="h-full ${barBgCls} rounded-full transition-all duration-300" style="width: ${barWidth}%"></div>
               </div>
               <div class="flex items-center justify-between text-[9px]">
                 <span class="px-1 py-0.2 rounded border text-[9px] font-semibold ${bufBadgeCls}">${bufLabel}</span>
@@ -5597,7 +5650,7 @@
         } else {
           // Check audit orders for this strategy
           const matchingOrders = (dashboardState?.audit_orders || []).filter(o => {
-            const sid = o.strategy_id || (o.symbol?.includes('-ETH-') ? 'eth_1dte' : 'btc_1dte');
+            const sid = resolveStrategyId(o);
             return sid === currentEquityStrategy && (o.state || '').toLowerCase() === 'closed';
           });
           if (matchingOrders.length > 0) {
@@ -5727,7 +5780,13 @@
         kpiNet.className = `font-bold mt-0.5 text-sm ${periodNetPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
       }
       if (kpiNetInr) {
-        kpiNetInr.textContent = isStandby ? 'Model: ₹' + Math.round(standbyMeta?.total_net * fxRate).toLocaleString('en-IN') : (currentCurrency === 'INR' ? '' : '₹' + Math.round(periodNetPnl * fxRate).toLocaleString('en-IN'));
+        if (isStandby) {
+          kpiNetInr.textContent = 'Model: ₹' + Math.round((standbyMeta?.total_net || 0) * fxRate).toLocaleString('en-IN');
+        } else if (currentCurrency === 'INR') {
+          kpiNetInr.textContent = `($${periodNetPnl >= 0 ? '+' : ''}${periodNetPnl.toFixed(2)})`;
+        } else {
+          kpiNetInr.textContent = `₹${Math.round(periodNetPnl * fxRate).toLocaleString('en-IN')}`;
+        }
       }
       if (kpiSharpe) {
         kpiSharpe.textContent = isFinite(sharpeRatio) ? sharpeRatio.toFixed(2) : '--';
@@ -5745,8 +5804,8 @@
         kpiPf.textContent = `${profitFactor.toFixed(2)}x`;
       }
       if (kpiDd) {
-        kpiDd.textContent = `-${maxDdPct.toFixed(1)}%`;
-        kpiDd.className = `font-bold mt-0.5 text-sm ${maxDdPct >= 5.0 ? 'text-rose-500' : 'text-rose-400'}`;
+        kpiDd.textContent = maxDdPct > 0 ? `-${maxDdPct.toFixed(1)}%` : '0.0%';
+        kpiDd.className = `font-bold mt-0.5 text-sm ${maxDdPct >= 5.0 ? 'text-rose-500' : (maxDdPct > 0 ? 'text-rose-400' : 'text-gray-300')}`;
       }
       if (kpiDdSub) {
         if (maxDdPct >= 5.0) {
@@ -5821,7 +5880,7 @@
                   callbacks: {
                     label: function(context) {
                       const val = Number(context.parsed.y || 0);
-                      return `${context.dataset.label}: ${val >= 0 ? '+' : ''}$${val.toFixed(2)}`;
+                      return `${context.dataset.label}: ${formatMoney(val, true)}`;
                     }
                   }
                 }
@@ -6045,7 +6104,7 @@
       const orders = (dashboardState && Array.isArray(dashboardState.audit_orders)) ? dashboardState.audit_orders : [];
       return orders.filter(o => {
         // 0. Strategy filter
-        const sId = o.strategy_id || (String(o.symbol || '').includes('-ETH-') ? 'eth_1dte' : 'btc_1dte');
+        const sId = resolveStrategyId(o);
         if (currentAuditStrategy !== 'ALL') {
           if (sId !== currentAuditStrategy) return false;
         } else if (currentStrategy !== 'all') {
