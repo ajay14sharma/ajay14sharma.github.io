@@ -178,7 +178,8 @@
   </header>
 
   <!-- Toast Notification -->
-  <div id="toast-banner" class="hidden fixed bottom-5 right-5 z-50 max-w-md px-4 py-3 rounded-xl shadow-2xl border text-xs font-medium transition-all"></div>
+  <div id="toast" class="hidden fixed bottom-5 right-5 z-50 max-w-md px-4 py-3 rounded-xl shadow-2xl border text-xs font-medium transition-all"></div>
+  <div id="toast-banner" class="hidden"></div>
 
   <!-- ========================================================================= -->
   <!-- MAIN DASHBOARD CONTENT -->
@@ -869,10 +870,13 @@
 
       <!-- Monthly Calendar Heatmap (1 Col) -->
       <div class="p-5 rounded-xl bg-[#111827] border border-[#1F2937] space-y-4">
-        <div class="flex items-center justify-between">
+        <div class="flex items-center justify-between flex-wrap gap-2">
           <div>
-            <h2 class="font-semibold text-gray-100 text-sm">📅 Monthly P&L Calendar</h2>
-            <p class="text-xs text-gray-400 mt-0.5">Daily realized gains & theta decay</p>
+            <h2 class="font-semibold text-gray-100 text-sm flex items-center gap-1.5">
+              <span>📅 Monthly P&L Calendar</span>
+              <span class="text-[10px] text-blue-400 font-mono bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 rounded">Interactive Drilldown</span>
+            </h2>
+            <p class="text-xs text-gray-400 mt-0.5">Click any active or settled day to inspect closed legs, fills &amp; execution fees</p>
           </div>
           <div class="flex items-center gap-1.5">
             <button onclick="changeCalendarMonth(-1)" class="w-6 h-6 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 flex items-center justify-center text-xs">◀</button>
@@ -880,10 +884,26 @@
             <button onclick="changeCalendarMonth(1)" class="w-6 h-6 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 flex items-center justify-center text-xs">▶</button>
           </div>
         </div>
-        <div class="flex justify-between items-center text-xs">
-          <span class="text-gray-400">Month Net Realized:</span>
-          <span id="calendar-month-label" class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">+$0.00</span>
+
+        <!-- Monthly Statistics Ribbon -->
+        <div id="calendar-month-ribbon" class="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-lg bg-gray-950/60 border border-gray-800 text-xs">
+          <div class="flex items-center gap-3 sm:gap-4 flex-wrap">
+            <div>
+              <span class="text-[10px] text-gray-500 uppercase tracking-wider block font-semibold">Monthly Win Rate</span>
+              <span id="calendar-win-rate" class="font-mono font-bold text-emerald-400 text-xs">0/0 (0.0%)</span>
+            </div>
+            <div class="h-6 w-px bg-gray-800 hidden sm:block"></div>
+            <div>
+              <span class="text-[10px] text-gray-500 uppercase tracking-wider block font-semibold">Gross Wins / Losses</span>
+              <span id="calendar-gross-breakdown" class="font-mono text-gray-300 text-xs">+$0.00 / -$0.00</span>
+            </div>
+          </div>
+          <div class="text-right">
+            <span class="text-[10px] text-gray-500 uppercase tracking-wider block font-semibold">Month Realized P&amp;L</span>
+            <span id="calendar-month-label" class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">+$0.00</span>
+          </div>
         </div>
+
         <div id="calendar-heatmap-container" class="space-y-2">
           <!-- Injected via renderCalendarHeatmap() -->
         </div>
@@ -2071,14 +2091,16 @@
           <button id="audit-tab-FAILED" onclick="setAuditStatusTab('FAILED')" class="px-2.5 py-1 rounded-md text-xs font-medium text-gray-400 hover:text-gray-200 transition">FAILED</button>
         </div>
 
-        <!-- Strategy Quick-Filter Pills -->
+        <!-- Multi-Sleeve Filter Pills -->
         <div class="flex items-center gap-1.5 flex-wrap">
-          <span class="text-gray-500 text-[11px] font-medium">Strategy:</span>
-          <div class="inline-flex rounded-lg bg-gray-950 p-0.5 border border-gray-800">
+          <span class="text-gray-500 text-[11px] font-medium">Sleeve:</span>
+          <div class="inline-flex rounded-lg bg-gray-950 p-0.5 border border-gray-800 flex-wrap gap-0.5">
             <button id="audit-strat-ALL" onclick="setAuditStrategyFilter('ALL')" class="px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-600 text-white shadow-sm transition">ALL</button>
-            <button id="audit-strat-STRANGLE" onclick="setAuditStrategyFilter('btc_1dte')" class="px-2 py-0.5 rounded text-[11px] font-medium text-gray-400 hover:text-gray-200 transition">STRANGLE</button>
-            <button id="audit-strat-CONDOR" onclick="setAuditStrategyFilter('regime_condor')" class="px-2 py-0.5 rounded text-[11px] font-medium text-gray-400 hover:text-gray-200 transition">CONDOR</button>
-            <button id="audit-strat-TREND" onclick="setAuditStrategyFilter('btc_trend_breakout')" class="px-2 py-0.5 rounded text-[11px] font-medium text-gray-400 hover:text-gray-200 transition">TREND</button>
+            <button id="audit-strat-STRANGLE" onclick="setAuditStrategyFilter('btc_1dte')" class="px-2 py-0.5 rounded text-[11px] font-medium text-gray-400 hover:text-gray-200 transition">BTC 1DTE</button>
+            <button id="audit-strat-ETH-1DTE" onclick="setAuditStrategyFilter('eth_1dte')" class="px-2 py-0.5 rounded text-[11px] font-medium text-gray-400 hover:text-gray-200 transition">ETH 1DTE</button>
+            <button id="audit-strat-BTC-0DTE" onclick="setAuditStrategyFilter('btc_0dte')" class="px-2 py-0.5 rounded text-[11px] font-medium text-gray-400 hover:text-gray-200 transition">BTC 0DTE</button>
+            <button id="audit-strat-CONDOR" onclick="setAuditStrategyFilter('regime_condor')" class="px-2 py-0.5 rounded text-[11px] font-medium text-gray-400 hover:text-gray-200 transition">Iron Condor</button>
+            <button id="audit-strat-TREND" onclick="setAuditStrategyFilter('btc_trend_breakout')" class="px-2 py-0.5 rounded text-[11px] font-medium text-gray-400 hover:text-gray-200 transition">Trend Breakout</button>
           </div>
         </div>
 
@@ -2096,25 +2118,32 @@
         </div>
       </div>
 
-      <!-- Ledger Table -->
-      <div class="overflow-x-auto max-h-96 rounded-lg border border-gray-800">
+      <!-- Responsive Mobile Dual-View (Item 5) -->
+      <!-- Desktop High-Density Table View (sm:block) -->
+      <div class="hidden sm:block overflow-x-auto max-h-96 rounded-lg border border-gray-800">
         <table class="w-full text-left text-xs">
-          <thead class="sticky top-0 bg-[#111827] border-b border-gray-800 text-gray-400 shadow-sm">
+          <thead class="sticky top-0 bg-[#111827] border-b border-gray-800 text-gray-400 shadow-sm z-10">
             <tr>
-              <th class="py-2.5 px-3">Date / Time (IST)</th>
+              <th class="py-2.5 px-3 whitespace-nowrap">Date / Time (IST)</th>
               <th class="py-2.5 px-3">Strategy</th>
+              <th class="py-2.5 px-3">Order ID</th>
               <th class="py-2.5 px-3">Action / Side</th>
               <th class="py-2.5 px-3">Contract</th>
               <th class="py-2.5 px-3">Size</th>
               <th class="py-2.5 px-3">Price</th>
               <th class="py-2.5 px-3 text-right">Fee / Realized</th>
-              <th class="py-2.5 px-3 text-right">Status & Reason</th>
+              <th class="py-2.5 px-3 text-right">Status &amp; Reason</th>
             </tr>
           </thead>
           <tbody id="ledger-tbody" class="divide-y divide-gray-850 font-mono text-gray-300">
             <!-- Injected via renderAuditLedger() -->
           </tbody>
         </table>
+      </div>
+
+      <!-- Mobile Responsive Card Stack View (sm:hidden) -->
+      <div id="ledger-cards-mobile" class="sm:hidden space-y-3 max-h-[30rem] overflow-y-auto pr-0.5">
+        <!-- Injected via renderAuditLedger() -->
       </div>
     </div>
 
@@ -2123,6 +2152,73 @@
   <!-- ========================================================================= -->
   <!-- MODALS -->
   <!-- ========================================================================= -->
+
+  <!-- Day Drilldown Modal (Item 4) -->
+  <div id="day-drilldown-modal" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4" onclick="handleDayModalBackdropClick(event)">
+    <div class="w-full max-w-3xl max-h-[85vh] flex flex-col rounded-2xl bg-gray-900 border border-gray-800 p-5 space-y-4 shadow-2xl overflow-hidden" onclick="event.stopPropagation()">
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between border-b border-gray-800 pb-3 flex-wrap gap-2">
+        <div class="flex items-center gap-3 flex-wrap">
+          <div>
+            <h3 id="day-modal-date-title" class="font-bold text-gray-100 text-base flex items-center gap-2">
+              <span>📅 Day Breakdown</span>
+            </h3>
+            <p class="text-xs text-gray-400 mt-0.5">Realized execution performance &amp; leg audit trail</p>
+          </div>
+          <span id="day-modal-pnl-badge" class="px-2.5 py-1 rounded-lg text-xs font-mono font-bold border">
+            +$0.00 (₹0)
+          </span>
+        </div>
+        <button onclick="closeDayModal()" class="text-gray-400 hover:text-gray-200 text-xl font-bold p-1 transition" title="Close (Esc)">✕</button>
+      </div>
+
+      <!-- Summary Metrics Grid -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+        <div class="p-3 rounded-lg bg-gray-950/70 border border-gray-800">
+          <div class="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Net P&amp;L (USD)</div>
+          <div id="day-modal-net-usd" class="font-bold font-mono text-base mt-0.5 text-emerald-400">+$0.00</div>
+        </div>
+        <div class="p-3 rounded-lg bg-gray-950/70 border border-gray-800">
+          <div class="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Net P&amp;L (INR)</div>
+          <div id="day-modal-net-inr" class="font-bold font-mono text-base mt-0.5 text-emerald-400">₹0</div>
+        </div>
+        <div class="p-3 rounded-lg bg-gray-950/70 border border-gray-800">
+          <div class="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Exchange Fees Paid</div>
+          <div id="day-modal-fees" class="font-bold font-mono text-base mt-0.5 text-gray-300">$0.00</div>
+        </div>
+        <div class="p-3 rounded-lg bg-gray-950/70 border border-gray-800">
+          <div class="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Total Leg Count</div>
+          <div id="day-modal-legs-count" class="font-bold font-mono text-base mt-0.5 text-blue-400">0 legs</div>
+        </div>
+      </div>
+
+      <!-- Closed Orders & Fills Table -->
+      <div class="flex-1 overflow-y-auto min-h-0 border border-gray-800 rounded-lg">
+        <table class="w-full text-left text-xs">
+          <thead class="sticky top-0 bg-[#111827] border-b border-gray-800 text-gray-400 font-semibold shadow-sm z-10">
+            <tr>
+              <th class="py-2.5 px-3 whitespace-nowrap">Timestamp (IST)</th>
+              <th class="py-2.5 px-3">Sleeve</th>
+              <th class="py-2.5 px-3">Contract</th>
+              <th class="py-2.5 px-3">Side</th>
+              <th class="py-2.5 px-3">Lots</th>
+              <th class="py-2.5 px-3">Fill Price</th>
+              <th class="py-2.5 px-3 text-right">Realized P&amp;L</th>
+            </tr>
+          </thead>
+          <tbody id="day-modal-tbody" class="divide-y divide-gray-850 font-mono text-gray-300">
+            <!-- Injected via openDayModal(dateStr) -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="flex items-center justify-between text-xs text-gray-500 pt-2 border-t border-gray-800">
+        <span>Press <kbd class="px-1.5 py-0.5 bg-gray-800 rounded text-gray-300 font-mono text-[10px]">Esc</kbd> or click backdrop to close</span>
+        <button onclick="closeDayModal()" class="px-3.5 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 font-medium transition">Close</button>
+      </div>
+    </div>
+  </div>
   <!-- Settings Modal -->
   <div id="settings-modal" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="w-full max-w-lg rounded-2xl bg-gray-900 border border-gray-800 p-5 space-y-4 shadow-2xl">
@@ -2378,8 +2474,9 @@
     }
 
     function showToast(msg, type = 'info') {
-      const banner = document.getElementById('toast-banner');
+      const banner = document.getElementById('toast') || document.getElementById('toast-banner');
       if (!banner) return;
+      const legacy = document.getElementById('toast-banner');
 
       // Intelligent Error Interceptor: Map cryptic API error codes to clear, actionable guidance
       let cleanMsg = msg;
@@ -2397,6 +2494,7 @@
       }
 
       banner.textContent = cleanMsg;
+      if (legacy && legacy !== banner) legacy.textContent = cleanMsg;
       banner.className = `fixed bottom-5 right-5 z-50 max-w-md px-4 py-3 rounded-xl shadow-2xl border text-xs font-medium transition-all ${
         type === 'success' ? 'bg-emerald-950/90 text-emerald-300 border-emerald-500/40' :
         type === 'error' ? 'bg-rose-950/90 text-rose-300 border-rose-500/40' :
@@ -3612,6 +3710,8 @@
       const stratKeys = {
         'ALL': 'audit-strat-ALL',
         'btc_1dte': 'audit-strat-STRANGLE',
+        'eth_1dte': 'audit-strat-ETH-1DTE',
+        'btc_0dte': 'audit-strat-BTC-0DTE',
         'regime_condor': 'audit-strat-CONDOR',
         'btc_trend_breakout': 'audit-strat-TREND'
       };
@@ -6054,6 +6154,10 @@
       }
 
       let monthNet = 0;
+      let monthGrossWinsUsd = 0;
+      let monthGrossLossesUsd = 0;
+      let monthWinsCount = 0;
+      let monthLossesCount = 0;
       let cells = [];
 
       for (let i = 0; i < startOffset; i++) {
@@ -6068,9 +6172,21 @@
         const info = dailyMap[dateStr];
         const isLiveDate = dateStr === latestSyncDate && hasOpenLegs;
 
+        if (info) {
+          const net = Number(info.net_pnl_usd || 0);
+          monthNet += net;
+          if (net > 0) {
+            monthWinsCount++;
+            monthGrossWinsUsd += net;
+          } else if (net < 0) {
+            monthLossesCount++;
+            monthGrossLossesUsd += Math.abs(net);
+          }
+        }
+
         if (!info && !isLiveDate) {
           cells.push(`
-            <div class="p-1.5 rounded-lg bg-gray-900/40 border border-gray-800 text-center text-gray-600 text-[10px] transition hover:border-gray-700">
+            <div class="p-1.5 rounded-lg bg-gray-900/40 border border-gray-800 text-center text-gray-600 text-[10px] transition hover:border-gray-700 select-none">
               <div class="text-[9px] text-gray-600">${day}</div>
               <div class="text-[10px] text-gray-600 font-mono">—</div>
             </div>
@@ -6079,24 +6195,37 @@
           const net = info ? Number(info.net_pnl_usd || 0) : 0;
           const cf = info ? Number(info.cashflow_usd || 0) : 0;
           const trades = info ? Number(info.closed_orders_count || 0) : 0;
-          monthNet += net;
 
           const isGreen = net >= 0;
           const bgCls = isGreen
-            ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400'
-            : 'bg-rose-500/10 border-rose-500/25 text-rose-400';
+            ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400 hover:border-emerald-400/50 hover:bg-emerald-500/20'
+            : 'bg-rose-500/10 border-rose-500/25 text-rose-400 hover:border-rose-400/50 hover:bg-rose-500/20';
 
           cells.push(`
-            <div class="p-1.5 rounded-lg border text-center font-mono transition hover:scale-105 cursor-pointer ${bgCls}"
-                 title="${dateStr}: Net ${formatMoney(net, true)} | Cashflow ${formatMoney(cf, true)} | ${trades} trades">
+            <div onclick="openDayModal('${dateStr}')"
+                 class="p-1.5 rounded-lg border text-center font-mono transition-all duration-150 transform hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/40 cursor-pointer ${bgCls}"
+                 title="${dateStr}: Net ${formatMoney(net, true)} | Cashflow ${formatMoney(cf, true)} | ${trades} trades (Click for day drilldown)">
               <div class="flex items-center justify-between text-[9px] text-gray-400">
-                <span>${day}</span>
+                <span class="font-bold">${day}</span>
                 ${isLiveDate ? '<span class="text-[8px] px-1 rounded bg-blue-500/20 text-blue-300 font-bold">LIVE</span>' : (trades > 0 ? `<span class="text-[8px] text-gray-500">${trades}T</span>` : '')}
               </div>
               <div class="text-[10px] font-bold mt-0.5">${formatMoney(net, true)}</div>
             </div>
           `);
         }
+      }
+
+      // Update Monthly Statistics Ribbon (Item 4)
+      const totalTradedDays = monthWinsCount + monthLossesCount;
+      const winRatePct = totalTradedDays > 0 ? ((monthWinsCount / totalTradedDays) * 100).toFixed(1) : '0.0';
+
+      const winRateEl = document.getElementById('calendar-win-rate');
+      if (winRateEl) {
+        winRateEl.textContent = `${monthWinsCount}/${totalTradedDays} (${winRatePct}%)`;
+      }
+      const grossBreakdownEl = document.getElementById('calendar-gross-breakdown');
+      if (grossBreakdownEl) {
+        grossBreakdownEl.textContent = `+${formatMoney(monthGrossWinsUsd, false)} / -${formatMoney(monthGrossLossesUsd, false)}`;
       }
 
       const monthLabel = new Date(year, month - 1, 1).toLocaleString('en-US', { month: 'short', year: 'numeric' });
@@ -6110,6 +6239,217 @@
       ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach(d => html += `<div>${d}</div>`);
       html += `</div><div class="grid grid-cols-7 gap-1.5">${cells.join('')}</div>`;
       container.innerHTML = html;
+    }
+
+    // Day Drilldown Modal Handlers (Item 4)
+    function openDayModal(dateStr) {
+      if (!dateStr) return;
+      const modal = document.getElementById('day-drilldown-modal');
+      if (!modal) return;
+
+      const dailyList = (dashboardState && Array.isArray(dashboardState.daily_pnl)) ? dashboardState.daily_pnl : [];
+      const dayInfo = dailyList.find(d => d.date === dateStr);
+      const allAudit = (dashboardState && Array.isArray(dashboardState.audit_orders)) ? dashboardState.audit_orders : [];
+
+      // Filter closed/filled orders for that day
+      const dayOrders = allAudit.filter(o => {
+        if (o.date_ist && o.date_ist.startsWith(dateStr)) return true;
+        if (o.created_at && o.created_at.startsWith(dateStr)) return true;
+        if (o.updated_at && o.updated_at.startsWith(dateStr)) return true;
+        return false;
+      });
+
+      const closedOrders = dayOrders.filter(o => {
+        const st = String(o.audit_status || o.state || '').toUpperCase();
+        const fill = Number(o.avg_fill_price || o.price || 0);
+        return st === 'CLOSED' || st === 'FILLED' || st === 'SUCCESS' || fill > 0 || (o.pnl_usd && o.pnl_usd !== 0);
+      });
+      const displayOrders = closedOrders.length > 0 ? closedOrders : dayOrders;
+
+      // Net PnL and Fees
+      let netUsd = dayInfo ? Number(dayInfo.net_pnl_usd || 0) : displayOrders.reduce((sum, o) => sum + Number(o.pnl_usd || o.net_pnl_usd || 0), 0);
+      let feesUsd = dayInfo ? Number(dayInfo.commissions_usd || 0) : displayOrders.reduce((sum, o) => sum + Math.abs(Number(o.paid_commission || o.fee || 0)), 0);
+      let legCount = (dayInfo && dayInfo.closed_orders_count) ? dayInfo.closed_orders_count : displayOrders.length;
+      let netInr = Math.round(netUsd * fxRate);
+
+      // Date Header & Badge
+      const [y, m, d] = dateStr.split('-').map(Number);
+      const dtObj = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+      const formattedDate = dtObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+
+      const dateTitleEl = document.getElementById('day-modal-date-title');
+      if (dateTitleEl) {
+        dateTitleEl.innerHTML = `<span>📅 ${formattedDate}</span> <span class="text-xs text-gray-400 font-mono font-normal">(${dateStr})</span>`;
+      }
+
+      const pnlBadgeEl = document.getElementById('day-modal-pnl-badge');
+      if (pnlBadgeEl) {
+        const isProfit = netUsd >= 0;
+        pnlBadgeEl.textContent = `${formatMoney(netUsd, true)} (₹${netInr.toLocaleString('en-IN')})`;
+        pnlBadgeEl.className = `px-2.5 py-1 rounded-lg text-xs font-mono font-bold border ${
+          isProfit ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' : 'bg-rose-500/15 text-rose-400 border-rose-500/30'
+        }`;
+      }
+
+      // Summary KPIs
+      const netUsdEl = document.getElementById('day-modal-net-usd');
+      if (netUsdEl) {
+        netUsdEl.textContent = formatMoney(netUsd, true);
+        netUsdEl.className = `font-bold font-mono text-base mt-0.5 ${netUsd >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+      }
+      const netInrEl = document.getElementById('day-modal-net-inr');
+      if (netInrEl) {
+        netInrEl.textContent = `₹${netInr.toLocaleString('en-IN')}`;
+        netInrEl.className = `font-bold font-mono text-base mt-0.5 ${netInr >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+      }
+      const feesEl = document.getElementById('day-modal-fees');
+      if (feesEl) {
+        feesEl.textContent = `$${feesUsd.toFixed(2)}`;
+      }
+      const legsCountEl = document.getElementById('day-modal-legs-count');
+      if (legsCountEl) {
+        legsCountEl.textContent = `${legCount} legs`;
+      }
+
+      // Populate Table Body
+      const tbody = document.getElementById('day-modal-tbody');
+      if (tbody) {
+        tbody.innerHTML = '';
+        if (displayOrders.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="7" class="py-8 text-center text-gray-500 text-xs">
+                ${legCount > 0 ? `Historical summary: ${legCount} legs settled on this date. Detailed fill records rolled into archive.` : 'No closed orders or executions recorded for this calendar date.'}
+              </td>
+            </tr>
+          `;
+        } else {
+          displayOrders.forEach(o => {
+            const side = String(o.side || o.action || (o.stop_order_type ? 'BUY (SL)' : 'SELL')).toUpperCase();
+            const price = Number((o.avg_fill_price && o.avg_fill_price > 0) ? o.avg_fill_price : (o.stop_price || o.limit_price || o.price || 0));
+            const pnl = Number(o.pnl_usd || 0);
+            const timeStr = o.date_ist || (o.created_at ? o.created_at.slice(5, 16).replace('T', ' ') : '—');
+            const lots = o.size || 500;
+            const sId = resolveStrategyId(o);
+
+            let stratBadge = '<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">Strangle</span>';
+            if (sId === 'regime_condor' || sId === 'btc_condor') {
+              stratBadge = '<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-500/10 text-purple-400 border border-purple-500/20">Condor</span>';
+            } else if (sId === 'btc_trend_breakout' || sId === 'trend_breakout') {
+              stratBadge = '<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Trend</span>';
+            } else if (sId === 'eth_1dte') {
+              stratBadge = '<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">ETH Strangle</span>';
+            } else if (sId === 'btc_0dte') {
+              stratBadge = '<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">0DTE Intraday</span>';
+            } else if (sId === 'btc_leaps') {
+              stratBadge = '<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">LEAPS</span>';
+            }
+
+            const isBuy = side.includes('BUY');
+            const sideBadge = isBuy
+              ? '<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/15 text-blue-300 border border-blue-500/30">BUY (SL)</span>'
+              : '<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-500/15 text-purple-300 border border-purple-500/30">SELL</span>';
+
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-gray-800/40 transition';
+            tr.innerHTML = `
+              <td class="py-2.5 px-3 text-gray-400 whitespace-nowrap">${timeStr}</td>
+              <td class="py-2.5 px-3">${stratBadge}</td>
+              <td class="py-2.5 px-3 text-gray-200 font-mono font-medium">${o.symbol || '—'}</td>
+              <td class="py-2.5 px-3">${sideBadge}</td>
+              <td class="py-2.5 px-3 text-gray-300 font-mono">${lots}L</td>
+              <td class="py-2.5 px-3 text-gray-200 font-mono font-semibold">$${price.toFixed(2)}</td>
+              <td class="py-2.5 px-3 text-right font-mono font-bold ${pnl !== 0 ? (pnl > 0 ? 'text-emerald-400' : 'text-rose-400') : 'text-gray-400'}">
+                ${pnl !== 0 ? formatMoney(pnl, true) : '—'}
+              </td>
+            `;
+            tbody.appendChild(tr);
+          });
+        }
+      }
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeDayModal() {
+      const modal = document.getElementById('day-drilldown-modal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    function handleDayModalBackdropClick(event) {
+      if (event && event.target && event.target.id === 'day-drilldown-modal') {
+        closeDayModal();
+      }
+    }
+
+    // Global Escape Key Listener for Modals
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' || e.key === 'Esc') {
+        closeDayModal();
+        if (typeof closeEmergencySquareOffModal === 'function') closeEmergencySquareOffModal();
+        if (typeof closeSettingsModal === 'function') closeSettingsModal();
+        if (typeof closeAlertsModal === 'function') closeAlertsModal();
+      }
+    });
+
+    // 1-Click Clipboard Order ID Copy Helper (Item 5)
+    function copyOrderId(orderId, event) {
+      if (event) {
+        event.stopPropagation();
+        if (event.preventDefault) event.preventDefault();
+      }
+      if (!orderId || orderId === '—' || orderId === 'undefined') return;
+      const idStr = String(orderId).trim();
+      if (navigator && navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(idStr).then(() => {
+          showToast(`📋 Copied Order ID #${idStr} to clipboard!`, 'success');
+        }).catch(() => {
+          fallbackCopyText(idStr);
+        });
+      } else {
+        fallbackCopyText(idStr);
+      }
+    }
+
+    function fallbackCopyText(text) {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        showToast(`📋 Copied Order ID #${text} to clipboard!`, 'success');
+      } catch (e) {
+        showToast(`Order ID: #${text}`, 'info');
+      }
+    }
+
+    // Status Badge Formatter with Distinct Colors (Item 5)
+    function getAuditStatusBadge(o) {
+      const rawStatus = String(o.audit_status || o.state || '').toUpperCase();
+      const rawReason = String(o.reason || o.cancellation_reason || '').toUpperCase();
+      const isStop = Boolean(o.stop_order_type) || rawReason.includes('STOP-LOSS TRIGGERED') || rawReason.includes('TRIGGERED');
+
+      if (isStop && (rawStatus.includes('SUCCESS') || rawStatus.includes('FILLED') || rawStatus.includes('CLOSED') || rawStatus.includes('TRIGGERED'))) {
+        return '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 uppercase tracking-wider">TRIGGERED</span>';
+      }
+      if (rawStatus.includes('SUCCESS') || rawStatus.includes('FILLED') || rawStatus === 'CLOSED') {
+        return '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 uppercase tracking-wider">FILLED</span>';
+      }
+      if (rawStatus.includes('CANCEL')) {
+        return '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-gray-500/15 text-gray-400 border border-gray-600/30 uppercase tracking-wider">CANCELLED</span>';
+      }
+      if (rawStatus.includes('FAIL') || rawStatus.includes('REJECT') || rawStatus.includes('ERROR')) {
+        return '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/15 text-rose-300 border border-rose-500/30 uppercase tracking-wider">FAILED</span>';
+      }
+      if (rawStatus.includes('PENDING') || rawStatus.includes('OPEN')) {
+        return '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-500/15 text-blue-300 border border-blue-500/30 uppercase tracking-wider">PENDING SL</span>';
+      }
+      return `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-gray-500/15 text-gray-400 border border-gray-600/30 uppercase tracking-wider">${rawStatus || 'EXECUTED'}</span>`;
     }
 
     // 9. Audit Ledger Table with Filters, Cohorts, Search & CSV Export
@@ -6145,11 +6485,9 @@
         if (currentAuditStrategy !== 'ALL') {
           const matchCondor = (currentAuditStrategy === 'regime_condor' || currentAuditStrategy === 'btc_condor') &&
                               (sId === 'regime_condor' || sId === 'btc_condor');
-          if (sId !== currentAuditStrategy && !matchCondor) return false;
-        } else if (currentStrategy !== 'all') {
-          const matchCondor = (currentStrategy === 'regime_condor' || currentStrategy === 'btc_condor') &&
-                              (sId === 'regime_condor' || sId === 'btc_condor');
-          if (sId !== currentStrategy && !matchCondor) return false;
+          const matchTrend = (currentAuditStrategy === 'btc_trend_breakout' || currentAuditStrategy === 'trend_breakout') &&
+                             (sId === 'btc_trend_breakout' || sId === 'trend_breakout');
+          if (sId !== currentAuditStrategy && !matchCondor && !matchTrend) return false;
         }
         // 1. Status filter
         if (currentAuditStatusTab !== 'ALL') {
@@ -6229,10 +6567,24 @@
 
     function renderAuditLedger() {
       const tbody = document.getElementById('ledger-tbody');
-      if (!tbody) return;
-      tbody.innerHTML = '';
+      const mobileContainer = document.getElementById('ledger-cards-mobile');
+      if (tbody) tbody.innerHTML = '';
+      if (mobileContainer) mobileContainer.innerHTML = '';
+
       const filtered = getFilteredAuditOrders();
       const totalCount = ((dashboardState && Array.isArray(dashboardState.audit_orders)) ? dashboardState.audit_orders.length : 0);
+
+      if (filtered.length === 0) {
+        if (tbody) {
+          tbody.innerHTML = '<tr><td colspan="9" class="py-8 text-center text-gray-500 text-xs">No execution or audit records match the current filters.</td></tr>';
+        }
+        if (mobileContainer) {
+          mobileContainer.innerHTML = '<div class="p-6 text-center text-gray-500 text-xs bg-gray-900/40 rounded-xl border border-gray-800">No execution or audit records match current filters.</div>';
+        }
+        const countLabel = document.getElementById('ledger-count-label');
+        if (countLabel) countLabel.textContent = `0 of ${totalCount} records`;
+        return;
+      }
 
       filtered.forEach(o => {
         const side = String(o.side || o.action || (o.stop_order_type ? 'BUY (SL)' : 'SELL')).toUpperCase();
@@ -6264,23 +6616,86 @@
           ? '<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/15 text-blue-300 border border-blue-500/30">BUY (SL)</span>'
           : '<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-500/15 text-purple-300 border border-purple-500/30">SELL</span>';
 
-        const tr = document.createElement('tr');
-        tr.className = 'hover:bg-gray-800/40 transition';
-        tr.innerHTML = `
-          <td class="py-2.5 px-3 text-gray-400 whitespace-nowrap">${dateStr}</td>
-          <td class="py-2.5 px-3">${stratBadge}</td>
-          <td class="py-2.5 px-3">${sideBadge}</td>
-          <td class="py-2.5 px-3 text-gray-200 font-mono font-medium">${o.symbol || '—'}</td>
-          <td class="py-2.5 px-3 text-gray-300 font-mono">${lots}L <span class="text-gray-500 text-[10px]">(${cryptoQty} ${assetUnit})</span></td>
-          <td class="py-2.5 px-3 text-gray-200 font-mono font-semibold">$${price.toFixed(2)}</td>
-          <td class="py-2.5 px-3 text-right font-mono ${pnl !== 0 ? (pnl > 0 ? 'text-emerald-400' : 'text-rose-400') : 'text-gray-400'}">
-            ${pnl !== 0 ? formatMoney(pnl, true) : (fee !== 0 ? formatMoney(fee) : '—')}
-          </td>
-          <td class="py-2.5 px-3 text-right text-gray-400 text-[11px] truncate max-w-xs" title="${o.reason || o.audit_status || ''}">
-            ${o.reason || o.audit_status || 'Executed'}
-          </td>
-        `;
-        tbody.appendChild(tr);
+        const statusBadge = getAuditStatusBadge(o);
+
+        const orderIdBtn = o.id
+          ? `<button onclick="copyOrderId('${o.id}', event)" class="px-1.5 py-0.5 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 font-mono text-[11px] border border-gray-700/60 inline-flex items-center gap-1 group transition cursor-pointer" title="Click to copy Order ID #${o.id}">
+               <span class="group-hover:text-blue-300">#${o.id}</span>
+               <span class="text-gray-500 group-hover:text-blue-400 text-[10px]">📋</span>
+             </button>`
+          : '<span class="text-gray-600 font-mono text-xs">—</span>';
+
+        // 1. Desktop High-Density Table Row
+        if (tbody) {
+          const tr = document.createElement('tr');
+          tr.className = 'hover:bg-gray-800/40 transition';
+          tr.innerHTML = `
+            <td class="py-2.5 px-3 text-gray-400 whitespace-nowrap">${dateStr}</td>
+            <td class="py-2.5 px-3">${stratBadge}</td>
+            <td class="py-2.5 px-3">${orderIdBtn}</td>
+            <td class="py-2.5 px-3">${sideBadge}</td>
+            <td class="py-2.5 px-3 text-gray-200 font-mono font-medium">${o.symbol || '—'}</td>
+            <td class="py-2.5 px-3 text-gray-300 font-mono">${lots}L <span class="text-gray-500 text-[10px]">(${cryptoQty} ${assetUnit})</span></td>
+            <td class="py-2.5 px-3 text-gray-200 font-mono font-semibold">$${price.toFixed(2)}</td>
+            <td class="py-2.5 px-3 text-right font-mono ${pnl !== 0 ? (pnl > 0 ? 'text-emerald-400' : 'text-rose-400') : 'text-gray-400'}">
+              ${pnl !== 0 ? formatMoney(pnl, true) : (fee !== 0 ? formatMoney(fee) : '—')}
+            </td>
+            <td class="py-2.5 px-3 text-right">
+              <div class="flex items-center justify-end gap-1.5 flex-wrap">
+                ${statusBadge}
+                <span class="text-gray-400 text-[11px] truncate max-w-[9rem]" title="${o.reason || o.audit_status || ''}">${o.reason || o.audit_status || 'Executed'}</span>
+              </div>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        }
+
+        // 2. Mobile Responsive Card Stack
+        if (mobileContainer) {
+          const card = document.createElement('div');
+          card.className = 'p-3 rounded-xl bg-gray-900/80 border border-gray-800 space-y-2.5 font-mono shadow-sm';
+          card.innerHTML = `
+            <div class="flex items-center justify-between text-xs border-b border-gray-800 pb-2">
+              <div class="flex items-center gap-2">
+                <span class="text-gray-400 text-[11px]">${dateStr}</span>
+                ${stratBadge}
+              </div>
+              ${statusBadge}
+            </div>
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-1.5">
+                ${sideBadge}
+                <span class="text-gray-100 font-bold text-xs">${o.symbol || '—'}</span>
+              </div>
+              ${o.id ? `
+                <button onclick="copyOrderId('${o.id}', event)" class="px-2 py-0.5 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 text-[11px] border border-gray-700 inline-flex items-center gap-1.5 transition cursor-pointer shadow-sm">
+                  <span>#${o.id}</span>
+                  <span class="text-gray-400">📋</span>
+                </button>` : ''}
+            </div>
+            <div class="grid grid-cols-3 gap-2 text-[11px] bg-gray-950/60 p-2 rounded-lg border border-gray-850">
+              <div>
+                <div class="text-[9px] text-gray-500 uppercase">Lots</div>
+                <div class="text-gray-200 font-semibold">${lots}L <span class="text-gray-500 text-[9px]">(${cryptoQty})</span></div>
+              </div>
+              <div>
+                <div class="text-[9px] text-gray-500 uppercase">Fill Price</div>
+                <div class="text-gray-200 font-semibold">$${price.toFixed(2)}</div>
+              </div>
+              <div class="text-right">
+                <div class="text-[9px] text-gray-500 uppercase">Realized P&amp;L</div>
+                <div class="font-bold ${pnl !== 0 ? (pnl > 0 ? 'text-emerald-400' : 'text-rose-400') : 'text-gray-400'}">
+                  ${pnl !== 0 ? formatMoney(pnl, true) : (fee !== 0 ? formatMoney(fee) : '—')}
+                </div>
+              </div>
+            </div>
+            ${o.reason || o.audit_status ? `
+              <div class="text-[10px] text-gray-400 truncate pt-0.5" title="${o.reason || o.audit_status}">
+                <span class="text-gray-500">Note:</span> ${o.reason || o.audit_status}
+              </div>` : ''}
+          `;
+          mobileContainer.appendChild(card);
+        }
       });
 
       const countLabel = document.getElementById('ledger-count-label');
