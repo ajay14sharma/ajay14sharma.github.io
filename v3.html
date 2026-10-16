@@ -3646,18 +3646,17 @@
       const modeSelect = document.getElementById('dispatch-mode-select');
       if (modeSelect) modeSelect.value = 'attach-sl-only';
       const stratSelect = document.getElementById('dispatch-strategy-select');
-      if (stratSelect) {
-        if (strategyId) {
-          stratSelect.value = strategyId;
-        } else if (symbol) {
-          if (symbol.includes('-ETH-')) {
-            stratSelect.value = 'eth_1dte';
-          } else {
-            stratSelect.value = 'btc_1dte';
-          }
-        } else if (currentPositionSleeve && currentPositionSleeve !== 'all' && currentPositionSleeve !== 'btc_leaps') {
-          stratSelect.value = currentPositionSleeve === 'condor' ? 'regime_condor' : currentPositionSleeve;
-        }
+      let targetStrat = strategyId;
+      if (!targetStrat && symbol) {
+        targetStrat = resolveStrategyId({ symbol });
+      }
+      if (!targetStrat && currentPositionSleeve && currentPositionSleeve !== 'all' && currentPositionSleeve !== 'btc_leaps') {
+        targetStrat = currentPositionSleeve === 'condor' ? 'regime_condor' : currentPositionSleeve;
+      }
+      if (targetStrat === 'condor' || targetStrat === 'btc_condor') targetStrat = 'regime_condor';
+      if (targetStrat === 'btc_leaps') targetStrat = 'btc_1dte';
+      if (stratSelect && targetStrat) {
+        stratSelect.value = targetStrat;
       }
       if (symbol) {
         showToast(`Preparing 2.0x SL bracket placement for ${symbol}...`, 'info');
@@ -4154,7 +4153,12 @@
 
     function resolveStrategyId(item) {
       if (!item) return 'btc_1dte';
-      if (item.strategy_id) return item.strategy_id;
+      const rawSid = item.strategy_id;
+      if (rawSid) {
+        if (rawSid === 'btc_condor' || rawSid === 'condor') return 'regime_condor';
+        if (rawSid === 'trend_breakout' || rawSid === 'btc_trend' || rawSid === 'trend') return 'btc_trend_breakout';
+        return rawSid;
+      }
       const cid = String(item.client_order_id || '').toUpperCase();
       if (cid.startsWith('CDR-')) return 'regime_condor';
       if (cid.startsWith('TRD-')) return 'btc_trend_breakout';
@@ -4164,6 +4168,10 @@
       const sym = String(item.symbol || item.product_symbol || '').toUpperCase();
       if (sym === 'BTCUSD' || sym === 'BTCUSDT' || sym === 'BTC_USDT') return 'btc_trend_breakout';
       if (sym.includes('-ETH-')) return 'eth_1dte';
+      const cohort = String(item.cohort || '').toUpperCase();
+      if (cohort.includes('REGIME') || cohort.includes('CONDOR')) return 'regime_condor';
+      if (cohort.includes('TREND') || cohort.includes('BREAKOUT')) return 'btc_trend_breakout';
+      if (cohort.includes('0DTE') || cohort.includes('INTRADAY')) return 'btc_0dte';
       const parts = sym.split('-');
       if (parts.length >= 4) {
         const expCode = parts[3];
@@ -4186,7 +4194,7 @@
       const lots = Number(p.lots || p.size || -500);
       const isLong = lots > 0;
       // Live open orders on Delta Exchange
-      const hasSlOrder = Boolean(p.sl_active && p.sl_trigger !== null && p.sl_trigger !== undefined && Number(p.sl_trigger) > 0);
+      const hasSlOrder = Boolean(p.sl_active === true || (p.sl_active !== false && p.sl_trigger !== null && p.sl_trigger !== undefined && Number(p.sl_trigger) > 0));
       const hasTpOrder = Boolean(p.tp_active && p.tp_trigger !== null && p.tp_trigger !== undefined && Number(p.tp_trigger) > 0);
       const slTrigger = hasSlOrder ? Number(p.sl_trigger) : null;
       const tpTrigger = hasTpOrder ? Number(p.tp_trigger) : null;
@@ -4502,7 +4510,7 @@
       });
 
       const hasEth = allParsedPositions.some(p => p.assetUnit === 'ETH');
-      const activeSpotPx = (hasEth && (currentStrategy === 'eth_1dte' || !allParsedPositions.some(p => p.assetUnit === 'BTC')))
+      const activeSpotPx = (hasEth && (currentPositionSleeve === 'eth_1dte' || currentStrategy === 'eth_1dte' || !allParsedPositions.some(p => p.assetUnit === 'BTC')))
         ? liveEthSpotPriceNumeric
         : liveSpotPriceNumeric;
 
@@ -5664,7 +5672,8 @@
           if (matchingOrders.length > 0) {
             const dayMap = {};
             matchingOrders.forEach(o => {
-              const d = o.date_ist || (o.updated_at ? o.updated_at.slice(0, 10) : '2026-10-15');
+              const d = o.date_ist || (o.updated_at ? o.updated_at.slice(0, 10) : (o.created_at ? o.created_at.slice(0, 10) : ''));
+              if (!d) return;
               if (!dayMap[d]) dayMap[d] = { date: d, net: 0, trades: 0 };
               const pnl = Number(o.pnl_usd || 0);
               const comm = Number(o.paid_commission || 0);
@@ -5736,7 +5745,7 @@
 
         const activeDays = winCount + lossCount;
         winRatePct = activeDays > 0 ? (winCount / activeDays) * 100 : 0;
-        profitFactor = grossLosses > 0 ? (grossGains / grossLosses) : (grossGains > 0 ? grossGains : 0);
+        profitFactor = grossLosses > 0 ? (grossGains / grossLosses) : (grossGains > 0 ? 99.9 : 0);
 
         const n = dailyNets.length;
         const mean = n > 0 ? (dailyNets.reduce((a, b) => a + b, 0) / n) : 0;
@@ -5782,18 +5791,38 @@
         chartDailyData = [0];
       }
 
+      // Calculate live unrealized P&L for current strategy filter
+      let liveUpnl = 0;
+      const openPositions = (dashboardState && Array.isArray(dashboardState.open_positions)) ? dashboardState.open_positions : [];
+      if (currentEquityStrategy === 'all') {
+        liveUpnl = Number(dashboardState?.portfolio_performance?.summary?.live_unrealized_pnl_usd ?? openPositions.reduce((acc, p) => acc + (parseFloat(p.unrealized_pnl_usd) || 0), 0));
+      } else {
+        liveUpnl = openPositions.filter(p => {
+          const sid = resolveStrategyId(p);
+          const matchCondor = (currentEquityStrategy === 'regime_condor' || currentEquityStrategy === 'btc_condor') &&
+                              (sid === 'regime_condor' || sid === 'btc_condor');
+          return sid === currentEquityStrategy || matchCondor;
+        }).reduce((acc, p) => acc + (parseFloat(p.unrealized_pnl_usd) || 0), 0);
+      }
+      liveUpnl = Math.round(liveUpnl * 100) / 100;
+      const combinedNetPnl = Math.round((periodNetPnl + (isStandby ? 0 : liveUpnl)) * 100) / 100;
+
+      if (!isStandby && liveUpnl !== 0 && chartCumData.length > 0) {
+        chartCumData[chartCumData.length - 1] = Math.round((chartCumData[chartCumData.length - 1] + liveUpnl) * 100) / 100;
+      }
+
       // 3. Update Institutional KPI Chips Grid
       if (kpiNet) {
-        kpiNet.textContent = isStandby ? '$0.00 (Standby)' : formatMoney(periodNetPnl, true);
-        kpiNet.className = `font-bold mt-0.5 text-sm ${periodNetPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+        kpiNet.textContent = isStandby ? '$0.00 (Standby)' : formatMoney(combinedNetPnl, true);
+        kpiNet.className = `font-bold mt-0.5 text-sm ${combinedNetPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
       }
       if (kpiNetInr) {
         if (isStandby) {
           kpiNetInr.textContent = 'Model: ₹' + Math.round((standbyMeta?.total_net || 0) * fxRate).toLocaleString('en-IN');
         } else if (currentCurrency === 'INR') {
-          kpiNetInr.textContent = `($${periodNetPnl >= 0 ? '+' : ''}${periodNetPnl.toFixed(2)})`;
+          kpiNetInr.textContent = `($${combinedNetPnl >= 0 ? '+' : ''}${combinedNetPnl.toFixed(2)})${liveUpnl !== 0 ? ` • uPnL: ${formatMoney(liveUpnl, true)}` : ''}`;
         } else {
-          kpiNetInr.textContent = `₹${Math.round(periodNetPnl * fxRate).toLocaleString('en-IN')}`;
+          kpiNetInr.textContent = `₹${Math.round(combinedNetPnl * fxRate).toLocaleString('en-IN')}${liveUpnl !== 0 ? ` • uPnL: ${formatMoney(liveUpnl, true)}` : ''}`;
         }
       }
       if (kpiSharpe) {
@@ -6175,7 +6204,7 @@
       const headers = ['Date_IST', 'Strategy', 'Timestamp_UTC', 'Order_ID', 'Symbol', 'Side', 'Status', 'Size_Lots', 'Avg_Fill_Price', 'Stop_Price', 'Fee_USD', 'Realized_PnL_USD', 'Reason'];
       const rows = filtered.map(o => [
         o.date_ist || '',
-        o.strategy_id || (String(o.symbol || '').includes('-ETH-') ? 'eth_1dte' : 'btc_1dte'),
+        resolveStrategyId(o),
         o.created_at || '',
         o.id || '',
         o.symbol || '',
