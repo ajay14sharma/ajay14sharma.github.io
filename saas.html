@@ -371,7 +371,7 @@
                 <div>
                   <div class="font-bold text-sm text-gray-100 flex items-center gap-1.5">
                     Delta Exchange
-                    <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">SUPPORTED &amp; LIVE</span>
+                    <span id="modal-delta-badge" class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">READY TO CONNECT</span>
                   </div>
                   <div class="text-[11px] text-gray-400">Crypto Derivatives (BTC/ETH Options &amp; Perpetuals)</div>
                 </div>
@@ -384,7 +384,7 @@
             <div class="bg-gray-900/60 p-2.5 rounded-lg border border-gray-800 space-y-1.5 text-xs">
               <div class="flex justify-between">
                 <span class="text-gray-400">Configured Key:</span>
-                <span id="modal-delta-masked-key" class="font-mono text-gray-200">dWa2****OSaG</span>
+                <span id="modal-delta-masked-key" class="font-mono text-gray-200">Not Configured</span>
               </div>
               <div class="flex justify-between">
                 <span class="text-gray-400">Base Endpoint:</span>
@@ -392,15 +392,15 @@
               </div>
               <div class="flex justify-between items-center pt-1 border-t border-gray-800/80">
                 <span class="text-gray-400">Automated Execution:</span>
-                <span class="text-emerald-400 font-semibold flex items-center gap-1">
-                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Active
+                <span id="modal-delta-exec-status" class="text-gray-400 font-semibold flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-gray-500"></span> Standby (No Keys)
                 </span>
               </div>
             </div>
 
             <div class="flex gap-2">
-              <button type="button" onclick="navigateTo('#/vault'); closeProfileBrokerModal();" class="flex-1 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-medium border border-gray-700 transition cursor-pointer">
-                🔑 Update Keys
+              <button id="modal-delta-connect-btn" type="button" onclick="navigateTo('#/vault'); closeProfileBrokerModal();" class="flex-1 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-gray-950 text-xs font-bold shadow transition cursor-pointer">
+                🔑 Connect Delta Keys
               </button>
               <button id="btn-delta-ping" type="button" onclick="testBrokerPing('delta')" class="flex-1 py-1.5 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 text-xs font-medium border border-blue-500/30 transition cursor-pointer">
                 ⚡ Test Ping
@@ -719,7 +719,7 @@
           <button type="button" onclick="syncNow()" class="px-3.5 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-200 font-semibold text-xs transition border border-gray-700 shadow-sm flex items-center gap-1.5 cursor-pointer">
             <span>🔄 Refresh Market Prices</span>
           </button>
-          <button type="button" onclick="openBrokerHubModal()" class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-gray-950 font-bold text-xs transition shadow shrink-0 flex items-center gap-1.5 cursor-pointer">
+          <button id="btn-connect-broker-banner" type="button" onclick="openProfileBrokerModal('brokers')" class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-gray-950 font-bold text-xs transition shadow shrink-0 flex items-center gap-1.5 cursor-pointer">
             <span>🔑 Connect Broker</span>
             <span>→</span>
           </button>
@@ -3969,10 +3969,39 @@
       if (providerEl) providerEl.textContent = user.provider === 'google' ? 'Google OAuth 2.0' : (user.provider || 'Direct Auth');
       if (stateEl) stateEl.textContent = user.state || 'ACTIVE_APPROVED';
 
-      // Update masked key in Delta card
+      // Update Delta Exchange card status dynamically based on vault keys
+      const hasKeys = session && session.has_vault_keys;
       const deltaKeyEl = document.getElementById('modal-delta-masked-key');
+      const deltaBadgeEl = document.getElementById('modal-delta-badge');
+      const deltaExecEl = document.getElementById('modal-delta-exec-status');
+      const deltaConnectBtn = document.getElementById('modal-delta-connect-btn');
+
       if (deltaKeyEl) {
-        deltaKeyEl.textContent = session && session.masked_api_key ? session.masked_api_key : 'dWa2****OSaG';
+        deltaKeyEl.textContent = (hasKeys && session.masked_api_key) ? session.masked_api_key : (hasKeys ? 'Configured' : 'Not Configured (Read-Only)');
+      }
+      if (deltaBadgeEl) {
+        if (hasKeys) {
+          deltaBadgeEl.textContent = 'CONNECTED & LIVE';
+          deltaBadgeEl.className = 'px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+        } else {
+          deltaBadgeEl.textContent = 'READY TO CONNECT';
+          deltaBadgeEl.className = 'px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30';
+        }
+      }
+      if (deltaExecEl) {
+        if (hasKeys) {
+          deltaExecEl.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Active';
+          deltaExecEl.className = 'text-emerald-400 font-semibold flex items-center gap-1';
+        } else {
+          deltaExecEl.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-gray-500"></span> Standby (No Keys)';
+          deltaExecEl.className = 'text-gray-400 font-semibold flex items-center gap-1';
+        }
+      }
+      if (deltaConnectBtn) {
+        deltaConnectBtn.innerHTML = hasKeys ? '🔑 Update / Rotate Keys' : '🔑 Connect Delta Keys';
+        deltaConnectBtn.className = hasKeys
+          ? 'flex-1 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-medium border border-gray-700 transition cursor-pointer'
+          : 'flex-1 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-gray-950 text-xs font-bold shadow transition cursor-pointer';
       }
 
       // Load saved secondary profile details from localStorage
@@ -4111,6 +4140,10 @@
     window.showBrokerGuide = showBrokerGuide;
     window.hideBrokerGuide = hideBrokerGuide;
     window.testBrokerPing = testBrokerPing;
+    function openBrokerHubModal() {
+      openProfileBrokerModal('brokers');
+    }
+    window.openBrokerHubModal = openBrokerHubModal;
 
     function enterDemoMode() {
       const demoUser = {
