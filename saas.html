@@ -405,6 +405,9 @@
               <button id="modal-delta-sync-btn" type="button" onclick="syncBrokerPortfolio()" class="flex-1 py-1.5 px-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow transition cursor-pointer flex items-center justify-center gap-1">
                 <span>⚡ Sync Live Portfolio</span>
               </button>
+              <button id="modal-delta-disconnect-btn" type="button" onclick="disconnectTenantBroker('delta')" class="py-1.5 px-2.5 rounded-lg bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 text-xs font-medium border border-rose-500/30 transition cursor-pointer">
+                Disconnect
+              </button>
               <button id="btn-delta-ping" type="button" onclick="testBrokerPing('delta')" class="py-1.5 px-3 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-medium border border-gray-700 transition cursor-pointer">
                 ⚡ Ping
               </button>
@@ -648,9 +651,14 @@
           <button id="btn-proceed-to-dashboard" type="button" onclick="navigateTo('#/dashboard')" class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-lg shadow-emerald-600/20 transition flex items-center gap-2">
             <span>Launch Pro Dashboard 🚀</span>
           </button>
-          <button type="button" onclick="showVaultEditForm()" class="text-xs text-gray-400 hover:text-gray-200 underline">
-            Rotate / Update Keys
-          </button>
+          <div class="flex items-center gap-3">
+            <button type="button" onclick="showVaultEditForm()" class="text-xs text-gray-400 hover:text-gray-200 underline">
+              Rotate / Update Keys
+            </button>
+            <button type="button" onclick="disconnectTenantBroker('delta')" class="text-xs text-rose-400 hover:text-rose-300 underline">
+              Disconnect
+            </button>
+          </div>
         </div>
       </div>
 
@@ -3528,7 +3536,7 @@
 
     const ApiClient = {
       async fetchWithAuth(url, options = {}) {
-        const session = SessionManager.session;
+        const session = SessionManager.session || SessionManager.loadSession();
         const token = session ? session.access_token : null;
         const headers = new Headers(options.headers || {});
         if (token) {
@@ -4206,7 +4214,7 @@
       }
 
       // 3. Cross-Device Vault Sync: Fetch encrypted vault from Cloudflare Edge KV
-      const session = SessionManager.session;
+      const session = SessionManager.session || SessionManager.loadSession();
       if (session && session.access_token && !session.is_demo) {
         try {
           const resp = await ApiClient.fetchWithAuth(`https://delta-strangle-scheduler.ajay14sharma.workers.dev/api/tenant/vault?t=${Date.now()}`);
@@ -4241,7 +4249,7 @@
         localStorage.setItem("delta_vault_cipher_" + userId, cipher);
         // Asynchronously push encrypted ciphertext to Cloudflare Edge KV vault
         try {
-          ApiClient.fetchWithAuth('https://delta-strangle-scheduler.ajay14sharma.workers.dev/api/tenant/vault', {
+          await ApiClient.fetchWithAuth('https://delta-strangle-scheduler.ajay14sharma.workers.dev/api/tenant/vault', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ciphertext: cipher, tenant_id: userId })
@@ -4251,6 +4259,39 @@
         }
       }
     }
+
+    async function disconnectTenantBroker(brokerKey = 'delta') {
+      const session = SessionManager.session || SessionManager.loadSession();
+      const userId = (session && session.user && session.user.user_id) ? session.user.user_id : 'usr_g_guest';
+
+      try {
+        sessionStorage.removeItem("delta_vault_key_" + userId);
+        sessionStorage.removeItem("delta_vault_secret_" + userId);
+        localStorage.removeItem("delta_vault_cipher_" + userId);
+      } catch (_) {}
+
+      if (session && session.access_token && !session.is_demo) {
+        try {
+          await ApiClient.fetchWithAuth('https://delta-strangle-scheduler.ajay14sharma.workers.dev/api/tenant/vault', {
+            method: 'DELETE'
+          }).catch(err => console.warn('Failed to delete cloud vault on disconnect:', err));
+        } catch (delErr) {
+          console.warn('Vault cloud delete error:', delErr);
+        }
+      }
+
+      if (session) {
+        session.has_vault_keys = false;
+        session.masked_api_key = null;
+        SessionManager.saveSession(session);
+      }
+
+      appStateMachine.setVaultKeys(false);
+      updateVaultUI();
+      updateTenantContextBar();
+      showToast('Delta Exchange broker disconnected & credentials removed.', 'info');
+    }
+    window.disconnectTenantBroker = disconnectTenantBroker;
 
     function openInlineBrokerConnectDrawer(brokerKey) {
       const drawer = document.getElementById(`${brokerKey}-inline-connect-drawer`);
@@ -4308,6 +4349,7 @@
       appStateMachine.setVaultKeys(true);
       appStateMachine.setSkippedVault(false);
       updateVaultConnectedUI(masked);
+      updateTenantContextBar();
       toggleInlineBrokerConnectDrawer('delta');
 
       showToast('Connecting to Delta Exchange India & syncing positions...', 'info');
@@ -4488,6 +4530,7 @@
       appStateMachine.setVaultKeys(true);
       appStateMachine.setSkippedVault(false);
       updateVaultConnectedUI(masked);
+      updateTenantContextBar();
 
       try {
         const ok = await syncBrokerPortfolio(apiKey, apiSecret);
@@ -4659,11 +4702,26 @@
       }
     }
 
-    function updateVaultUI() {
-      const session = SessionManager.session;
+    async function updateVaultUI() {
+      const session = SessionManager.session || SessionManager.loadSession();
       const card = document.getElementById('vault-connected-card');
       const form = document.getElementById('vault-form');
       const maskedEl = document.getElementById('vault-masked-key-display');
+
+      if (session && !session.has_vault_keys && session.access_token && !session.is_demo) {
+        const userId = session.user?.user_id;
+        const creds = await getTenantCredentials(userId);
+        if (creds && creds.apiKey && creds.apiSecret) {
+          session.has_vault_keys = true;
+          session.skipped_vault = false;
+          session.masked_api_key = maskApiKey(creds.apiKey);
+          SessionManager.saveSession(session);
+          appStateMachine.setVaultKeys(true);
+          appStateMachine.setSkippedVault(false);
+          updateTenantContextBar();
+        }
+      }
+
       if (session && session.has_vault_keys) {
         if (card) card.classList.remove('hidden');
         if (form) form.classList.add('hidden');
@@ -6866,8 +6924,13 @@
         const creds = await getTenantCredentials(userId);
         if (creds && creds.apiKey && creds.apiSecret) {
           session.has_vault_keys = true;
+          session.skipped_vault = false;
           session.masked_api_key = maskApiKey(creds.apiKey);
           SessionManager.saveSession(session);
+          appStateMachine.setVaultKeys(true);
+          appStateMachine.setSkippedVault(false);
+          updateVaultConnectedUI(session.masked_api_key);
+          updateTenantContextBar();
           
           let liveSyncOk = false;
           try {
@@ -6877,10 +6940,10 @@
             liveSyncOk = false;
           }
 
-          // Fallback: If direct Delta API fails/times out (e.g. mobile IP mismatch), ensure latest snapshot from Cloudflare KV
-          if (!liveSyncOk && (!dashboardState || dashboardState.is_empty_state)) {
+          // Fallback: If direct Delta API fails/times out (e.g. mobile IP mismatch), gracefully load latest snapshot from Cloudflare KV
+          if (!liveSyncOk) {
             const fallbackOk = await fetchEdgeTenantSnapshot();
-            if (!fallbackOk) {
+            if (!fallbackOk && (!dashboardState || dashboardState.is_empty_state)) {
               await fetchPrimaryAdminEdgeSnapshot();
             }
           }
@@ -6951,13 +7014,27 @@
     }
 
     async function syncNow() {
-      const session = SessionManager.session;
+      const session = SessionManager.session || SessionManager.loadSession();
       const isReadOnly = session && !session.has_vault_keys && !session.is_demo;
       const userId = (session && session.user && session.user.user_id) ? session.user.user_id : 'usr_g_guest';
       const creds = await getTenantCredentials(userId);
       if (creds && creds.apiKey && creds.apiSecret) {
-        await syncBrokerPortfolio(creds.apiKey, creds.apiSecret);
+        const liveSyncOk = await syncBrokerPortfolio(creds.apiKey, creds.apiSecret);
+        if (!liveSyncOk) {
+          showToast('Direct Delta connection failed. Loading fallback snapshot from Cloudflare...', 'info');
+          await loadDashboardSnapshot();
+        }
         await fetchLiveDeltaTickers();
+        const token = getSavedToken();
+        if (token) {
+          await refreshLiveGitHubVariables(token);
+        }
+        renderHeaderAndKPIs();
+        renderLivePositions();
+        renderMultiStrategySleeves();
+        renderPortfolioPerformanceChart();
+        renderAuditCohortPills();
+        renderAuditLedger();
         return;
       }
 
