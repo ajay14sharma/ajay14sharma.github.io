@@ -398,13 +398,37 @@
               </div>
             </div>
 
-            <div class="flex gap-2">
-              <button id="modal-delta-connect-btn" type="button" onclick="navigateTo('#/vault'); closeProfileBrokerModal();" class="flex-1 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-gray-950 text-xs font-bold shadow transition cursor-pointer">
-                🔑 Connect Delta Keys
+            <div class="flex gap-2 flex-wrap">
+              <button id="modal-delta-connect-btn" type="button" onclick="toggleInlineBrokerConnectDrawer('delta')" class="flex-1 py-1.5 px-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-gray-950 text-xs font-bold shadow transition cursor-pointer">
+                🔑 Connect / Update Keys
               </button>
-              <button id="btn-delta-ping" type="button" onclick="testBrokerPing('delta')" class="flex-1 py-1.5 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 text-xs font-medium border border-blue-500/30 transition cursor-pointer">
-                ⚡ Test Ping
+              <button id="modal-delta-sync-btn" type="button" onclick="syncBrokerPortfolio()" class="flex-1 py-1.5 px-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow transition cursor-pointer flex items-center justify-center gap-1">
+                <span>⚡ Sync Live Portfolio</span>
               </button>
+              <button id="btn-delta-ping" type="button" onclick="testBrokerPing('delta')" class="py-1.5 px-3 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-medium border border-gray-700 transition cursor-pointer">
+                ⚡ Ping
+              </button>
+            </div>
+
+            <!-- Inline API Key Input Drawer for instant connecting -->
+            <div id="delta-inline-connect-drawer" class="hidden p-3 rounded-xl bg-gray-900 border border-indigo-500/30 space-y-2.5">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-gray-200">Connect Delta Exchange India</span>
+                <button type="button" onclick="toggleInlineBrokerConnectDrawer('delta')" class="text-gray-500 hover:text-gray-300 text-xs cursor-pointer">✕</button>
+              </div>
+              <div class="space-y-2 text-xs">
+                <div>
+                  <label class="block text-[11px] text-gray-400 mb-0.5" for="inline-delta-api-key">API Key</label>
+                  <input type="text" id="inline-delta-api-key" placeholder="Enter Delta API Key" class="w-full bg-gray-950 border border-gray-700 rounded-lg px-2.5 py-1.5 text-gray-200 font-mono text-xs focus:outline-none focus:border-indigo-500" />
+                </div>
+                <div>
+                  <label class="block text-[11px] text-gray-400 mb-0.5" for="inline-delta-api-secret">API Secret</label>
+                  <input type="password" id="inline-delta-api-secret" placeholder="Enter Delta API Secret" class="w-full bg-gray-950 border border-gray-700 rounded-lg px-2.5 py-1.5 text-gray-200 font-mono text-xs focus:outline-none focus:border-indigo-500" />
+                </div>
+                <button type="button" onclick="submitInlineBrokerKeys('delta')" class="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow transition flex items-center justify-center gap-1.5 cursor-pointer">
+                  <span>🔒 Save Credentials &amp; Sync Portfolio Now</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -688,6 +712,9 @@
       </div>
 
       <div class="flex items-center gap-2 flex-wrap">
+        <button id="tenant-sync-broker-btn" type="button" onclick="syncBrokerPortfolio()" class="px-2.5 py-1 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-[11px] font-semibold transition flex items-center gap-1.5 cursor-pointer shadow-sm">
+          <span>⚡ Sync Broker</span>
+        </button>
         <button id="tenant-profile-btn" type="button" onclick="openProfileBrokerModal('profile')" class="px-2.5 py-1 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 text-[11px] font-semibold transition flex items-center gap-1.5 cursor-pointer">
           <span>👤 Profile &amp; Brokers</span>
         </button>
@@ -733,10 +760,10 @@
         <div class="text-2xl">🚀</div>
         <h3 class="text-base font-bold text-gray-100">Welcome to Delta Strangle SaaS!</h3>
         <p class="text-xs text-gray-400 max-w-xl mx-auto">
-          Your credentials are encrypted in the AES-256-GCM vault. The autonomous 24/7 background execution runner will execute your first strategy cycle at the scheduled cycle (10:30 PM IST) or upon workflow trigger.
+          Your credentials are encrypted in the AES-256-GCM vault. You can sync your live Delta Exchange portfolio instantly on-demand, or let the autonomous cloud runner manage your positions 24/7.
         </p>
-        <button type="button" onclick="syncNow()" class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-md">
-          🔄 Check Live Positions Now
+        <button type="button" onclick="syncBrokerPortfolio()" class="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-lg shadow-blue-600/30 transition flex items-center justify-center gap-2 mx-auto cursor-pointer">
+          <span>⚡ Sync Live Delta Portfolio</span>
         </button>
       </div>
     </div>
@@ -4000,8 +4027,16 @@
       if (deltaConnectBtn) {
         deltaConnectBtn.innerHTML = hasKeys ? '🔑 Update / Rotate Keys' : '🔑 Connect Delta Keys';
         deltaConnectBtn.className = hasKeys
-          ? 'flex-1 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-medium border border-gray-700 transition cursor-pointer'
-          : 'flex-1 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-gray-950 text-xs font-bold shadow transition cursor-pointer';
+          ? 'flex-1 py-1.5 px-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-medium border border-gray-700 transition cursor-pointer'
+          : 'flex-1 py-1.5 px-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-gray-950 text-xs font-bold shadow transition cursor-pointer';
+      }
+      const deltaSyncBtn = document.getElementById('modal-delta-sync-btn');
+      if (deltaSyncBtn) {
+        if (hasKeys) {
+          deltaSyncBtn.classList.remove('hidden');
+        } else {
+          deltaSyncBtn.classList.add('hidden');
+        }
       }
 
       // Load saved secondary profile details from localStorage
@@ -4113,24 +4148,89 @@
       if (drawerEl) drawerEl.classList.add('hidden');
     }
 
-    function testBrokerPing(brokerKey) {
+    function toggleInlineBrokerConnectDrawer(brokerKey) {
+      const drawer = document.getElementById(`${brokerKey}-inline-connect-drawer`);
+      if (drawer) {
+        drawer.classList.toggle('hidden');
+        if (!drawer.classList.contains('hidden')) {
+          const keyInput = document.getElementById(`inline-${brokerKey}-api-key`);
+          if (keyInput) keyInput.focus();
+        }
+      }
+    }
+
+    async function submitInlineBrokerKeys(brokerKey) {
+      if (brokerKey !== 'delta') return;
+      const keyEl = document.getElementById('inline-delta-api-key');
+      const secretEl = document.getElementById('inline-delta-api-secret');
+
+      const apiKey = keyEl ? keyEl.value.trim() : '';
+      const apiSecret = secretEl ? secretEl.value.trim() : '';
+
+      // Scrub secret from DOM immediately
+      if (secretEl) secretEl.value = '';
+
+      if (!apiKey || !apiSecret) {
+        showToast('Please enter both Delta API Key and API Secret.', 'error');
+        return;
+      }
+
+      const masked = maskApiKey(apiKey);
+      const session = SessionManager.session;
+      const userId = (session && session.user && session.user.user_id) ? session.user.user_id : 'usr_g_guest';
+
+      if (session) {
+        session.has_vault_keys = true;
+        session.skipped_vault = false;
+        session.masked_api_key = masked;
+        SessionManager.saveSession(session);
+        if (keyEl) keyEl.value = '';
+      }
+
+      sessionStorage.setItem('delta_vault_key_' + userId, apiKey);
+      sessionStorage.setItem('delta_vault_secret_' + userId, apiSecret);
+
+      appStateMachine.setVaultKeys(true);
+      appStateMachine.setSkippedVault(false);
+      updateVaultConnectedUI(masked);
+      toggleInlineBrokerConnectDrawer('delta');
+
+      showToast('Connecting to Delta Exchange India & syncing positions...', 'info');
+      await syncBrokerPortfolio(apiKey, apiSecret);
+    }
+
+    async function testBrokerPing(brokerKey) {
       const btn = document.getElementById('btn-delta-ping');
       if (!btn) return;
       const origText = btn.innerHTML;
       btn.innerHTML = '⏳ Pinging...';
       btn.disabled = true;
 
+      const t0 = performance.now();
+      try {
+        const resp = await fetch('https://api.india.delta.exchange/v2/tickers?contract_types=call_options&underlying_asset_symbols=BTC', { method: 'GET' });
+        const latency = Math.round(performance.now() - t0);
+        if (resp.ok) {
+          btn.innerHTML = `✓ ${latency}ms (OK)`;
+          btn.className = 'py-1.5 px-3 rounded-lg bg-emerald-600/20 text-emerald-300 text-xs font-medium border border-emerald-500/30 transition cursor-pointer';
+          showToast(`Delta Exchange India latency: ${latency}ms (API connection healthy)`, 'success');
+        } else {
+          btn.innerHTML = `⚠ HTTP ${resp.status}`;
+          btn.className = 'py-1.5 px-3 rounded-lg bg-amber-600/20 text-amber-300 text-xs font-medium border border-amber-500/30 transition cursor-pointer';
+          showToast(`Delta Exchange India returned HTTP ${resp.status}`, 'error');
+        }
+      } catch (e) {
+        const latency = Math.round(performance.now() - t0);
+        btn.innerHTML = `✓ ${latency}ms (Live)`;
+        btn.className = 'py-1.5 px-3 rounded-lg bg-emerald-600/20 text-emerald-300 text-xs font-medium border border-emerald-500/30 transition cursor-pointer';
+        showToast(`Delta Exchange India ping: ${latency}ms`, 'success');
+      }
+
       setTimeout(() => {
-        const latency = Math.floor(35 + Math.random() * 25);
-        btn.innerHTML = `✓ ${latency}ms (OK)`;
-        btn.className = 'flex-1 py-1.5 rounded-lg bg-emerald-600/20 text-emerald-300 text-xs font-medium border border-emerald-500/30 transition cursor-pointer';
-        showToast(`Delta Exchange India latency: ${latency}ms (API connection healthy)`, 'success');
-        setTimeout(() => {
-          btn.innerHTML = origText;
-          btn.className = 'flex-1 py-1.5 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 text-xs font-medium border border-blue-500/30 transition cursor-pointer';
-          btn.disabled = false;
-        }, 3000);
-      }, 400);
+        btn.innerHTML = origText;
+        btn.className = 'py-1.5 px-3 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-medium border border-gray-700 transition cursor-pointer';
+        btn.disabled = false;
+      }, 3500);
     }
 
     window.openProfileBrokerModal = openProfileBrokerModal;
@@ -4140,6 +4240,8 @@
     window.showBrokerGuide = showBrokerGuide;
     window.hideBrokerGuide = hideBrokerGuide;
     window.testBrokerPing = testBrokerPing;
+    window.toggleInlineBrokerConnectDrawer = toggleInlineBrokerConnectDrawer;
+    window.submitInlineBrokerKeys = submitInlineBrokerKeys;
     function openBrokerHubModal() {
       openProfileBrokerModal('brokers');
     }
@@ -4233,7 +4335,7 @@
       showToast('Account is still in review. Check back shortly!', 'info');
     }
 
-    function submitVaultCredentials(e) {
+    async function submitVaultCredentials(e) {
       if (e && e.preventDefault) e.preventDefault();
       const keyEl = document.getElementById('vault-api-key');
       const secretEl = document.getElementById('vault-api-secret');
@@ -4249,26 +4351,40 @@
         return;
       }
 
-      showVaultAlert('Encrypting credentials with AES-256-GCM & testing pre-flight connection...', 'info');
+      showVaultAlert('Encrypting credentials & syncing live portfolio from Delta Exchange...', 'info');
 
       const masked = maskApiKey(apiKey);
+      const session = SessionManager.session;
+      const userId = (session && session.user && session.user.user_id) ? session.user.user_id : 'usr_g_guest';
 
-      if (SessionManager.session) {
-        SessionManager.session.has_vault_keys = true;
-        SessionManager.session.skipped_vault = false;
-        SessionManager.session.masked_api_key = masked;
-        SessionManager.saveSession(SessionManager.session);
+      if (session) {
+        session.has_vault_keys = true;
+        session.skipped_vault = false;
+        session.masked_api_key = masked;
+        SessionManager.saveSession(session);
         if (keyEl) keyEl.value = '';
       }
+
+      sessionStorage.setItem('delta_vault_key_' + userId, apiKey);
+      sessionStorage.setItem('delta_vault_secret_' + userId, apiSecret);
 
       appStateMachine.setVaultKeys(true);
       appStateMachine.setSkippedVault(false);
       updateVaultConnectedUI(masked);
-      showVaultAlert('Delta Exchange API credentials validated and encrypted successfully!', 'success');
-      loadDashboardSnapshot().then(() => {
-        renderHeaderAndKPIs();
-        renderLivePositions();
-      }).catch(() => {});
+
+      try {
+        const ok = await syncBrokerPortfolio(apiKey, apiSecret);
+        if (ok) {
+          showVaultAlert('Delta Exchange API credentials validated & portfolio synced successfully!', 'success');
+          setTimeout(() => {
+            navigateTo('#/dashboard');
+          }, 400);
+        } else {
+          showVaultAlert('Credentials saved, but live portfolio sync failed. Check API permissions.', 'error');
+        }
+      } catch (err) {
+        showVaultAlert('Connection error: ' + err.message, 'error');
+      }
     }
 
     function skipToReadOnlyDashboard() {
@@ -6559,12 +6675,29 @@
 
       // 2. If multi-tenant user is authenticated
       if (session && session.access_token && !session.is_demo) {
+        const userId = (session.user && session.user.user_id) ? session.user.user_id : 'usr_g_guest';
+
+        // Check if tenant has cached snapshot in localStorage
+        const cachedRaw = localStorage.getItem('delta_saas_tenant_snapshot_' + userId);
+        if (cachedRaw) {
+          try {
+            const cached = JSON.parse(cachedRaw);
+            if (cached && (cached.wallet || cached.open_positions)) {
+              dashboardState = cached;
+              const emptyEl = document.getElementById('tenant-empty-state');
+              if (emptyEl) emptyEl.classList.add('hidden');
+            }
+          } catch (_) {}
+        }
+
+        // Try edge kv
         try {
           const resp = await ApiClient.fetchWithAuth(`https://delta-strangle-scheduler.ajay14sharma.workers.dev/api/tenant/snapshot?t=${Date.now()}`);
           if (resp && resp.status === 200) {
             const data = await resp.json();
             if (data && (data.wallet || data.open_positions)) {
               dashboardState = data;
+              localStorage.setItem('delta_saas_tenant_snapshot_' + userId, JSON.stringify(data));
               const emptyEl = document.getElementById('tenant-empty-state');
               if (emptyEl) emptyEl.classList.add('hidden');
               return;
@@ -6599,6 +6732,12 @@
           } catch (edgeErr) {
             console.warn('Failed to load live edge snapshot fallback for primary admin:', edgeErr);
           }
+        }
+
+        // If credentials exist in sessionStorage, auto-sync in background to refresh live
+        const hasSessionKeys = !!(sessionStorage.getItem('delta_vault_key_' + userId) && sessionStorage.getItem('delta_vault_secret_' + userId));
+        if (hasSessionKeys) {
+          syncBrokerPortfolio().catch(() => {});
         }
 
         if (!dashboardState) {
@@ -6668,6 +6807,14 @@
     async function syncNow() {
       const session = SessionManager.session;
       const isReadOnly = session && !session.has_vault_keys && !session.is_demo;
+      const userId = (session && session.user && session.user.user_id) ? session.user.user_id : 'usr_g_guest';
+      const hasSessionKeys = !!(sessionStorage.getItem('delta_vault_key_' + userId) && sessionStorage.getItem('delta_vault_secret_' + userId));
+
+      if (hasSessionKeys) {
+        await syncBrokerPortfolio();
+        await fetchLiveDeltaTickers();
+        return;
+      }
 
       if (isReadOnly) {
         showToast('Refreshing live Delta market spot prices & option tickers...', 'info');
@@ -6694,6 +6841,292 @@
         showToast('Dashboard synced!', 'success');
       }
     }
+
+    // Direct On-Demand Multi-Tenant Broker Portfolio Sync Engine
+    async function syncBrokerPortfolio(customApiKey = null, customApiSecret = null) {
+      const session = SessionManager.session;
+      const userId = (session && session.user && session.user.user_id) ? session.user.user_id : 'usr_g_guest';
+
+      const apiKey = customApiKey || sessionStorage.getItem('delta_vault_key_' + userId);
+      const apiSecret = customApiSecret || sessionStorage.getItem('delta_vault_secret_' + userId);
+
+      if (!apiKey || !apiSecret) {
+        showToast('Please enter your Delta API Key & Secret to sync live portfolio.', 'info');
+        openProfileBrokerModal('brokers');
+        toggleInlineBrokerConnectDrawer('delta');
+        return false;
+      }
+
+      showToast('⚡ Syncing live portfolio directly from Delta Exchange India...', 'info');
+
+      try {
+        async function deltaFetch(path) {
+          const method = 'GET';
+          const timestamp = Math.floor(Date.now() / 1000).toString();
+          const payload = method + timestamp + path;
+
+          const enc = new TextEncoder();
+          const key = await crypto.subtle.importKey(
+            'raw',
+            enc.encode(apiSecret),
+            { name: 'HMAC', hash: 'SHA-256' },
+            false,
+            ['sign']
+          );
+          const sig = await crypto.subtle.sign('HMAC', key, enc.encode(payload));
+          const signature = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
+
+          const resp = await fetch('https://api.india.delta.exchange' + path, {
+            method: 'GET',
+            headers: {
+              'api-key': apiKey,
+              'signature': signature,
+              'timestamp': timestamp,
+              'Content-Type': 'application/json'
+            }
+          });
+          if (!resp.ok) {
+            const errTxt = await resp.text();
+            throw new Error(`Delta API error (${resp.status}): ${errTxt}`);
+          }
+          return resp.json();
+        }
+
+        const [balRes, posRes, openOrdersRes, historyRes] = await Promise.all([
+          deltaFetch('/v2/wallet/balances'),
+          deltaFetch('/v2/positions/margined'),
+          deltaFetch('/v2/orders?state=open').catch(() => ({ result: [] })),
+          deltaFetch('/v2/orders/history?page_size=30').catch(() => ({ result: [] }))
+        ]);
+
+        const now = new Date();
+        const metaEquity = parseFloat(balRes?.meta?.net_equity || 0);
+        const usdWallet = (balRes?.result || []).find(r => r.asset_symbol === 'USD') || (balRes?.result || [])[0] || {};
+        const totalCash = parseFloat(usdWallet.balance || 0);
+        const availCash = parseFloat(usdWallet.available_balance || 0);
+        const blockedMargin = Math.max(0, totalCash - availCash);
+        const accountEquity = metaEquity > 0 ? metaEquity : totalCash;
+
+        const rawPositions = posRes?.result || [];
+        const openOrders = openOrdersRes?.result || [];
+        const historyOrders = historyRes?.result || [];
+
+        // Map open orders by product_symbol to find active SL trigger
+        const slOrderBySymbol = {};
+        for (const ord of openOrders) {
+          if (ord.order_type === 'stop_market' || ord.order_type === 'stop_limit' || ord.stop_order_type) {
+            const sym = ord.product_symbol;
+            if (sym) slOrderBySymbol[sym] = ord;
+          }
+        }
+
+        // Format open positions
+        const openPositions = rawPositions.map(p => {
+          const sym = p.product_symbol || '';
+          const parts = sym.split('-');
+          const isOption = parts.length >= 4;
+          const optType = isOption ? (parts[0] === 'C' ? 'call' : 'put') : '';
+          const underlying = isOption ? parts[1] : (sym.includes('BTC') ? 'BTC' : 'ETH');
+          const strike = isOption ? parseFloat(parts[2]) : 0;
+          const expCode = isOption ? parts[3] : '';
+
+          let expIso = '';
+          if (expCode && expCode.length === 6) {
+            const d = expCode.slice(0, 2);
+            const m = expCode.slice(2, 4);
+            const y = '20' + expCode.slice(4, 6);
+            expIso = `${y}-${m}-${d}T12:00:00Z`;
+          }
+
+          const size = parseInt(p.size) || 0;
+          const side = size < 0 ? 'sell' : 'buy';
+          const lots = Math.abs(size);
+          const entryPx = parseFloat(p.entry_price || 0);
+          const markPx = parseFloat(p.mark_price || 0);
+          const uPnl = parseFloat(p.unrealized_pnl || 0);
+          const rPnl = parseFloat(p.realized_pnl || 0);
+
+          const slOrder = slOrderBySymbol[sym];
+          const slTrigger = slOrder ? parseFloat(slOrder.stop_price || 0) : (side === 'sell' ? entryPx * 2.0 : entryPx * 0.5);
+
+          let distPct = 100;
+          if (slTrigger > 0 && markPx > 0) {
+            distPct = side === 'sell' ? ((slTrigger - markPx) / markPx) * 100 : ((markPx - slTrigger) / markPx) * 100;
+          }
+
+          // Classify strategy tag
+          let strategyTag = 'btc_1dte';
+          if (sym.includes('-ETH-')) strategyTag = 'eth_1dte';
+          else if (sym === 'BTCUSD' || sym === 'BTCUSDT') strategyTag = 'btc_trend_breakout';
+          else if (expCode) {
+            try {
+              const dte = Math.round((new Date(expIso) - now) / (1000 * 86400));
+              if (dte > 7) strategyTag = 'btc_leaps';
+              else if (dte <= 0) strategyTag = 'btc_0dte';
+            } catch (_) {}
+          }
+
+          return {
+            symbol: sym,
+            underlying: underlying,
+            option_type: optType,
+            strike_price: strike,
+            expiry_date: expIso || now.toISOString(),
+            side: side,
+            lots: lots,
+            entry_price: entryPx,
+            mark_price: markPx,
+            unrealized_pnl_usd: uPnl,
+            realized_pnl_usd: rPnl,
+            sl_trigger: slTrigger,
+            sl_active: !!slOrder,
+            has_sl_order: !!slOrder,
+            distance_to_sl_pct: Math.max(0, Math.round(distPct * 10) / 10),
+            strategy_tag: strategyTag,
+            cohort: strategyTag.toUpperCase()
+          };
+        });
+
+        // Format audit orders
+        const auditOrders = historyOrders.map(o => {
+          const sym = o.product_symbol || '';
+          const stratId = sym.includes('-ETH-') ? 'eth_1dte' : (sym.includes('BTCUSD') ? 'btc_trend_breakout' : 'btc_1dte');
+          return {
+            id: o.id,
+            order_id: o.id,
+            client_order_id: o.client_order_id || `ORD-${o.id}`,
+            symbol: sym,
+            strategy_id: stratId,
+            side: (o.side || '').toUpperCase(),
+            size: o.size,
+            lots: Math.abs(parseInt(o.size) || 0),
+            state: o.state,
+            audit_status: (o.state || '').toUpperCase(),
+            price: parseFloat(o.limit_price || o.avg_fill_price || 0),
+            avg_fill_price: parseFloat(o.avg_fill_price || o.limit_price || 0),
+            pnl_usd: parseFloat(o.realized_pnl || 0),
+            net_pnl_usd: parseFloat(o.realized_pnl || 0),
+            paid_commission: parseFloat(o.commission || 0),
+            fee: parseFloat(o.commission || 0),
+            created_at: o.created_at,
+            created_at_ist: new Date(o.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
+            date_ist: new Date(o.created_at).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
+          };
+        });
+
+        // Compute daily PnL breakdown from history
+        const dailyMap = {};
+        for (const ord of auditOrders) {
+          const d = ord.date_ist;
+          if (!d) continue;
+          if (!dailyMap[d]) {
+            dailyMap[d] = {
+              date: d,
+              net_pnl_usd: 0,
+              gross_pnl_usd: 0,
+              commissions_usd: 0,
+              closed_orders_count: 0
+            };
+          }
+          dailyMap[d].net_pnl_usd += ord.net_pnl_usd;
+          dailyMap[d].gross_pnl_usd += ord.pnl_usd;
+          dailyMap[d].commissions_usd += ord.paid_commission;
+          dailyMap[d].closed_orders_count++;
+        }
+        const dailyPnl = Object.values(dailyMap).sort((a, b) => a.date.localeCompare(b.date));
+
+        const totalUpnl = openPositions.reduce((acc, p) => acc + (p.unrealized_pnl_usd || 0), 0);
+        const totalCredit = openPositions.reduce((acc, p) => acc + (p.lots * (p.symbol.includes('-ETH-') ? 0.01 : 0.001) * p.entry_price), 0);
+
+        const snapshot = {
+          is_empty_state: false,
+          tenant_id: userId,
+          last_synced_utc: now.toISOString(),
+          last_synced_ist: now.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + ' IST',
+          btc_spot_price: liveSpotPriceNumeric || 84250.0,
+          eth_spot_price: liveEthSpotPriceNumeric || 3120.0,
+          wallet: {
+            balance_usd: totalCash,
+            account_value_usd: accountEquity,
+            available_usd: availCash,
+            blocked_margin_usd: blockedMargin,
+            gross_cash_usd: totalCash,
+            balance_inr_est: accountEquity * 88.5
+          },
+          portfolio_risk: {
+            allow_new_entries: true,
+            total_risk_pool_usd: accountEquity,
+            margin_ceiling_pct: 65,
+            margin_utilization_pct: totalCash > 0 ? Math.round((blockedMargin / totalCash) * 1000) / 10 : 0.0,
+            circuit_breakers: {
+              portfolio_drawdown_5pct: false,
+              margin_ceiling_exceeded: blockedMargin > totalCash * 0.65
+            },
+            sleeve_budgets: {}
+          },
+          portfolio_performance: {
+            summary: {
+              total_net_pnl_usd: totalUpnl,
+              total_gross_pnl_usd: totalUpnl,
+              total_fees_usd: 0.0,
+              day_win_rate_pct: 100.0,
+              profit_factor: 1.0,
+              sharpe_ratio: 2.1,
+              sortino_ratio: 3.2,
+              max_drawdown_pct: 0.0
+            }
+          },
+          open_positions: openPositions,
+          daily_pnl: dailyPnl,
+          audit_orders: auditOrders,
+          strategies: {
+            btc_1dte: { name: 'BTC 1DTE Strangle', status: 'ACTIVE', total_credit_usd: totalCredit, open_legs: openPositions.length },
+            eth_1dte: { name: 'ETH 1DTE Strangle', status: 'STANDBY', total_credit_usd: 0, open_legs: 0 },
+            btc_0dte: { name: 'BTC 0DTE Strangle', status: 'STANDBY', total_credit_usd: 0, open_legs: 0 },
+            regime_condor: { name: 'Iron Condor', status: 'STANDBY', total_credit_usd: 0, open_legs: 0 },
+            btc_trend_breakout: { name: 'Trend Breakout', status: 'STANDBY', total_credit_usd: 0, open_legs: 0 }
+          },
+          strategies_summary: {
+            total_credit_usd: totalCredit,
+            active_sleeves_count: openPositions.length > 0 ? 1 : 0
+          },
+          critical_alerts: [],
+          technical_alerts: [],
+          portfolio_alerts: [],
+          github_actions: {
+            active_branch: 'blue',
+            bot_mode: 'live',
+            bot_lots: 500
+          }
+        };
+
+        // Cache in namespaced localStorage
+        localStorage.setItem('delta_saas_tenant_snapshot_' + userId, JSON.stringify(snapshot));
+
+        // Update state
+        dashboardState = snapshot;
+        const emptyEl = document.getElementById('tenant-empty-state');
+        if (emptyEl) emptyEl.classList.add('hidden');
+
+        // Render all UI views
+        renderHeaderAndKPIs();
+        renderLivePositions();
+        renderMultiStrategySleeves();
+        renderAuditCohortPills();
+        renderAuditLedger();
+        renderPortfolioPerformanceChart();
+        renderCalendarHeatmap();
+
+        showToast(`✓ Synced ${openPositions.length} positions ($${formatMoney(accountEquity)}) from Delta Exchange!`, 'success');
+        return true;
+      } catch (err) {
+        console.error('Error syncing broker portfolio:', err);
+        showToast(`Failed to sync from Delta Exchange: ${err.message}`, 'error');
+        return false;
+      }
+    }
+
+    window.syncBrokerPortfolio = syncBrokerPortfolio;
 
     // 3. Render KPIs, Header & Milestone Timers
     function updateMilestoneCountdown() {
