@@ -1448,6 +1448,7 @@
           <button id="pos-tab-btc_0dte" onclick="setPositionSleeveFilter('btc_0dte')" class="pos-sleeve-tab px-3 py-1 rounded-md text-gray-400 hover:text-gray-200 transition">BTC 0DTE</button>
           <button id="pos-tab-condor" onclick="setPositionSleeveFilter('condor')" class="pos-sleeve-tab px-3 py-1 rounded-md text-gray-400 hover:text-gray-200 transition">Iron Condor</button>
           <button id="pos-tab-btc_leaps" onclick="setPositionSleeveFilter('btc_leaps')" class="pos-sleeve-tab px-3 py-1 rounded-md text-gray-400 hover:text-gray-200 transition">BTC Leaps</button>
+          <button id="pos-tab-perpetuals" onclick="setPositionSleeveFilter('perpetuals')" class="pos-sleeve-tab px-3 py-1 rounded-md text-gray-400 hover:text-gray-200 transition">Perpetuals</button>
         </div>
         <div class="flex items-center gap-2">
           <button id="btn-attach-sl-global" onclick="triggerAttachSlOnly()" class="px-2.5 py-1 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 text-xs font-medium flex items-center gap-1.5 transition" title="Audit and attach 2.0x SL bracket orders to unprotected open positions">
@@ -6408,7 +6409,7 @@
 
     function setPositionSleeveFilter(sleeve) {
       currentPositionSleeve = sleeve;
-      const sleeveTabs = ['all', 'btc_1dte', 'eth_1dte', 'btc_0dte', 'condor', 'btc_leaps'];
+      const sleeveTabs = ['all', 'btc_1dte', 'eth_1dte', 'btc_0dte', 'condor', 'btc_leaps', 'perpetuals'];
       sleeveTabs.forEach(s => {
         const btn = document.getElementById(`pos-tab-${s}`);
         if (!btn) return;
@@ -7008,9 +7009,9 @@
         const openPositions = rawPositions.map(p => {
           const sym = p.product_symbol || '';
           const parts = sym.split('-');
-          const isOption = parts.length >= 4;
+          const isOption = parts.length >= 4 && (parts[0] === 'C' || parts[0] === 'P');
           const optType = isOption ? (parts[0] === 'C' ? 'call' : 'put') : '';
-          const underlying = isOption ? parts[1] : (sym.includes('BTC') ? 'BTC' : 'ETH');
+          const underlying = isOption ? parts[1] : (p.product?.underlying_asset?.symbol || sym.replace(/USD|USDT|BUSD|XUSD|ONUSD/g, '') || 'BTC');
           const strike = isOption ? parseFloat(parts[2]) : 0;
           const expCode = isOption ? parts[3] : '';
 
@@ -7040,15 +7041,22 @@
 
           // Classify strategy tag
           let strategyTag = 'btc_1dte';
-          if (sym.includes('-ETH-')) strategyTag = 'eth_1dte';
-          else if (sym === 'BTCUSD' || sym === 'BTCUSDT') strategyTag = 'btc_trend_breakout';
-          else if (expCode) {
-            try {
-              const dte = Math.round((new Date(expIso) - now) / (1000 * 86400));
-              if (dte > 7) strategyTag = 'btc_leaps';
-              else if (dte <= 0) strategyTag = 'btc_0dte';
-            } catch (_) {}
+          if (isOption) {
+            if (sym.includes('-ETH-')) strategyTag = 'eth_1dte';
+            else if (expCode) {
+              try {
+                const dte = Math.round((new Date(expIso) - now) / (1000 * 86400));
+                if (dte > 7) strategyTag = 'btc_leaps';
+                else if (dte <= 0) strategyTag = 'btc_0dte';
+              } catch (_) {}
+            }
+          } else {
+            if (sym === 'BTCUSD' || sym === 'BTCUSDT') strategyTag = 'btc_trend_breakout';
+            else if (sym === 'ETHUSD' || sym === 'ETHUSDT') strategyTag = 'eth_1dte';
+            else strategyTag = 'perpetuals';
           }
+
+          const multiplier = parseFloat(p.product?.contract_value || 0) || (underlying === 'ETH' ? 0.01 : (underlying === 'BTC' ? 0.001 : 1.0));
 
           return {
             symbol: sym,
@@ -7067,7 +7075,9 @@
             has_sl_order: !!slOrder,
             distance_to_sl_pct: Math.max(0, Math.round(distPct * 10) / 10),
             strategy_tag: strategyTag,
-            cohort: strategyTag.toUpperCase()
+            cohort: strategyTag.toUpperCase(),
+            contract_multiplier: multiplier,
+            asset_unit: underlying
           };
         });
 
@@ -7531,7 +7541,10 @@
     // 4. Positions & Corridor Math
     function parseOptionSymbol(sym) {
       const parts = String(sym || '').split('-');
-      if (parts.length !== 4) return { isCall: false, strike: 0, expCode: '', underlying: 'BTC', dteDays: 1.0, expiryDate: null, expFormatted: '' };
+      if (parts.length < 4 || (parts[0] !== 'C' && parts[0] !== 'P')) {
+        const u = String(sym || '').replace(/USD|USDT|BUSD|XUSD|ONUSD/g, '');
+        return { isOption: false, isCall: false, strike: 0, expCode: '', underlying: u || 'PERP', dteDays: 0, expiryDate: null, expFormatted: 'Perpetual' };
+      }
       const expCode = parts[3];
       let expiryDate = null;
       let dteDays = 1.0;
@@ -7548,6 +7561,7 @@
         dteDays = Math.max(0.01, diffMs / (1000 * 60 * 60 * 24));
       }
       return {
+        isOption: true,
         isCall: parts[0] === 'C',
         underlying: parts[1] || 'BTC',
         strike: parseFloat(parts[2]) || 0,
@@ -7568,6 +7582,7 @@
         if (rawSid === 'eth_1dte' || rawSid === 'eth' || rawSid === 'eth_strangle') return 'eth_1dte';
         if (rawSid === 'btc_0dte' || rawSid === '0dte' || rawSid === 'intraday' || rawSid === 'btc_intraday') return 'btc_0dte';
         if (rawSid === 'btc_leaps' || rawSid === 'leaps') return 'btc_leaps';
+        if (rawSid === 'perpetuals' || rawSid === 'perp') return 'perpetuals';
         return rawSid;
       }
       const cid = String(item.client_order_id || '').toUpperCase();
@@ -7578,13 +7593,15 @@
       if (cid.startsWith('STG-')) return 'btc_1dte';
       const sym = String(item.symbol || item.product_symbol || '').toUpperCase();
       if (sym === 'BTCUSD' || sym === 'BTCUSDT' || sym === 'BTC_USDT') return 'btc_trend_breakout';
+      if (sym === 'ETHUSD' || sym === 'ETHUSDT' || sym === 'ETH_USDT') return 'eth_1dte';
       if (sym.includes('-ETH-')) return 'eth_1dte';
       const cohort = String(item.cohort || '').toUpperCase();
       if (cohort.includes('REGIME') || cohort.includes('CONDOR')) return 'regime_condor';
       if (cohort.includes('TREND') || cohort.includes('BREAKOUT')) return 'btc_trend_breakout';
       if (cohort.includes('0DTE') || cohort.includes('INTRADAY')) return 'btc_0dte';
+      if (cohort.includes('PERP')) return 'perpetuals';
       const parts = sym.split('-');
-      if (parts.length >= 4) {
+      if (parts.length >= 4 && (parts[0] === 'C' || parts[0] === 'P')) {
         const expCode = parts[3];
         if (expCode.length === 6 && /^\d+$/.test(expCode)) {
           const d = parseInt(expCode.substring(0, 2), 10);
@@ -7594,8 +7611,9 @@
           const diffDays = (expDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24);
           if (diffDays > 7) return 'btc_leaps';
         }
+        return 'btc_1dte';
       }
-      return 'btc_1dte';
+      return 'perpetuals';
     }
 
     function parsePositionLeg(p) {
@@ -7798,31 +7816,53 @@
 
       // Render Table Rows (7 Columns)
       parsedPositions.forEach(p => {
-        const isCall = p.parsed.isCall;
+        const isOpt = p.parsed?.isOption !== false && (p.symbol.startsWith('C-') || p.symbol.startsWith('P-'));
+        const isCall = p.parsed?.isCall;
         const isLong = p.isLong;
         const stratBadge = p.strategy_id
           ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-gray-800 text-gray-400 border border-gray-700">${p.strategy_id}</span>`
           : '';
-        const legBadge = isLong
-          ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">LONG ${isCall ? 'CALL' : 'PUT'}</span>`
-          : `<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold ${isCall ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : 'bg-purple-500/10 text-purple-400 border border-purple-500/20'}">SELL ${isCall ? 'CALL' : 'PUT'}</span>`;
+        let legBadge = '';
+        if (isOpt) {
+          legBadge = isLong
+            ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">LONG ${isCall ? 'CALL' : 'PUT'}</span>`
+            : `<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold ${isCall ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : 'bg-purple-500/10 text-purple-400 border border-purple-500/20'}">SELL ${isCall ? 'CALL' : 'PUT'}</span>`;
+        } else {
+          legBadge = isLong
+            ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">LONG PERP</span>`
+            : `<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">SHORT PERP</span>`;
+        }
 
-        const expInfo = (p.parsed && p.parsed.expFormatted)
+        const expInfo = (p.parsed && p.parsed.isOption && p.parsed.expFormatted)
           ? ` • <span class="${p.parsed.dteDays > 2 ? 'text-indigo-400 font-semibold' : 'text-gray-400'}">${p.parsed.expFormatted} (${Math.round(p.parsed.dteDays)}D DTE)</span>`
-          : '';
+          : (isOpt ? '' : ` • <span class="text-cyan-400/80 font-mono text-[10px]">Perpetual</span>`);
 
         const hasSl = p.sl_active !== false && p.slTrigger !== null && Number(p.slTrigger) > 0;
 
         // 2.0x SL Trigger Column HTML
-        const slTriggerColHtml = isLong
-          ? '<span class="text-gray-400 font-mono text-xs">Defined Wing</span>'
-          : (hasSl
-              ? `<div class="text-gray-200 font-bold font-mono">$${p.slTrigger.toFixed(2)}</div><div class="text-[10px] text-gray-500">Exchange Native</div>`
-              : `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30 font-mono">NO BRACKET</span>`);
+        let slTriggerColHtml = '';
+        if (!isOpt) {
+          slTriggerColHtml = hasSl
+            ? `<div class="text-gray-200 font-bold font-mono">$${p.slTrigger.toFixed(2)}</div><div class="text-[10px] text-gray-500">Stop Market</div>`
+            : `<span class="px-1.5 py-0.5 rounded text-[10px] text-gray-400 bg-gray-800/60 border border-gray-700/60 font-mono">DISCRETIONARY</span>`;
+        } else if (isLong) {
+          slTriggerColHtml = '<span class="text-gray-400 font-mono text-xs">Defined Wing</span>';
+        } else if (hasSl) {
+          slTriggerColHtml = `<div class="text-gray-200 font-bold font-mono">$${p.slTrigger.toFixed(2)}</div><div class="text-[10px] text-gray-500">Exchange Native</div>`;
+        } else {
+          slTriggerColHtml = `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30 font-mono">NO BRACKET</span>`;
+        }
 
         // Distance to SL / Buffer Gauge Column HTML
         let slBufferColHtml = '';
-        if (isLong) {
+        if (!isOpt && !hasSl) {
+          slBufferColHtml = `
+            <div class="space-y-0.5">
+              <span class="px-1.5 py-0.5 rounded text-[10px] font-mono text-gray-300 bg-gray-800/40 border border-gray-700/40">Unbracketed</span>
+              <div class="text-[10px] text-gray-500">Margin Position</div>
+            </div>
+          `;
+        } else if (isLong) {
           slBufferColHtml = `
             <div class="space-y-0.5">
               <span class="px-1.5 py-0.5 rounded text-[10px] font-mono text-emerald-400 bg-emerald-950/40 border border-emerald-800/40 font-semibold">Protected Wing</span>
@@ -7927,7 +7967,11 @@
             ${slBufferColHtml}
           </td>
           <td class="py-3 px-3">
-            ${isLong ? '<span class="text-[10px] text-emerald-400 font-mono">Protected Wing</span>' : `
+            ${!isOpt ? `
+            <div class="space-y-0.5">
+              <span class="text-[11px] font-mono font-semibold ${p.upnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${p.upnl >= 0 ? '+' : ''}${formatMoney(p.upnl, true)}</span>
+              <div class="text-[9px] text-gray-500">Perpetual PnL</div>
+            </div>` : (isLong ? '<span class="text-[10px] text-emerald-400 font-mono">Protected Wing</span>' : `
             <div class="w-28 space-y-1">
               <div class="flex justify-between text-[10px] text-emerald-400">
                 <span>Decayed</span>
@@ -7936,7 +7980,7 @@
               <div class="w-full h-1.5 rounded-full bg-gray-800 overflow-hidden">
                 <div class="h-full bg-emerald-500 rounded-full" style="width: ${p.decayPct}%"></div>
               </div>
-            </div>`}
+            </div>`)}
           </td>
           <td class="py-3 px-3 text-right font-semibold ${p.upnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}">
             ${formatMoney(p.upnl, true)}
