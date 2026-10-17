@@ -711,14 +711,19 @@
           <div>
             <h4 class="text-xs font-bold text-amber-200">Read-Only Dashboard Mode</h4>
             <p class="text-[11px] text-amber-300/80">
-              No Delta Exchange API keys are configured. You can monitor live market spot prices and explore terminal features. Connect your API credentials in Vault Settings to enable automated live trading.
+              No broker API keys are configured. You are monitoring live public market prices (BTC &amp; ETH) and terminal metrics. Connect your exchange API keys to enable automated trade execution and private portfolio syncing.
             </p>
           </div>
         </div>
-        <button type="button" onclick="navigateTo('#/vault')" class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-gray-950 font-bold text-xs transition shadow shrink-0 flex items-center gap-1.5 cursor-pointer">
-          <span>🔑 Connect Vault Keys</span>
-          <span>→</span>
-        </button>
+        <div class="flex items-center gap-2 shrink-0">
+          <button type="button" onclick="syncNow()" class="px-3.5 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-200 font-semibold text-xs transition border border-gray-700 shadow-sm flex items-center gap-1.5 cursor-pointer">
+            <span>🔄 Refresh Market Prices</span>
+          </button>
+          <button type="button" onclick="openBrokerHubModal()" class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-gray-950 font-bold text-xs transition shadow shrink-0 flex items-center gap-1.5 cursor-pointer">
+            <span>🔑 Connect Broker</span>
+            <span>→</span>
+          </button>
+        </div>
       </div>
     </div>
 
@@ -4261,6 +4266,8 @@
       if (demoBanner) demoBanner.classList.add('hidden');
       const readOnlyBanner = document.getElementById('tenant-read-only-banner');
       if (readOnlyBanner) readOnlyBanner.classList.add('hidden');
+      const emptyEl = document.getElementById('tenant-empty-state');
+      if (emptyEl) emptyEl.classList.add('hidden');
 
       const posTbody = document.getElementById('positions-tbody');
       if (posTbody) posTbody.innerHTML = '';
@@ -4321,6 +4328,11 @@
         } else {
           readOnlyBanner.classList.add('hidden');
         }
+      }
+
+      const emptyStateEl = document.getElementById('tenant-empty-state');
+      if (emptyStateEl && session && (!session.has_vault_keys || session.is_demo)) {
+        emptyStateEl.classList.add('hidden');
       }
 
       if (session && session.is_demo) {
@@ -6495,7 +6507,13 @@
           } else if (resp && resp.status === 404) {
             dashboardState = getTenantEmptyStateData();
             const emptyEl = document.getElementById('tenant-empty-state');
-            if (emptyEl) emptyEl.classList.remove('hidden');
+            if (emptyEl) {
+              if (session.has_vault_keys) {
+                emptyEl.classList.remove('hidden');
+              } else {
+                emptyEl.classList.add('hidden');
+              }
+            }
             return;
           }
         } catch (e) {
@@ -6504,7 +6522,13 @@
         if (!dashboardState) {
           dashboardState = getTenantEmptyStateData();
           const emptyEl = document.getElementById('tenant-empty-state');
-          if (emptyEl) emptyEl.classList.remove('hidden');
+          if (emptyEl) {
+            if (session.has_vault_keys) {
+              emptyEl.classList.remove('hidden');
+            } else {
+              emptyEl.classList.add('hidden');
+            }
+          }
         }
         return;
       }
@@ -6560,7 +6584,15 @@
     }
 
     async function syncNow() {
-      showToast('Syncing latest cloud data & Delta option tickers...', 'info');
+      const session = SessionManager.session;
+      const isReadOnly = session && !session.has_vault_keys && !session.is_demo;
+
+      if (isReadOnly) {
+        showToast('Refreshing live Delta market spot prices & option tickers...', 'info');
+      } else {
+        showToast('Syncing latest cloud data & Delta option tickers...', 'info');
+      }
+
       await loadDashboardSnapshot();
       await fetchLiveDeltaTickers();
       const token = getSavedToken();
@@ -6572,7 +6604,12 @@
       renderPortfolioPerformanceChart();
       renderAuditCohortPills();
       renderAuditLedger();
-      showToast('Dashboard synced!', 'success');
+
+      if (isReadOnly) {
+        showToast('Public market tickers refreshed (Read-Only: No broker connected)', 'info');
+      } else {
+        showToast('Dashboard synced!', 'success');
+      }
     }
 
     // 3. Render KPIs, Header & Milestone Timers
