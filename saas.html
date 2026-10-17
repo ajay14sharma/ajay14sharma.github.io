@@ -6574,9 +6574,17 @@
           console.warn('Failed to load multi-tenant edge snapshot:', e);
         }
 
-        // Live Snapshot Fallback: If tenant has connected vault keys (or is admin/primary account),
-        // sync from live edge snapshot store at /api/snapshot
-        if (session.has_vault_keys || (session.user && (session.user.role === 'admin' || session.user.email === 'ajay14sharma@gmail.com'))) {
+        // Strict Tenant Isolation: ONLY the primary portfolio administrator (ajay14sharma@gmail.com)
+        // is allowed to fall back to the legacy single-tenant /api/snapshot.
+        // Secondary tenants (e.g. akshay1401sharma@gmail.com) must NEVER see another tenant's trades!
+        const isPrimaryAdmin = session.user && (
+          session.user.email === 'ajay14sharma@gmail.com' ||
+          session.user.user_id === 'usr_g_15766573' ||
+          session.user.email === 'admin@delta-strangle.com' ||
+          (session.user.role === 'admin' && String(session.user.email || '').toLowerCase().includes('admin'))
+        );
+
+        if (isPrimaryAdmin) {
           try {
             const edgeResp = await fetch(`https://delta-strangle-scheduler.ajay14sharma.workers.dev/api/snapshot?t=${Date.now()}`);
             if (edgeResp && edgeResp.ok) {
@@ -6589,7 +6597,7 @@
               }
             }
           } catch (edgeErr) {
-            console.warn('Failed to load live edge snapshot fallback:', edgeErr);
+            console.warn('Failed to load live edge snapshot fallback for primary admin:', edgeErr);
           }
         }
 
