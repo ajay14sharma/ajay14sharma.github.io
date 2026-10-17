@@ -1749,7 +1749,7 @@
         <div class="p-3.5 rounded-xl bg-gray-950/90 border border-gray-850 space-y-2.5">
           <div class="flex items-center justify-between text-xs flex-wrap gap-2">
             <span class="font-bold text-gray-200 flex items-center gap-1.5">
-              <span>📊</span> Portfolio Risk Capital Distribution (<span id="alloc-total-wallet" class="text-emerald-400 font-mono">$5,189.05 Total</span>)
+              <span>📊</span> Portfolio Risk Capital Distribution (<span id="alloc-total-wallet" class="text-emerald-400 font-mono">$0.00 Total</span>)
             </span>
             <div class="flex items-center gap-3 text-[11px] font-mono text-gray-400">
               <span>Dynamic Budget: <span class="text-emerald-400 font-bold">100% Assigned</span></span>
@@ -1783,36 +1783,36 @@
               <div class="text-gray-400 text-[10px] flex items-center justify-center gap-1">
                 <span class="w-1.5 h-1.5 rounded-full bg-blue-400"></span> BTC 1DTE (40%)
               </div>
-              <div id="alloc-val-btc_1dte" class="font-bold text-blue-400 text-xs">$2,075.62</div>
-              <div id="alloc-status-btc_1dte" class="text-[9px] text-emerald-400 font-bold">2 Legs Active</div>
+              <div id="alloc-val-btc_1dte" class="font-bold text-blue-400 text-xs">$0.00</div>
+              <div id="alloc-status-btc_1dte" class="text-[9px] text-gray-500 font-bold">Standby</div>
             </div>
             <div onclick="jumpToRiskStudio('eth_1dte')" class="p-2 rounded-lg bg-gray-900/60 hover:bg-gray-900 border border-cyan-500/20 hover:border-cyan-500/50 cursor-pointer transition text-center space-y-0.5" title="Click to inspect ETH 1DTE in Risk Studio">
               <div class="text-gray-400 text-[10px] flex items-center justify-center gap-1">
                 <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span> ETH 1DTE (20%)
               </div>
-              <div id="alloc-val-eth_1dte" class="font-bold text-cyan-400 text-xs">$1,037.81</div>
-              <div id="alloc-status-eth_1dte" class="text-[9px] text-gray-500">0 Legs</div>
+              <div id="alloc-val-eth_1dte" class="font-bold text-cyan-400 text-xs">$0.00</div>
+              <div id="alloc-status-eth_1dte" class="text-[9px] text-gray-500">Standby</div>
             </div>
             <div onclick="jumpToRiskStudio('btc_0dte')" class="p-2 rounded-lg bg-gray-900/60 hover:bg-gray-900 border border-amber-500/20 hover:border-amber-500/50 cursor-pointer transition text-center space-y-0.5" title="Click to inspect BTC 0DTE in Risk Studio">
               <div class="text-gray-400 text-[10px] flex items-center justify-center gap-1">
                 <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span> BTC 0DTE (15%)
               </div>
-              <div id="alloc-val-btc_0dte" class="font-bold text-amber-400 text-xs">$778.36</div>
-              <div id="alloc-status-btc_0dte" class="text-[9px] text-amber-400">Standby</div>
+              <div id="alloc-val-btc_0dte" class="font-bold text-amber-400 text-xs">$0.00</div>
+              <div id="alloc-status-btc_0dte" class="text-[9px] text-gray-500">Standby</div>
             </div>
             <div onclick="jumpToRiskStudio('regime_condor')" class="p-2 rounded-lg bg-gray-900/60 hover:bg-gray-900 border border-purple-500/20 hover:border-purple-500/50 cursor-pointer transition text-center space-y-0.5" title="Click to inspect Iron Condor in Vol Regime Studio">
               <div class="text-gray-400 text-[10px] flex items-center justify-center gap-1">
                 <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span> Iron Condor (15%)
               </div>
-              <div id="alloc-val-regime_condor" class="font-bold text-purple-300 text-xs">$778.36</div>
-              <div id="alloc-status-regime_condor" class="text-[9px] text-purple-400">IV &ge; 45%</div>
+              <div id="alloc-val-regime_condor" class="font-bold text-purple-300 text-xs">$0.00</div>
+              <div id="alloc-status-regime_condor" class="text-[9px] text-gray-500">Standby</div>
             </div>
             <div onclick="jumpToRiskStudio('btc_trend_breakout')" class="p-2 rounded-lg bg-gray-900/60 hover:bg-gray-900 border border-emerald-500/20 hover:border-emerald-500/50 cursor-pointer transition text-center space-y-0.5" title="Click to inspect Donchian Trend Studio">
               <div class="text-gray-400 text-[10px] flex items-center justify-center gap-1">
                 <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Trend Breakout (10%)
               </div>
-              <div id="alloc-val-btc_trend_breakout" class="font-bold text-emerald-400 text-xs">$518.91</div>
-              <div id="alloc-status-btc_trend_breakout" class="text-[9px] text-gray-500">Hourly :37</div>
+              <div id="alloc-val-btc_trend_breakout" class="font-bold text-emerald-400 text-xs">$0.00</div>
+              <div id="alloc-status-btc_trend_breakout" class="text-[9px] text-gray-500">Standby</div>
             </div>
           </div>
         </div>
@@ -2414,8 +2414,8 @@
                   </div>
                 </td>
                 <td class="p-3">
-                  <div id="table-pos-btc_1dte" class="text-gray-200 font-bold">2 Legs Active</div>
-                  <div id="table-pnl-btc_1dte" class="text-rose-400 font-bold">-$4.54</div>
+                  <div id="table-pos-btc_1dte" class="text-gray-400 font-bold">0 Legs (Standby)</div>
+                  <div id="table-pnl-btc_1dte" class="text-gray-400 font-bold">$0.00</div>
                 </td>
                 <td class="p-3 text-right">
                   <div class="flex items-center justify-end gap-1.5">
@@ -5364,7 +5364,9 @@
       }
 
       // Capital Allocation Segmented Bar & Legend Data
-      const totalBal = parseFloat(dashboardState?.wallet_balance || dashboardState?.portfolio_margin?.balance || 5189.05);
+      const isReadOnlyTenant = (SessionManager.session && !SessionManager.session.has_vault_keys && !SessionManager.session.is_demo) || (dashboardState && dashboardState.is_empty_state);
+      const rawWalletBal = dashboardState?.wallet?.balance_usd ?? dashboardState?.wallet?.account_value_usd ?? dashboardState?.wallet_balance ?? 0.0;
+      const totalBal = isReadOnlyTenant ? 0.0 : (parseFloat(rawWalletBal) || 0.0);
       const allocWalletEl = document.getElementById('alloc-total-wallet');
       if (allocWalletEl) allocWalletEl.textContent = `${formatMoney(totalBal, false)} Total`;
 
@@ -5421,9 +5423,12 @@
       setTblBadge('table-badge-regime_condor', sleeveState.ENABLE_CONDOR, sCondor.active, 'ACTIVE', 'px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-500/15 text-purple-300 border border-purple-500/30 uppercase');
       setTblBadge('table-badge-btc_trend_breakout', sleeveState.ENABLE_TREND_BREAKOUT, sTrend.active, 'ACTIVE', 'px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 uppercase');
 
-      const openLegsCount = dashboardState?.open_positions?.length || 2;
-      setDomTxt('table-pos-btc_1dte', `${openLegsCount} Legs Active`);
-      setDomTxt('alloc-status-btc_1dte', `${openLegsCount} Legs Active`);
+      const openPositions = dashboardState?.open_positions || [];
+      const openLegsCount = openPositions.length;
+      const posStatusText = openLegsCount > 0 ? `${openLegsCount} Legs Active` : '0 Legs (Standby)';
+      setDomTxt('table-pos-btc_1dte', posStatusText);
+      setDomTxt('alloc-status-btc_1dte', posStatusText);
+      setDomTxt('table-pnl-btc_1dte', formatMoney(0.0, true));
 
       // Sleeve 1: btc_1dte Strangle
       const btnStrangle = document.getElementById('btn-toggle-sleeve-strangle');
@@ -6657,25 +6662,27 @@
       }, 0);
       const totalUpnl = positions.reduce((acc, p) => acc + (parseFloat(p.unrealized_pnl_usd) || 0), 0);
 
-      let balUsd = Number(w.account_value_usd || 0);
-      let availUsd = Number(w.available_usd || 4028.09);
-      let blockedUsd = Number(w.blocked_margin_usd || 0);
-      let grossCashUsd = Number(w.gross_cash_usd || 0);
+      const isReadOnlyTenant = (SessionManager.session && !SessionManager.session.has_vault_keys && !SessionManager.session.is_demo) || (dashboardState && dashboardState.is_empty_state);
+
+      let balUsd = isReadOnlyTenant ? 0.0 : Number(w.account_value_usd ?? w.balance_usd ?? 0.0);
+      let availUsd = isReadOnlyTenant ? 0.0 : Number(w.available_usd ?? 0.0);
+      let blockedUsd = isReadOnlyTenant ? 0.0 : Number(w.blocked_margin_usd ?? 0.0);
+      let grossCashUsd = isReadOnlyTenant ? 0.0 : Number(w.gross_cash_usd ?? balUsd);
 
       // Reconcile legacy snapshot if account_value_usd was not explicitly present or was raw cash ledger
-      if (!balUsd || (balUsd > 8000 && totalShortCredit > 0)) {
-        const rawBal = Number(w.gross_cash_usd || w.balance_usd || balUsd || 5676.07);
+      if (!isReadOnlyTenant && (!balUsd || (balUsd > 8000 && totalShortCredit > 0))) {
+        const rawBal = Number(w.gross_cash_usd ?? w.balance_usd ?? balUsd ?? 0.0);
         if (rawBal > 8000 && totalShortCredit > 0) {
           grossCashUsd = rawBal;
           balUsd = Math.max(0, rawBal - totalShortCredit + totalUpnl);
           blockedUsd = Math.max(0, balUsd - availUsd);
-        } else {
+        } else if (rawBal > 0) {
           balUsd = rawBal;
         }
       }
 
-      if (!grossCashUsd) {
-        grossCashUsd = Number(w.gross_cash_usd || (balUsd + (totalShortCredit || 0)));
+      if (!grossCashUsd && !isReadOnlyTenant) {
+        grossCashUsd = Number(w.gross_cash_usd ?? (balUsd + (totalShortCredit || 0)));
       }
 
       if (!blockedUsd || blockedUsd > balUsd) {
@@ -6705,11 +6712,13 @@
       const creditEl = document.getElementById('kpi-option-credit');
       if (creditEl) {
         let totCredit = 0.0;
-        const strats = dashboardState.strategies || {};
-        for (const k in strats) {
-          totCredit += Number(strats[k].total_credit_usd || 0.0);
+        if (!isReadOnlyTenant) {
+          const strats = dashboardState.strategies || {};
+          for (const k in strats) {
+            totCredit += Number(strats[k].total_credit_usd || 0.0);
+          }
         }
-        creditEl.textContent = formatMoney(totCredit || 5612.50);
+        creditEl.textContent = formatMoney(totCredit);
       }
 
       const marginBar = document.getElementById('kpi-margin-bar');
@@ -6722,13 +6731,13 @@
 
       // Realized PnL & Win Rate from Summary
       const perf = (dashboardState.portfolio_performance && dashboardState.portfolio_performance.summary) || {};
-      const realizedUsd = Number(perf.total_net_pnl_usd || -5034.10);
-      const grossUsd = Number(perf.total_gross_pnl_usd || -4275.25);
-      const feesUsd = Number(perf.total_fees_usd || 758.85);
-      const winRate = perf.day_win_rate_pct !== undefined ? perf.day_win_rate_pct : 30.8;
+      const realizedUsd = isReadOnlyTenant ? 0.0 : Number(perf.total_net_pnl_usd ?? 0.0);
+      const grossUsd = isReadOnlyTenant ? 0.0 : Number(perf.total_gross_pnl_usd ?? 0.0);
+      const feesUsd = isReadOnlyTenant ? 0.0 : Number(perf.total_fees_usd ?? 0.0);
+      const winRate = isReadOnlyTenant ? 0 : (perf.day_win_rate_pct !== undefined ? perf.day_win_rate_pct : 0.0);
 
-      const pf = perf.profit_factor !== undefined ? `${perf.profit_factor}x` : '0.74x';
-      const sr = perf.sharpe_ratio !== undefined ? ` • Sharpe: ${perf.sharpe_ratio}` : '';
+      const pf = isReadOnlyTenant ? '0x' : (perf.profit_factor !== undefined ? `${perf.profit_factor}x` : '0x');
+      const sr = isReadOnlyTenant ? '' : (perf.sharpe_ratio !== undefined ? ` • Sharpe: ${perf.sharpe_ratio}` : '');
       document.getElementById('kpi-realized-pnl').textContent = formatMoney(realizedUsd, true);
       document.getElementById('kpi-gross-pnl').textContent = `Gross: ${formatMoney(grossUsd, true)}`;
       document.getElementById('kpi-fees-label').textContent = `Fees: ${formatMoney(feesUsd)} • PF: ${pf}${sr}`;
