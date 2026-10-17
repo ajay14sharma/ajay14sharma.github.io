@@ -309,10 +309,10 @@
 
       <!-- Footer Actions -->
       <div class="flex items-center justify-between pt-2 border-t border-gray-800/80 text-xs">
-        <button type="button" onclick="navigateTo('#/dashboard')" class="text-gray-400 hover:text-gray-200">
+        <button id="btn-skip-vault" type="button" onclick="skipToReadOnlyDashboard()" class="text-gray-400 hover:text-gray-200 cursor-pointer transition">
           ← Skip to Read-Only Dashboard
         </button>
-        <button type="button" onclick="handleLogout()" class="text-rose-400 hover:text-rose-300 underline">
+        <button type="button" onclick="handleLogout()" class="text-rose-400 hover:text-rose-300 underline cursor-pointer transition">
           Sign out
         </button>
       </div>
@@ -349,6 +349,25 @@
         </button>
         <button id="tenant-signout-btn" type="button" onclick="handleLogout()" class="px-2.5 py-1 rounded-lg bg-rose-950/40 hover:bg-rose-900/50 text-rose-300 text-[11px] font-medium border border-rose-800/30 transition">
           <span id="tenant-signout-label">Sign Out</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Read-Only Mode Banner (Displayed when tenant skipped vault setup without keys) -->
+    <div id="tenant-read-only-banner" class="hidden max-w-7xl mx-auto px-4 sm:px-6 pt-5">
+      <div class="p-4 sm:p-5 rounded-2xl bg-amber-950/40 border border-amber-500/40 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left shadow-lg backdrop-blur-md">
+        <div class="flex items-center gap-3">
+          <span class="text-2xl">👁️</span>
+          <div>
+            <h4 class="text-xs font-bold text-amber-200">Read-Only Dashboard Mode</h4>
+            <p class="text-[11px] text-amber-300/80">
+              No Delta Exchange API keys are configured. You can monitor live market spot prices and explore terminal features. Connect your API credentials in Vault Settings to enable automated live trading.
+            </p>
+          </div>
+        </div>
+        <button type="button" onclick="navigateTo('#/vault')" class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-gray-950 font-bold text-xs transition shadow shrink-0 flex items-center gap-1.5 cursor-pointer">
+          <span>🔑 Connect Vault Keys</span>
+          <span>→</span>
         </button>
       </div>
     </div>
@@ -2880,6 +2899,7 @@
       constructor(options = {}) {
         this.user = options.user || null;
         this.hasVaultKeys = Boolean(options.hasVaultKeys);
+        this.skippedVault = Boolean(options.skippedVault);
         this.activeScreen = FrontendScreen.AUTH;
         this.listeners = [];
       }
@@ -2890,6 +2910,10 @@
 
       setVaultKeys(hasKeys) {
         this.hasVaultKeys = Boolean(hasKeys);
+      }
+
+      setSkippedVault(skipped) {
+        this.skippedVault = Boolean(skipped);
       }
 
       resolveScreen(requestedScreen = null) {
@@ -2921,12 +2945,12 @@
           return FrontendScreen.VAULT_SETUP;
         }
 
-        // 6. Active Approved: if no keys configured -> Screen 3 (Vault Setup)
-        if (!this.hasVaultKeys) {
+        // 6. Active Approved: if no keys configured and hasn't skipped vault -> Screen 3 (Vault Setup)
+        if (!this.hasVaultKeys && !this.skippedVault) {
           return FrontendScreen.VAULT_SETUP;
         }
 
-        // 7. Active Approved with keys -> Screen 4 (Pro Dashboard)
+        // 7. Active Approved with keys or skipped to read-only -> Screen 4 (Pro Dashboard)
         return FrontendScreen.PRO_DASHBOARD;
       }
 
@@ -3445,14 +3469,26 @@
 
       if (SessionManager.session) {
         SessionManager.session.has_vault_keys = true;
+        SessionManager.session.skipped_vault = false;
         SessionManager.session.masked_api_key = masked;
         SessionManager.saveSession(SessionManager.session);
         if (keyEl) keyEl.value = '';
       }
 
       appStateMachine.setVaultKeys(true);
+      appStateMachine.setSkippedVault(false);
       updateVaultConnectedUI(masked);
       showVaultAlert('Delta Exchange API credentials validated and encrypted successfully!', 'success');
+    }
+
+    function skipToReadOnlyDashboard() {
+      if (SessionManager.session) {
+        SessionManager.session.skipped_vault = true;
+        SessionManager.saveSession(SessionManager.session);
+      }
+      appStateMachine.setSkippedVault(true);
+      navigateTo('#/dashboard');
+      showToast('Viewing Pro Dashboard in Read-Only mode.', 'info');
     }
 
     function showVaultEditForm() {
@@ -3476,6 +3512,8 @@
     function purgeTenantDOM() {
       const demoBanner = document.getElementById('demo-mode-banner');
       if (demoBanner) demoBanner.classList.add('hidden');
+      const readOnlyBanner = document.getElementById('tenant-read-only-banner');
+      if (readOnlyBanner) readOnlyBanner.classList.add('hidden');
 
       const posTbody = document.getElementById('positions-tbody');
       if (posTbody) posTbody.innerHTML = '';
@@ -3510,8 +3548,11 @@
       purgeTenantDOM();
       appStateMachine.setUser(null);
       appStateMachine.setVaultKeys(false);
+      appStateMachine.setSkippedVault(false);
       const demoBanner = document.getElementById('demo-mode-banner');
       if (demoBanner) demoBanner.classList.add('hidden');
+      const readOnlyBanner = document.getElementById('tenant-read-only-banner');
+      if (readOnlyBanner) readOnlyBanner.classList.add('hidden');
       updateTenantContextBar();
       navigateTo('#/login');
       showToast('Logged out securely.', 'info');
@@ -3525,6 +3566,15 @@
       const adminPill = document.getElementById('tenant-admin-pill');
       const demoBanner = document.getElementById('demo-mode-banner');
       const signoutLabel = document.getElementById('tenant-signout-label');
+      const readOnlyBanner = document.getElementById('tenant-read-only-banner');
+
+      if (readOnlyBanner) {
+        if (session && session.user && !session.has_vault_keys && !session.is_demo) {
+          readOnlyBanner.classList.remove('hidden');
+        } else {
+          readOnlyBanner.classList.add('hidden');
+        }
+      }
 
       if (session && session.is_demo) {
         if (demoBanner) demoBanner.classList.remove('hidden');
@@ -3542,7 +3592,7 @@
       if (session && session.user) {
         if (emailEl) emailEl.textContent = session.user.email || 'Trader';
         if (idEl) idEl.textContent = session.user.user_id || 'usr_live';
-        if (keyEl) keyEl.textContent = session.masked_api_key || (session.has_vault_keys ? 'Configured' : 'No Keys');
+        if (keyEl) keyEl.textContent = session.masked_api_key || (session.has_vault_keys ? 'Configured' : 'No Keys (Read-Only)');
         if (adminPill) {
           if (session.user.role === 'admin') {
             adminPill.classList.remove('hidden');
@@ -9244,6 +9294,9 @@
       if (SessionManager.session && SessionManager.session.user) {
         appStateMachine.setUser(SessionManager.session.user);
         appStateMachine.setVaultKeys(SessionManager.session.has_vault_keys);
+        if (SessionManager.session.skipped_vault) {
+          appStateMachine.setSkippedVault(true);
+        }
       } else {
         const params = new URLSearchParams(window.location.search);
         if (params.get('demo') === '1' || window.location.hash.includes('demo')) {
