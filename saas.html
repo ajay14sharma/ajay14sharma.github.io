@@ -682,7 +682,7 @@
         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
           🔑 <span id="tenant-active-masked-key">Demo Mode</span>
         </span>
-        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+        <span id="tenant-watchdog-badge" class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
           24/7 Watchdog: Active
         </span>
       </div>
@@ -829,7 +829,7 @@
         </div>
 
         <!-- Emergency Square-Off Panic Button -->
-        <button onclick="openEmergencySquareOffModal()" class="px-2.5 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 text-xs font-semibold flex items-center gap-1.5 transition shadow-sm cursor-pointer" title="Emergency Square-Off All Open Positions">
+        <button id="btn-emergency-square-off" onclick="openEmergencySquareOffModal()" class="px-2.5 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 text-xs font-semibold flex items-center gap-1.5 transition shadow-sm cursor-pointer" title="Emergency Square-Off All Open Positions">
           <span>🚨 Square-Off</span>
         </button>
 
@@ -1423,7 +1423,7 @@
           <button id="pos-tab-btc_leaps" onclick="setPositionSleeveFilter('btc_leaps')" class="pos-sleeve-tab px-3 py-1 rounded-md text-gray-400 hover:text-gray-200 transition">BTC Leaps</button>
         </div>
         <div class="flex items-center gap-2">
-          <button onclick="triggerAttachSlOnly()" class="px-2.5 py-1 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 text-xs font-medium flex items-center gap-1.5 transition" title="Audit and attach 2.0x SL bracket orders to unprotected open positions">
+          <button id="btn-attach-sl-global" onclick="triggerAttachSlOnly()" class="px-2.5 py-1 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 text-xs font-medium flex items-center gap-1.5 transition" title="Audit and attach 2.0x SL bracket orders to unprotected open positions">
             <span>🛡️</span> 1-Click Attach 2.0x SL
           </button>
         </div>
@@ -1876,15 +1876,15 @@
             <div class="grid grid-cols-2 gap-2 text-[11px] font-mono bg-gray-900/60 p-2 rounded-lg border border-gray-800">
               <div>
                 <span class="text-gray-500 text-[10px] block">Open Positions</span>
-                <span id="sleeve-pos-btc_1dte" class="font-bold text-gray-200">2 Legs</span>
+                <span id="sleeve-pos-btc_1dte" class="font-bold text-gray-200">0 Legs</span>
               </div>
               <div>
                 <span class="text-gray-500 text-[10px] block">Unrealized P&L</span>
-                <span id="sleeve-pnl-btc_1dte" class="font-bold text-gray-200">-$4.54</span>
+                <span id="sleeve-pnl-btc_1dte" class="font-bold text-gray-200">$0.00</span>
               </div>
               <div>
                 <span class="text-gray-500 text-[10px] block">Budget Cap</span>
-                <span id="sleeve-budget-btc-1dte" class="text-gray-300">$1,901.73</span>
+                <span id="sleeve-budget-btc-1dte" class="text-gray-300">$0.00</span>
               </div>
               <div>
                 <span class="text-gray-500 text-[10px] block">2.0x SL Protection</span>
@@ -1994,7 +1994,7 @@
               </div>
               <div>
                 <span class="text-gray-500 text-[10px] block">Budget Cap</span>
-                <span id="sleeve-budget-eth_1dte" class="text-gray-300">$760.69</span>
+                <span id="sleeve-budget-eth_1dte" class="text-gray-300">$0.00</span>
               </div>
               <div>
                 <span class="text-gray-500 text-[10px] block">2.0x SL Protection</span>
@@ -2104,7 +2104,7 @@
               </div>
               <div>
                 <span class="text-gray-500 text-[10px] block">Budget Cap</span>
-                <span id="sleeve-budget-btc_0dte" class="text-gray-300">$570.52</span>
+                <span id="sleeve-budget-btc_0dte" class="text-gray-300">$0.00</span>
               </div>
               <div>
                 <span class="text-gray-500 text-[10px] block">Decay Velocity</span>
@@ -2606,9 +2606,10 @@
     <div class="p-5 rounded-xl bg-[#111827] border border-[#1F2937] space-y-4">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-800 pb-3">
         <div>
-          <h2 class="font-semibold text-gray-100 text-sm flex items-center gap-2">
+          <h2 class="font-semibold text-gray-100 text-sm flex items-center gap-2 flex-wrap">
             <span>⚡ Strategy Orchestrator & Cloud Automation Hub</span>
             <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 uppercase tracking-wider">Zero-Commit Edge</span>
+            <span class="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">🔒 Admin / PAT Restricted</span>
           </h2>
           <p class="text-xs text-gray-400 mt-0.5">Dispatch workflows, manage dual-main release branches, toggle live execution, and inspect edge scheduler health.</p>
         </div>
@@ -4365,6 +4366,17 @@
         if (keyEl) keyEl.textContent = 'Demo Mode';
         if (adminPill) adminPill.classList.add('hidden');
       }
+
+      const watchdogEl = document.getElementById('tenant-watchdog-badge');
+      if (watchdogEl) {
+        if (session && session.user && !session.has_vault_keys && !session.is_demo) {
+          watchdogEl.innerHTML = '⏱️ Watchdog: Standby (No Keys)';
+          watchdogEl.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono bg-gray-800 text-gray-400 border border-gray-700';
+        } else {
+          watchdogEl.innerHTML = '24/7 Watchdog: Active';
+          watchdogEl.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+        }
+      }
     }
 
     function updateWaitingRoomUI() {
@@ -5460,17 +5472,18 @@
       }
       const posStrangle = document.getElementById('sleeve-pos-btc_1dte');
       if (posStrangle) {
-        posStrangle.textContent = `${sStrangle.open_positions_count !== undefined ? sStrangle.open_positions_count : (dashboardState?.open_positions?.length || 2)} Legs`;
+        const count = isReadOnlyTenant ? 0 : (sStrangle.open_positions_count !== undefined ? sStrangle.open_positions_count : (dashboardState?.open_positions?.length || 0));
+        posStrangle.textContent = `${count} Legs`;
       }
       const pnlStrangle = document.getElementById('sleeve-pnl-btc_1dte');
       if (pnlStrangle) {
-        const pnl = Number(sStrangle.unrealized_pnl_usd !== undefined ? sStrangle.unrealized_pnl_usd : (dashboardState?.open_positions?.reduce((a, b) => a + (Number(b.unrealized_pnl_usd) || 0), 0) || -4.54));
+        const pnl = isReadOnlyTenant ? 0.0 : Number(sStrangle.unrealized_pnl_usd !== undefined ? sStrangle.unrealized_pnl_usd : (dashboardState?.open_positions?.reduce((a, b) => a + (Number(b.unrealized_pnl_usd) || 0), 0) || 0.0));
         pnlStrangle.textContent = formatMoney(pnl, true);
         pnlStrangle.className = `font-bold ${pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
       }
       const budgetStrangle = document.getElementById('sleeve-budget-btc-1dte');
-      if (budgetStrangle && sStrangle.budget_cap_usd) {
-        budgetStrangle.textContent = formatMoney(sStrangle.budget_cap_usd);
+      if (budgetStrangle) {
+        budgetStrangle.textContent = isReadOnlyTenant ? '$0.00' : (sStrangle.budget_cap_usd ? formatMoney(sStrangle.budget_cap_usd) : '$0.00');
       }
 
       // Sleeve 2: eth_1dte Strangle
@@ -5512,8 +5525,8 @@
         pnlEth.className = `font-bold ${pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
       }
       const budgetEth = document.getElementById('sleeve-budget-eth_1dte');
-      if (budgetEth && sEth.budget_cap_usd) {
-        budgetEth.textContent = formatMoney(sEth.budget_cap_usd);
+      if (budgetEth) {
+        budgetEth.textContent = isReadOnlyTenant ? '$0.00' : (sEth.budget_cap_usd ? formatMoney(sEth.budget_cap_usd) : '$0.00');
       }
 
       // Sleeve 3: btc_0dte Intraday Strangle
@@ -5555,8 +5568,8 @@
         pnl0Dte.className = `font-bold ${pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
       }
       const budget0Dte = document.getElementById('sleeve-budget-btc_0dte');
-      if (budget0Dte && s0Dte.budget_cap_usd) {
-        budget0Dte.textContent = formatMoney(s0Dte.budget_cap_usd);
+      if (budget0Dte) {
+        budget0Dte.textContent = isReadOnlyTenant ? '$0.00' : (s0Dte.budget_cap_usd ? formatMoney(s0Dte.budget_cap_usd) : '$0.00');
       }
 
       // Sleeve 4: regime_condor Iron Condor
@@ -5639,7 +5652,7 @@
       // Dynamic Sparkline Metrics Updates
       const sparkStrangle = document.getElementById('sleeve-sparkline-metric-btc_1dte');
       if (sparkStrangle) {
-        const count = Number(sStrangle.open_positions_count !== undefined ? sStrangle.open_positions_count : (dashboardState?.open_positions?.length || 2));
+        const count = isReadOnlyTenant ? 0 : Number(sStrangle.open_positions_count !== undefined ? sStrangle.open_positions_count : (dashboardState?.open_positions?.length || 0));
         sparkStrangle.textContent = count > 0 ? `${count} Live Legs (2x SL)` : '2.0x SL Corridor';
       }
       const sparkEth = document.getElementById('sleeve-sparkline-metric-eth_1dte');
@@ -6061,6 +6074,11 @@
 
     // Emergency Square-Off Controls
     function openEmergencySquareOffModal() {
+      const isReadOnlyTenant = (SessionManager.session && !SessionManager.session.has_vault_keys && !SessionManager.session.is_demo) || (dashboardState && dashboardState.is_empty_state);
+      if (isReadOnlyTenant || (!dashboardState?.open_positions?.length)) {
+        showToast('No active positions to square off in Read-Only Mode.', 'info');
+        return;
+      }
       const modal = document.getElementById('emergency-square-off-modal');
       if (modal) {
         modal.classList.remove('hidden');
@@ -6170,6 +6188,11 @@
     }
 
     function triggerAttachSlOnly(symbol, strategyId) {
+      const isReadOnlyTenant = (SessionManager.session && !SessionManager.session.has_vault_keys && !SessionManager.session.is_demo) || (dashboardState && dashboardState.is_empty_state);
+      if (isReadOnlyTenant || (!symbol && !dashboardState?.open_positions?.length)) {
+        showToast('No active positions to protect in Read-Only Mode.', 'info');
+        return;
+      }
       const modeSelect = document.getElementById('dispatch-mode-select');
       if (modeSelect) modeSelect.value = 'attach-sl-only';
       const stratSelect = document.getElementById('dispatch-strategy-select');
@@ -7104,6 +7127,31 @@
         sleeveCountEl.textContent = `${rawPositions.length} Legs Open`;
       }
 
+      // Safeguard Action Buttons for Read-Only & 0-position state
+      const isReadOnlyTenant = (SessionManager.session && !SessionManager.session.has_vault_keys && !SessionManager.session.is_demo) || (dashboardState && dashboardState.is_empty_state);
+
+      const btnAttachSl = document.getElementById('btn-attach-sl-global');
+      if (btnAttachSl) {
+        if (isReadOnlyTenant || rawPositions.length === 0) {
+          btnAttachSl.classList.add('opacity-40', 'cursor-not-allowed');
+          btnAttachSl.title = isReadOnlyTenant ? 'Read-Only Mode: Connect broker keys to attach SL' : 'No open positions to protect';
+        } else {
+          btnAttachSl.classList.remove('opacity-40', 'cursor-not-allowed');
+          btnAttachSl.title = 'Audit and attach 2.0x SL bracket orders to unprotected open positions';
+        }
+      }
+
+      const btnSquareOff = document.getElementById('btn-emergency-square-off');
+      if (btnSquareOff) {
+        if (isReadOnlyTenant || allPositions.length === 0) {
+          btnSquareOff.classList.add('opacity-40', 'cursor-not-allowed');
+          btnSquareOff.title = isReadOnlyTenant ? 'Read-Only Mode: No open positions to square off' : 'No open positions to square off';
+        } else {
+          btnSquareOff.classList.remove('opacity-40', 'cursor-not-allowed');
+          btnSquareOff.title = 'Emergency Square-Off All Open Positions';
+        }
+      }
+
       // Update Card Header dynamically (Sleeve filter takes precedence when active)
       const titleEl = document.getElementById('positions-card-title');
       const subtitleEl = document.getElementById('positions-card-subtitle');
@@ -7602,11 +7650,16 @@
       }
       const activeCohortTagEl = document.getElementById('lbl-active-cohort-tag');
       if (activeCohortTagEl) {
-        if (currentCorridorCohort === 'all') {
+        if (!activePositions || activePositions.length === 0) {
+          activeCohortTagEl.textContent = 'Theoretical Next-Cycle Model (10:30 PM)';
+          activeCohortTagEl.className = 'text-[10px] font-mono px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20';
+        } else if (currentCorridorCohort === 'all') {
           activeCohortTagEl.textContent = 'All Positions';
+          activeCohortTagEl.className = 'text-[10px] font-mono px-2 py-0.5 rounded bg-orange-500/10 text-orange-400 border border-orange-500/20';
         } else {
           const cInfo = distinctCohorts.get(currentCorridorCohort);
           activeCohortTagEl.textContent = cInfo ? `${cInfo.label} Cohort` : currentCorridorCohort;
+          activeCohortTagEl.className = 'text-[10px] font-mono px-2 py-0.5 rounded bg-orange-500/10 text-orange-400 border border-orange-500/20';
         }
       }
 
@@ -7619,8 +7672,9 @@
         drawerGrid.innerHTML = '';
         if (cohortPositions.length === 0) {
           drawerGrid.innerHTML = `
-            <div class="py-12 text-center text-gray-500 font-mono text-xs">
-              No open contracts for this expiry cohort.
+            <div class="py-12 text-center text-gray-500 font-mono text-xs space-y-1">
+              <div class="text-gray-400 font-semibold">No open contracts for this cohort</div>
+              <div class="text-[11px] text-gray-500">Displaying theoretical 10:30 PM entry curve model preview</div>
             </div>
           `;
         } else {
@@ -7982,8 +8036,13 @@
       const bufferPts = callBreakeven - putBreakeven;
       const bufferPct = ((bufferPts / spotPx) * 100).toFixed(1);
 
-      setSafeText('kpi-risk-max-profit', `+$${Math.round(maxExpiryPnl).toLocaleString()} USD`);
-      setSafeText('kpi-risk-target-profit', `Target Date: +$${Math.round(targetPnlAtEval).toLocaleString()}`);
+      if (isFlat) {
+        setSafeText('kpi-risk-max-profit', `+$${Math.round(maxExpiryPnl).toLocaleString()} USD (Model Preview)`);
+        setSafeText('kpi-risk-target-profit', `Theoretical: +$${Math.round(targetPnlAtEval).toLocaleString()}`);
+      } else {
+        setSafeText('kpi-risk-max-profit', `+$${Math.round(maxExpiryPnl).toLocaleString()} USD`);
+        setSafeText('kpi-risk-target-profit', `Target Date: +$${Math.round(targetPnlAtEval).toLocaleString()}`);
+      }
       setSafeText('kpi-risk-max-loss', maxLossDisplay);
       setSafeText('kpi-risk-sl-status', `Dynamic Brackets: ${simDynamicBrackets ? (activeOrderCount > 0 ? `ON (${activeOrderCount} Live Orders)` : 'ON (0 Active Orders)') : 'OFF'}`);
       setSafeText('kpi-risk-breakevens', `$${Math.round(putBreakeven).toLocaleString()} — $${Math.round(callBreakeven).toLocaleString()}`);
