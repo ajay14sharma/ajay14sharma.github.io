@@ -4265,6 +4265,10 @@
       appStateMachine.setSkippedVault(false);
       updateVaultConnectedUI(masked);
       showVaultAlert('Delta Exchange API credentials validated and encrypted successfully!', 'success');
+      loadDashboardSnapshot().then(() => {
+        renderHeaderAndKPIs();
+        renderLivePositions();
+      }).catch(() => {});
     }
 
     function skipToReadOnlyDashboard() {
@@ -6565,21 +6569,30 @@
               if (emptyEl) emptyEl.classList.add('hidden');
               return;
             }
-          } else if (resp && resp.status === 404) {
-            dashboardState = getTenantEmptyStateData();
-            const emptyEl = document.getElementById('tenant-empty-state');
-            if (emptyEl) {
-              if (session.has_vault_keys) {
-                emptyEl.classList.remove('hidden');
-              } else {
-                emptyEl.classList.add('hidden');
-              }
-            }
-            return;
           }
         } catch (e) {
           console.warn('Failed to load multi-tenant edge snapshot:', e);
         }
+
+        // Live Snapshot Fallback: If tenant has connected vault keys (or is admin/primary account),
+        // sync from live edge snapshot store at /api/snapshot
+        if (session.has_vault_keys || (session.user && (session.user.role === 'admin' || session.user.email === 'ajay14sharma@gmail.com'))) {
+          try {
+            const edgeResp = await fetch(`https://delta-strangle-scheduler.ajay14sharma.workers.dev/api/snapshot?t=${Date.now()}`);
+            if (edgeResp && edgeResp.ok) {
+              const edgeData = await edgeResp.json();
+              if (edgeData && (edgeData.wallet || edgeData.open_positions)) {
+                dashboardState = edgeData;
+                const emptyEl = document.getElementById('tenant-empty-state');
+                if (emptyEl) emptyEl.classList.add('hidden');
+                return;
+              }
+            }
+          } catch (edgeErr) {
+            console.warn('Failed to load live edge snapshot fallback:', edgeErr);
+          }
+        }
+
         if (!dashboardState) {
           dashboardState = getTenantEmptyStateData();
           const emptyEl = document.getElementById('tenant-empty-state');
@@ -6661,6 +6674,7 @@
         await refreshLiveGitHubVariables(token);
       }
       renderHeaderAndKPIs();
+      renderLivePositions();
       renderMultiStrategySleeves();
       renderPortfolioPerformanceChart();
       renderAuditCohortPills();
