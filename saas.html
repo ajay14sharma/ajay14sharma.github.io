@@ -4148,13 +4148,93 @@
       if (drawerEl) drawerEl.classList.add('hidden');
     }
 
+    // Client-Side AES-256-GCM Credential Vault Persistence
+    async function getTenantDerivationKey(userId) {
+      const enc = new TextEncoder();
+      const raw = await crypto.subtle.digest("SHA-256", enc.encode("delta_saas_vault_v1_" + (userId || 'anon')));
+      return crypto.subtle.importKey("raw", raw, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
+    }
+
+    async function encryptCredentials(userId, apiKey, apiSecret) {
+      try {
+        const cryptoKey = await getTenantDerivationKey(userId);
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const enc = new TextEncoder();
+        const encoded = enc.encode(JSON.stringify({ apiKey, apiSecret }));
+        const cipher = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, cryptoKey, encoded);
+        const ivHex = Array.from(iv).map(b => b.toString(16).padStart(2, "0")).join("");
+        const cipherHex = Array.from(new Uint8Array(cipher)).map(b => b.toString(16).padStart(2, "0")).join("");
+        return `${ivHex}:${cipherHex}`;
+      } catch (e) {
+        console.warn("Failed to encrypt vault credentials:", e);
+        return null;
+      }
+    }
+
+    async function decryptCredentials(userId, payload) {
+      if (!payload || typeof payload !== "string" || !payload.includes(":")) return null;
+      try {
+        const [ivHex, cipherHex] = payload.split(":");
+        const iv = new Uint8Array(ivHex.match(/.{1,2}/g).map(b => parseInt(b, 16)));
+        const cipher = new Uint8Array(cipherHex.match(/.{1,2}/g).map(b => parseInt(b, 16)));
+        const cryptoKey = await getTenantDerivationKey(userId);
+        const dec = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, cryptoKey, cipher);
+        return JSON.parse(new TextDecoder().decode(dec));
+      } catch (e) {
+        console.warn("Failed to decrypt vault credentials:", e);
+        return null;
+      }
+    }
+
+    async function getTenantCredentials(userId) {
+      if (!userId) return null;
+      // 1. In-memory / sessionStorage
+      const sKey = sessionStorage.getItem("delta_vault_key_" + userId);
+      const sSecret = sessionStorage.getItem("delta_vault_secret_" + userId);
+      if (sKey && sSecret) return { apiKey: sKey, apiSecret: sSecret };
+
+      // 2. Encrypted localStorage vault
+      const cipher = localStorage.getItem("delta_vault_cipher_" + userId);
+      if (cipher) {
+        const creds = await decryptCredentials(userId, cipher);
+        if (creds && creds.apiKey && creds.apiSecret) {
+          sessionStorage.setItem("delta_vault_key_" + userId, creds.apiKey);
+          sessionStorage.setItem("delta_vault_secret_" + userId, creds.apiSecret);
+          return creds;
+        }
+      }
+      return null;
+    }
+
+    async function saveTenantCredentials(userId, apiKey, apiSecret) {
+      if (!userId || !apiKey || !apiSecret) return;
+      sessionStorage.setItem("delta_vault_key_" + userId, apiKey);
+      sessionStorage.setItem("delta_vault_secret_" + userId, apiSecret);
+      const cipher = await encryptCredentials(userId, apiKey, apiSecret);
+      if (cipher) {
+        localStorage.setItem("delta_vault_cipher_" + userId, cipher);
+      }
+    }
+
+    function openInlineBrokerConnectDrawer(brokerKey) {
+      const drawer = document.getElementById(`${brokerKey}-inline-connect-drawer`);
+      if (drawer) {
+        drawer.classList.remove('hidden');
+        const keyInput = document.getElementById(`inline-${brokerKey}-api-key`);
+        if (keyInput) {
+          setTimeout(() => keyInput.focus(), 80);
+        }
+        drawer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+
     function toggleInlineBrokerConnectDrawer(brokerKey) {
       const drawer = document.getElementById(`${brokerKey}-inline-connect-drawer`);
       if (drawer) {
-        drawer.classList.toggle('hidden');
-        if (!drawer.classList.contains('hidden')) {
-          const keyInput = document.getElementById(`inline-${brokerKey}-api-key`);
-          if (keyInput) keyInput.focus();
+        if (drawer.classList.contains('hidden')) {
+          openInlineBrokerConnectDrawer(brokerKey);
+        } else {
+          drawer.classList.add('hidden');
         }
       }
     }
@@ -4187,8 +4267,7 @@
         if (keyEl) keyEl.value = '';
       }
 
-      sessionStorage.setItem('delta_vault_key_' + userId, apiKey);
-      sessionStorage.setItem('delta_vault_secret_' + userId, apiSecret);
+      await saveTenantCredentials(userId, apiKey, apiSecret);
 
       appStateMachine.setVaultKeys(true);
       appStateMachine.setSkippedVault(false);
@@ -4240,8 +4319,11 @@
     window.showBrokerGuide = showBrokerGuide;
     window.hideBrokerGuide = hideBrokerGuide;
     window.testBrokerPing = testBrokerPing;
+    window.openInlineBrokerConnectDrawer = openInlineBrokerConnectDrawer;
     window.toggleInlineBrokerConnectDrawer = toggleInlineBrokerConnectDrawer;
     window.submitInlineBrokerKeys = submitInlineBrokerKeys;
+    window.getTenantCredentials = getTenantCredentials;
+    window.saveTenantCredentials = saveTenantCredentials;
     function openBrokerHubModal() {
       openProfileBrokerModal('brokers');
     }
@@ -4365,8 +4447,7 @@
         if (keyEl) keyEl.value = '';
       }
 
-      sessionStorage.setItem('delta_vault_key_' + userId, apiKey);
-      sessionStorage.setItem('delta_vault_secret_' + userId, apiSecret);
+      await saveTenantCredentials(userId, apiKey, apiSecret);
 
       appStateMachine.setVaultKeys(true);
       appStateMachine.setSkippedVault(false);
@@ -6734,10 +6815,13 @@
           }
         }
 
-        // If credentials exist in sessionStorage, auto-sync in background to refresh live
-        const hasSessionKeys = !!(sessionStorage.getItem('delta_vault_key_' + userId) && sessionStorage.getItem('delta_vault_secret_' + userId));
-        if (hasSessionKeys) {
-          syncBrokerPortfolio().catch(() => {});
+        // Retrieve credentials and auto-sync in background to refresh live
+        const creds = await getTenantCredentials(userId);
+        if (creds && creds.apiKey && creds.apiSecret) {
+          session.has_vault_keys = true;
+          session.masked_api_key = maskApiKey(creds.apiKey);
+          SessionManager.saveSession(session);
+          syncBrokerPortfolio(creds.apiKey, creds.apiSecret).catch(() => {});
         }
 
         if (!dashboardState) {
@@ -6808,10 +6892,9 @@
       const session = SessionManager.session;
       const isReadOnly = session && !session.has_vault_keys && !session.is_demo;
       const userId = (session && session.user && session.user.user_id) ? session.user.user_id : 'usr_g_guest';
-      const hasSessionKeys = !!(sessionStorage.getItem('delta_vault_key_' + userId) && sessionStorage.getItem('delta_vault_secret_' + userId));
-
-      if (hasSessionKeys) {
-        await syncBrokerPortfolio();
+      const creds = await getTenantCredentials(userId);
+      if (creds && creds.apiKey && creds.apiSecret) {
+        await syncBrokerPortfolio(creds.apiKey, creds.apiSecret);
         await fetchLiveDeltaTickers();
         return;
       }
@@ -6847,13 +6930,14 @@
       const session = SessionManager.session;
       const userId = (session && session.user && session.user.user_id) ? session.user.user_id : 'usr_g_guest';
 
-      const apiKey = customApiKey || sessionStorage.getItem('delta_vault_key_' + userId);
-      const apiSecret = customApiSecret || sessionStorage.getItem('delta_vault_secret_' + userId);
+      const creds = (!customApiKey || !customApiSecret) ? await getTenantCredentials(userId) : null;
+      const apiKey = customApiKey || creds?.apiKey || sessionStorage.getItem('delta_vault_key_' + userId);
+      const apiSecret = customApiSecret || creds?.apiSecret || sessionStorage.getItem('delta_vault_secret_' + userId);
 
       if (!apiKey || !apiSecret) {
         showToast('Please enter your Delta API Key & Secret to sync live portfolio.', 'info');
         openProfileBrokerModal('brokers');
-        toggleInlineBrokerConnectDrawer('delta');
+        openInlineBrokerConnectDrawer('delta');
         return false;
       }
 
