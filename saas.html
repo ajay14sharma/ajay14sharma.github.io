@@ -76,6 +76,20 @@
 <body class="min-h-screen pb-16 antialiased text-sm">
 
   <!-- ========================================================================= -->
+  <!-- DEMO MODE STICKY BANNER & EXIT CONTROLLER -->
+  <!-- ========================================================================= -->
+  <div id="demo-mode-banner" class="hidden bg-gradient-to-r from-amber-950 via-amber-900 to-amber-950 border-b border-amber-500/50 text-amber-200 px-4 py-2.5 text-xs font-medium flex items-center justify-between sticky top-0 z-50 shadow-xl backdrop-blur-md">
+    <div class="flex items-center gap-2">
+      <span class="text-base">🧪</span>
+      <span><strong>Interactive Sandbox Demo</strong>: Showing simulated portfolio data ($10,000 demo paper account). No live funds or real Delta Exchange data connected.</span>
+    </div>
+    <button type="button" onclick="handleLogout()" class="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-gray-950 font-bold text-xs transition shadow flex items-center gap-1.5 cursor-pointer">
+      <span>Exit Demo &amp; Return to Sign In</span>
+      <span>✕</span>
+    </button>
+  </div>
+
+  <!-- ========================================================================= -->
   <!-- SCREEN 1: USER AUTHENTICATION (SPA SCREEN) -->
   <!-- ========================================================================= -->
   <section id="screen-auth" class="spa-screen hidden min-h-[90vh] flex items-center justify-center p-4">
@@ -333,8 +347,8 @@
         <button type="button" onclick="navigateTo('#/vault')" class="px-2.5 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-[11px] font-medium border border-gray-700 transition">
           🔑 Vault Settings
         </button>
-        <button type="button" onclick="handleLogout()" class="px-2.5 py-1 rounded-lg bg-rose-950/40 hover:bg-rose-900/50 text-rose-300 text-[11px] font-medium border border-rose-800/30 transition">
-          Sign Out
+        <button id="tenant-signout-btn" type="button" onclick="handleLogout()" class="px-2.5 py-1 rounded-lg bg-rose-950/40 hover:bg-rose-900/50 text-rose-300 text-[11px] font-medium border border-rose-800/30 transition">
+          <span id="tenant-signout-label">Sign Out</span>
         </button>
       </div>
     </div>
@@ -3342,7 +3356,7 @@
       appStateMachine.setUser(demoUser);
       appStateMachine.setVaultKeys(true);
       navigateTo('#/dashboard');
-      showToast('Entered Demo Mode with live public read-only telemetry.', 'info');
+      showToast('Entered Sandbox Demo Mode with simulated paper account.', 'info');
     }
 
     function quickDevLogin(role = 'admin') {
@@ -3460,6 +3474,9 @@
     }
 
     function purgeTenantDOM() {
+      const demoBanner = document.getElementById('demo-mode-banner');
+      if (demoBanner) demoBanner.classList.add('hidden');
+
       const posTbody = document.getElementById('positions-tbody');
       if (posTbody) posTbody.innerHTML = '';
 
@@ -3493,6 +3510,9 @@
       purgeTenantDOM();
       appStateMachine.setUser(null);
       appStateMachine.setVaultKeys(false);
+      const demoBanner = document.getElementById('demo-mode-banner');
+      if (demoBanner) demoBanner.classList.add('hidden');
+      updateTenantContextBar();
       navigateTo('#/login');
       showToast('Logged out securely.', 'info');
     }
@@ -3503,6 +3523,21 @@
       const idEl = document.getElementById('tenant-active-id');
       const keyEl = document.getElementById('tenant-active-masked-key');
       const adminPill = document.getElementById('tenant-admin-pill');
+      const demoBanner = document.getElementById('demo-mode-banner');
+      const signoutLabel = document.getElementById('tenant-signout-label');
+
+      if (session && session.is_demo) {
+        if (demoBanner) demoBanner.classList.remove('hidden');
+        if (emailEl) emailEl.textContent = 'Guest (Sandbox Demo)';
+        if (idEl) idEl.textContent = 'demo_sandbox';
+        if (keyEl) keyEl.textContent = 'Simulated Keys';
+        if (adminPill) adminPill.classList.add('hidden');
+        if (signoutLabel) signoutLabel.textContent = 'Exit Demo';
+        return;
+      }
+
+      if (demoBanner) demoBanner.classList.add('hidden');
+      if (signoutLabel) signoutLabel.textContent = 'Sign Out';
 
       if (session && session.user) {
         if (emailEl) emailEl.textContent = session.user.email || 'Trader';
@@ -3588,13 +3623,31 @@
     }
 
     function handleRouteNavigation(rawHash) {
-      const hash = (rawHash || window.location.hash || '#/dashboard').toLowerCase();
-      const requestedScreen = RouteToScreen[hash] || FrontendScreen.PRO_DASHBOARD;
+      const hash = (rawHash || window.location.hash || '').toLowerCase();
+      const session = SessionManager.session;
+
+      // If user is currently in demo mode and explicitly visits login or auth routes,
+      // cleanly clear the demo session so they can authenticate.
+      if (session && session.is_demo && (hash === '#/login' || hash === '#/auth' || hash === '#/signin' || hash === '#/signup')) {
+        SessionManager.clearSession();
+        appStateMachine.setUser(null);
+        appStateMachine.setVaultKeys(false);
+        purgeTenantDOM();
+        const demoBanner = document.getElementById('demo-mode-banner');
+        if (demoBanner) demoBanner.classList.add('hidden');
+      }
+
+      const effectiveHash = hash || (SessionManager.session?.user ? '#/dashboard' : '#/login');
+      const requestedScreen = RouteToScreen[effectiveHash] || (SessionManager.session?.user ? FrontendScreen.PRO_DASHBOARD : FrontendScreen.AUTH);
       const resolvedScreen = appStateMachine.resolveScreen(requestedScreen);
       const targetRoute = ScreenRoute[resolvedScreen];
 
       if (targetRoute && window.location.hash.toLowerCase() !== targetRoute.toLowerCase()) {
-        history.replaceState(null, '', targetRoute);
+        if (typeof history !== 'undefined' && history.replaceState) {
+          history.replaceState(null, '', targetRoute);
+        } else if (typeof window !== 'undefined' && window.history && window.history.replaceState) {
+          window.history.replaceState(null, '', targetRoute);
+        }
       }
 
       renderScreen(resolvedScreen);
@@ -5377,10 +5430,252 @@
       return formatUsd(usdVal, showSign);
     }
 
-    // 2. Fetch Data from Cloudflare Edge KV & Delta Exchange
+    function getSyntheticDemoDashboardData() {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const todayDay = now.getDate();
+      const ym = `${year}-${month}`;
+
+      const dailyPnl = [];
+      const auditOrders = [];
+
+      // Generate consistent daily historical records for calendar & performance studio
+      const daysToGen = Math.max(12, Math.min(todayDay, 28));
+      for (let day = 1; day <= daysToGen; day++) {
+        const dStr = `${ym}-${String(day).padStart(2, '0')}`;
+        const isWin = (day % 4 !== 0);
+        const pnl = isWin ? (85 + (day * 13) % 95) : -(45 + (day * 7) % 60);
+        dailyPnl.push({
+          date: dStr,
+          pnl_usd: pnl,
+          pnl_inr: Math.round(pnl * 85),
+          fees_usd: 12.5,
+          legs_count: 2
+        });
+
+        // 2 closed legs per settlement day
+        auditOrders.push({
+          order_id: `DEMO-ORD-${1000 + day * 2 + 1}`,
+          client_order_id: `STG-DEMO-CALL-${day}`,
+          created_at: `${dStr}T06:30:00Z`,
+          date_ist: dStr,
+          symbol: `C-BTC-86000-${String(day).padStart(2, '0')}${month}${String(year).slice(-2)}`,
+          side: "sell",
+          size: -100,
+          lots: 100,
+          entry_price: 245.5,
+          price: 245.5,
+          status: "FILLED",
+          state: "closed",
+          strategy: "btc_1dte",
+          strategy_id: "btc_1dte",
+          pnl_usd: isWin ? (pnl * 0.55) : (pnl * 0.6)
+        });
+        auditOrders.push({
+          order_id: `DEMO-ORD-${1000 + day * 2 + 2}`,
+          client_order_id: `STG-DEMO-PUT-${day}`,
+          created_at: `${dStr}T06:30:00Z`,
+          date_ist: dStr,
+          symbol: `P-BTC-82000-${String(day).padStart(2, '0')}${month}${String(year).slice(-2)}`,
+          side: "sell",
+          size: -100,
+          lots: 100,
+          entry_price: 220.0,
+          price: 220.0,
+          status: "FILLED",
+          state: "closed",
+          strategy: "btc_1dte",
+          strategy_id: "btc_1dte",
+          pnl_usd: isWin ? (pnl * 0.45) : (pnl * 0.4)
+        });
+      }
+
+      // Format exp code for tomorrow
+      const tomorrow = new Date(Date.now() + 86400000);
+      const tomD = String(tomorrow.getDate()).padStart(2, '0');
+      const tomM = String(tomorrow.getMonth() + 1).padStart(2, '0');
+      const tomY = String(tomorrow.getFullYear()).slice(-2);
+      const tomExp = `${tomD}${tomM}${tomY}`;
+
+      return {
+        is_demo_synthetic: true,
+        last_synced_utc: now.toISOString(),
+        last_synced_ist: now.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + ' IST',
+        btc_spot_price: 84250.0,
+        eth_spot_price: 3120.0,
+        wallet: {
+          balance_usd: 10000.00,
+          account_value_usd: 10480.00,
+          available_usd: 8150.00,
+          blocked_margin_usd: 1850.00,
+          gross_cash_usd: 10000.00,
+          balance_inr_est: 850000.0
+        },
+        portfolio_risk: {
+          allow_new_entries: true,
+          total_risk_pool_usd: 10000.00,
+          margin_ceiling_pct: 65,
+          margin_utilization_pct: 18.5,
+          circuit_breakers: {
+            portfolio_drawdown_5pct: false,
+            margin_ceiling_exceeded: false
+          },
+          sleeve_budgets: {
+            btc_1dte: { allocated_pct: 40, used_usd: 1200, total_margin_budget_usd: 4000, recommended_lots: 100 },
+            eth_1dte: { allocated_pct: 20, used_usd: 650, total_margin_budget_usd: 2000, recommended_lots: 100 },
+            btc_0dte: { allocated_pct: 15, used_usd: 0, total_margin_budget_usd: 1500, recommended_lots: 50 },
+            regime_condor: { allocated_pct: 15, used_usd: 0, total_margin_budget_usd: 1500, recommended_lots: 50 },
+            btc_trend_breakout: { allocated_pct: 10, used_usd: 0, total_margin_budget_usd: 1000, recommended_lots: 25 }
+          }
+        },
+        portfolio_performance: {
+          summary: {
+            total_net_pnl_usd: 480.00,
+            total_gross_pnl_usd: 540.00,
+            total_fees_usd: 60.00,
+            day_win_rate_pct: 75.0,
+            profit_factor: 2.15,
+            sharpe_ratio: 1.82,
+            sortino_ratio: 2.45,
+            max_drawdown_pct: 2.8
+          }
+        },
+        open_positions: [
+          {
+            symbol: `C-BTC-86000-${tomExp}`,
+            product_symbol: "BTC",
+            contract_type: "call_options",
+            strike_price: 86000,
+            expiry_date: tomorrow.toISOString(),
+            side: "sell",
+            lots: 100,
+            entry_price: 245.5,
+            mark_price: 180.0,
+            unrealized_pnl_usd: 65.5,
+            realized_pnl_usd: 0.0,
+            sl_trigger: 491.0,
+            sl_active: true,
+            has_sl_order: true,
+            distance_to_sl_pct: 63.3,
+            strategy_tag: "btc_1dte",
+            cohort: "BTC_1DTE"
+          },
+          {
+            symbol: `P-BTC-82000-${tomExp}`,
+            product_symbol: "BTC",
+            contract_type: "put_options",
+            strike_price: 82000,
+            expiry_date: tomorrow.toISOString(),
+            side: "sell",
+            lots: 100,
+            entry_price: 220.0,
+            mark_price: 160.5,
+            unrealized_pnl_usd: 59.5,
+            realized_pnl_usd: 0.0,
+            sl_trigger: 440.0,
+            sl_active: true,
+            has_sl_order: true,
+            distance_to_sl_pct: 63.5,
+            strategy_tag: "btc_1dte",
+            cohort: "BTC_1DTE"
+          }
+        ],
+        daily_pnl: dailyPnl,
+        audit_orders: auditOrders,
+        strategies: {
+          btc_1dte: { name: "BTC 1DTE Strangle", status: "ACTIVE", total_credit_usd: 465.5, open_legs: 2 },
+          eth_1dte: { name: "ETH 1DTE Strangle", status: "STANDBY", total_credit_usd: 0, open_legs: 0 },
+          btc_0dte: { name: "BTC 0DTE Strangle", status: "STANDBY", total_credit_usd: 0, open_legs: 0 },
+          regime_condor: { name: "Iron Condor", status: "STANDBY", total_credit_usd: 0, open_legs: 0 },
+          btc_trend_breakout: { name: "Trend Breakout", status: "STANDBY", total_credit_usd: 0, open_legs: 0 }
+        },
+        strategies_summary: {
+          total_credit_usd: 465.5,
+          active_sleeves_count: 1
+        },
+        critical_alerts: [],
+        technical_alerts: [],
+        portfolio_alerts: [],
+        github_actions: {
+          active_branch: "green",
+          bot_mode: "paper",
+          bot_lots: 100
+        }
+      };
+    }
+
+    function getTenantEmptyStateData() {
+      const now = new Date();
+      return {
+        is_empty_state: true,
+        last_synced_utc: now.toISOString(),
+        last_synced_ist: now.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + ' IST',
+        btc_spot_price: 84250.0,
+        eth_spot_price: 3120.0,
+        wallet: {
+          balance_usd: 0.0,
+          account_value_usd: 0.0,
+          available_usd: 0.0,
+          blocked_margin_usd: 0.0,
+          gross_cash_usd: 0.0,
+          balance_inr_est: 0.0
+        },
+        portfolio_risk: {
+          allow_new_entries: true,
+          total_risk_pool_usd: 0.0,
+          margin_ceiling_pct: 65,
+          margin_utilization_pct: 0.0,
+          circuit_breakers: {
+            portfolio_drawdown_5pct: false,
+            margin_ceiling_exceeded: false
+          },
+          sleeve_budgets: {}
+        },
+        portfolio_performance: {
+          summary: {
+            total_net_pnl_usd: 0.0,
+            total_gross_pnl_usd: 0.0,
+            total_fees_usd: 0.0,
+            day_win_rate_pct: 0.0,
+            profit_factor: 0.0,
+            sharpe_ratio: 0.0,
+            sortino_ratio: 0.0,
+            max_drawdown_pct: 0.0
+          }
+        },
+        open_positions: [],
+        daily_pnl: [],
+        audit_orders: [],
+        strategies: {},
+        strategies_summary: {
+          total_credit_usd: 0.0,
+          active_sleeves_count: 0
+        },
+        critical_alerts: [],
+        technical_alerts: [],
+        portfolio_alerts: [],
+        github_actions: {
+          active_branch: "green",
+          bot_mode: "live",
+          bot_lots: 0
+        }
+      };
+    }
+
+    // 2. Fetch Data from Multi-Tenant Cloudflare Edge KV & Delta Exchange
     async function loadDashboardSnapshot() {
-      // 1. If multi-tenant user is authenticated
       const session = SessionManager.session;
+
+      // 1. If in demo mode, strictly use synthetic demo paper data. NEVER call live api/snapshot!
+      if (session && session.is_demo) {
+        dashboardState = getSyntheticDemoDashboardData();
+        const emptyEl = document.getElementById('tenant-empty-state');
+        if (emptyEl) emptyEl.classList.add('hidden');
+        return;
+      }
+
+      // 2. If multi-tenant user is authenticated
       if (session && session.access_token && !session.is_demo) {
         try {
           const resp = await ApiClient.fetchWithAuth(`https://delta-strangle-scheduler.ajay14sharma.workers.dev/api/tenant/snapshot?t=${Date.now()}`);
@@ -5393,44 +5688,24 @@
               return;
             }
           } else if (resp && resp.status === 404) {
+            dashboardState = getTenantEmptyStateData();
             const emptyEl = document.getElementById('tenant-empty-state');
             if (emptyEl) emptyEl.classList.remove('hidden');
+            return;
           }
         } catch (e) {
           console.warn('Failed to load multi-tenant edge snapshot:', e);
         }
+        if (!dashboardState) {
+          dashboardState = getTenantEmptyStateData();
+          const emptyEl = document.getElementById('tenant-empty-state');
+          if (emptyEl) emptyEl.classList.remove('hidden');
+        }
+        return;
       }
 
-      // 2. Fallback to public demo or local snapshot
-      try {
-        const resp = await fetch(`https://delta-strangle-scheduler.ajay14sharma.workers.dev/api/snapshot?t=${Date.now()}`);
-        if (resp.ok) {
-          const data = await resp.json();
-          if (data && (data.last_synced_utc || data.wallet)) {
-            dashboardState = data;
-            return;
-          }
-        }
-      } catch (e) {
-        console.warn('Failed to load edge snapshot, trying fallback...', e);
-      }
-      // Local fallback
-      try {
-        const localResp = await fetch('dashboard_data.json');
-        if (localResp.ok) {
-          const localData = await localResp.json();
-          if (localData && (localData.open_positions && localData.open_positions.length > 0 || !dashboardState)) {
-            dashboardState = localData;
-            return;
-          }
-        }
-      } catch (e) {
-        console.warn('No local fallback available');
-      }
-      if ((!dashboardState || !dashboardState.open_positions || dashboardState.open_positions.length === 0) &&
-          typeof window.FALLBACK_DASHBOARD_DATA !== 'undefined' && window.FALLBACK_DASHBOARD_DATA) {
-        dashboardState = window.FALLBACK_DASHBOARD_DATA;
-      }
+      // 3. Fallback for unauthenticated/guest: strictly synthetic demo data, NEVER live personal portfolio!
+      dashboardState = getSyntheticDemoDashboardData();
     }
 
     async function fetchLiveDeltaTickers() {
