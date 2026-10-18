@@ -4355,13 +4355,17 @@
       // Long (size > 0): (mark_price - entry_price) * crypto_qty
       // Short (size < 0): (entry_price - mark_price) * crypto_qty
       // Delta API p.unrealized_pnl for options is cashflow liability, NOT directional uPnL
-      if (isLong) {
-        upnl = (markPx - entryPx) * cryptoQty;
+      if (entryPx > 0 && markPx > 0) {
+        if (isLong) {
+          upnl = (markPx - entryPx) * cryptoQty;
+        } else {
+          upnl = (entryPx - markPx) * cryptoQty;
+        }
       } else {
-        upnl = (entryPx - markPx) * cryptoQty;
+        upnl = parseFloat(p.unrealized_pnl_usd || p.unrealized_pnl || 0.0);
       }
-      if (isNaN(upnl) || (entryPx === 0 && markPx === 0)) {
-        upnl = parseFloat(p.unrealized_pnl_usd || 0.0);
+      if (isNaN(upnl)) {
+        upnl = 0.0;
       }
 
       if (parsed.isOption) {
