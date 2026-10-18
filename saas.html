@@ -7440,12 +7440,21 @@
           return resp.json();
         }
 
-        const [balRes, posRes, openOrdersRes, historyRes] = await Promise.all([
+        const [balRes, posRes, openOrdersRes, historyRes, tickersRes] = await Promise.all([
           deltaFetch('/v2/wallet/balances'),
           deltaFetch('/v2/positions/margined'),
           deltaFetch('/v2/orders?state=open').catch(() => ({ result: [] })),
-          deltaFetch('/v2/orders/history?page_size=30').catch(() => ({ result: [] }))
+          deltaFetch('/v2/orders/history?page_size=30').catch(() => ({ result: [] })),
+          deltaFetch('/v2/tickers').catch(() => ({ result: [] }))
         ]);
+
+        const tickersBySymbol = {};
+        for (const t of (tickersRes?.result || [])) {
+          if (t.symbol) {
+            tickersBySymbol[t.symbol] = t;
+            liveTickersBySymbol[t.symbol] = t;
+          }
+        }
 
         const now = new Date();
         const metaEquity = parseFloat(balRes?.meta?.net_equity || 0);
@@ -7488,7 +7497,7 @@
 
           const size = parseInt(p.size) || 0;
           const side = size < 0 ? 'sell' : 'buy';
-          const lots = Math.abs(size);
+          const lots = size; // preserve directional sign: negative for short, positive for long
           const entryPx = parseFloat(p.entry_price || 0);
           const markPx = parseFloat(p.mark_price || 0);
           const uPnl = parseFloat(p.unrealized_pnl || 0);
@@ -7520,15 +7529,52 @@
           }
 
           const multiplier = parseFloat(p.product?.contract_value || 0) || (underlying === 'ETH' ? 0.01 : (underlying === 'BTC' ? 0.001 : 1.0));
+          const cryptoQty = Math.abs(size) * multiplier;
+          const isLong = side === 'buy' || size > 0;
+
+          // Greeks extraction with dynamic Black-Scholes pricing engine fallback
+          const tInfo = tickersBySymbol[sym] || liveTickersBySymbol[sym] || {};
+          const tGreeks = tInfo.greeks || {};
+
+          let rawDelta = parseFloat(p.delta ?? tGreeks.delta);
+          let rawTheta = parseFloat(p.theta ?? tGreeks.theta);
+          let rawGamma = parseFloat(p.gamma ?? tGreeks.gamma);
+          let rawVega = parseFloat(p.vega ?? tGreeks.vega);
+
+          if (isOption) {
+            const spotForGreeks = parseFloat(tInfo.spot_price || tInfo.mark_price || (underlying === 'ETH' ? liveEthSpotPriceNumeric : liveSpotPriceNumeric) || 83000);
+            const ivForGreeks = Math.max(0.05, Math.min(1.5, parseFloat(tInfo.implied_volatility || 0.385)));
+            const dteDaysForGreeks = Math.max(0.01, expIso ? (new Date(expIso) - now) / (1000 * 86400) : 1.0);
+            const tYears = Math.max(0.0001, dteDaysForGreeks / 365.25);
+            const isCall = optType === 'call';
+
+            if (isNaN(rawDelta) || rawDelta === 0) rawDelta = bsDelta(spotForGreeks, strike, ivForGreeks, tYears, isCall);
+            if (isNaN(rawGamma) || rawGamma === 0) rawGamma = bsGamma(spotForGreeks, strike, ivForGreeks, tYears);
+            if (isNaN(rawVega) || rawVega === 0) rawVega = bsVega(spotForGreeks, strike, ivForGreeks, tYears);
+            if (isNaN(rawTheta) || rawTheta === 0) rawTheta = bsTheta(spotForGreeks, strike, ivForGreeks, tYears, isCall);
+          } else {
+            rawDelta = 1.0;
+            rawTheta = 0.0;
+            rawGamma = 0.0;
+            rawVega = 0.0;
+          }
+
+          const posDelta = isOption ? (size * multiplier * rawDelta) : (size < 0 ? -cryptoQty : cryptoQty);
+          const posTheta = (size < 0) ? (Math.abs(size * multiplier) * Math.abs(rawTheta)) : (size * multiplier * rawTheta);
+          const posVega = size * multiplier * rawVega;
+          const posGamma = size * multiplier * rawGamma;
 
           return {
             symbol: sym,
+            product_id: p.product_id,
             underlying: underlying,
             option_type: optType,
             strike_price: strike,
             expiry_date: expIso || now.toISOString(),
             side: side,
             lots: lots,
+            size: size,
+            isLong: isLong,
             entry_price: entryPx,
             mark_price: markPx,
             unrealized_pnl_usd: uPnl,
@@ -7540,7 +7586,11 @@
             strategy_tag: strategyTag,
             cohort: strategyTag.toUpperCase(),
             contract_multiplier: multiplier,
-            asset_unit: underlying
+            asset_unit: underlying,
+            delta: Math.round(posDelta * 10000) / 10000,
+            theta: Math.round(posTheta * 100) / 100,
+            gamma: Math.round(posGamma * 100000) / 100000,
+            vega: Math.round(posVega * 100) / 100
           };
         });
 
@@ -8200,8 +8250,12 @@
       const parsed = parseOptionSymbol(p.symbol);
       const ticker = liveTickersBySymbol[p.symbol] || {};
       const entryPx = Number(p.entry_price || p.entry_px || 0);
-      const lots = Number(p.lots || p.size || -500);
-      const isLong = lots > 0;
+      const isSell = (String(p.side || '').toLowerCase() === 'sell' || String(p.side || '').toUpperCase() === 'SHORT');
+      const isBuy = (String(p.side || '').toLowerCase() === 'buy' || String(p.side || '').toUpperCase() === 'LONG');
+      const rawLots = Number(p.lots !== undefined ? p.lots : (p.size !== undefined ? p.size : -500));
+      const isLong = isBuy ? true : (isSell ? false : rawLots > 0);
+      const lots = isLong ? Math.abs(rawLots) : -Math.abs(rawLots);
+
       // Live open orders on Delta Exchange
       const hasSlOrder = Boolean(p.sl_active === true || (p.sl_active !== false && p.sl_trigger !== null && p.sl_trigger !== undefined && Number(p.sl_trigger) > 0));
       const hasTpOrder = Boolean(p.tp_active && p.tp_trigger !== null && p.tp_trigger !== undefined && Number(p.tp_trigger) > 0);
@@ -8216,23 +8270,29 @@
       let entryCredit = 0;
       let decayPct = 0;
 
-      if (p.unrealized_pnl_usd !== undefined && !isNaN(parseFloat(p.unrealized_pnl_usd))) {
+      // Prefer Delta Exchange native net_pnl or unrealized_pnl, then directional fallback
+      if (p.meta_data?.net_pnl !== undefined && !isNaN(parseFloat(p.meta_data.net_pnl))) {
+        upnl = parseFloat(p.meta_data.net_pnl);
+      } else if (p.unrealized_pnl !== undefined && !isNaN(parseFloat(p.unrealized_pnl))) {
+        upnl = parseFloat(p.unrealized_pnl);
+      } else if (p.net_pnl !== undefined && !isNaN(parseFloat(p.net_pnl))) {
+        upnl = parseFloat(p.net_pnl);
+      } else if (p.unrealized_pnl_usd !== undefined && !isNaN(parseFloat(p.unrealized_pnl_usd))) {
         upnl = parseFloat(p.unrealized_pnl_usd);
-      } else if (p.realized_cashflow !== undefined && p.unrealized_cashflow !== undefined) {
-        upnl = parseFloat(p.realized_cashflow) + parseFloat(p.unrealized_cashflow);
-      } else if (p.realized_cashflow_usd !== undefined && p.unrealized_cashflow_usd !== undefined) {
-        upnl = parseFloat(p.realized_cashflow_usd) + parseFloat(p.unrealized_cashflow_usd);
       } else if (isLong) {
         upnl = (markPx - entryPx) * cryptoQty;
       } else {
         upnl = (entryPx - markPx) * cryptoQty;
       }
 
-      if (ticker.mark_price && p.mark_price && !isNaN(parseFloat(ticker.mark_price)) && !isNaN(parseFloat(p.mark_price))) {
+      const hasNativeOrSnapUpnl = (p.meta_data?.net_pnl !== undefined || p.unrealized_pnl !== undefined || p.net_pnl !== undefined || p.unrealized_pnl_usd !== undefined);
+      if (hasNativeOrSnapUpnl && ticker.mark_price && p.mark_price && !isNaN(parseFloat(ticker.mark_price)) && !isNaN(parseFloat(p.mark_price))) {
         const snapMark = parseFloat(p.mark_price);
         const liveMark = parseFloat(ticker.mark_price);
-        const incrementalMove = isLong ? (liveMark - snapMark) : (snapMark - liveMark);
-        upnl += incrementalMove * cryptoQty;
+        if (Math.abs(liveMark - snapMark) > 0.0001) {
+          const incrementalMove = isLong ? (liveMark - snapMark) : (snapMark - liveMark);
+          upnl += incrementalMove * cryptoQty;
+        }
       }
 
       if (isLong) {
@@ -8245,6 +8305,38 @@
       const slDist = slTrigger !== null ? (slTrigger - markPx) : null;
       const ivPct = p.ivPct || (ticker.implied_volatility ? parseFloat(ticker.implied_volatility) * 100 : 38.5);
       const strategyId = resolveStrategyId(p);
+
+      // Greeks extraction with dynamic Black-Scholes pricing engine fallback
+      let posDelta = parseFloat(p.delta);
+      let posTheta = parseFloat(p.theta);
+      let posGamma = parseFloat(p.gamma);
+      let posVega = parseFloat(p.vega);
+
+      if (isNaN(posDelta) || isNaN(posTheta) || isNaN(posGamma) || isNaN(posVega)) {
+        if (parsed.isOption && parsed.strike > 0) {
+          const spotForGreeks = parseFloat(ticker.spot_price || ticker.mark_price || (assetUnit === 'ETH' ? liveEthSpotPriceNumeric : liveSpotPriceNumeric) || 83000);
+          const ivForGreeks = Math.max(0.05, Math.min(1.5, (ivPct / 100.0)));
+          const dteDaysForGreeks = Math.max(0.01, parsed.dteDays || 1.0);
+          const tYears = Math.max(0.0001, dteDaysForGreeks / 365.25);
+          const isCall = parsed.isCall;
+
+          const rawDelta = bsDelta(spotForGreeks, parsed.strike, ivForGreeks, tYears, isCall);
+          const rawGamma = bsGamma(spotForGreeks, parsed.strike, ivForGreeks, tYears);
+          const rawVega = bsVega(spotForGreeks, parsed.strike, ivForGreeks, tYears);
+          const rawTheta = bsTheta(spotForGreeks, parsed.strike, ivForGreeks, tYears, isCall);
+
+          if (isNaN(posDelta)) posDelta = isLong ? (rawDelta * cryptoQty) : (-rawDelta * cryptoQty);
+          if (isNaN(posTheta)) posTheta = isLong ? (rawTheta * cryptoQty) : (Math.abs(rawTheta) * cryptoQty);
+          if (isNaN(posVega)) posVega = isLong ? (rawVega * cryptoQty) : (-rawVega * cryptoQty);
+          if (isNaN(posGamma)) posGamma = isLong ? (rawGamma * cryptoQty) : (-rawGamma * cryptoQty);
+        } else {
+          // Linear contract (perpetuals)
+          if (isNaN(posDelta)) posDelta = isLong ? cryptoQty : -cryptoQty;
+          if (isNaN(posTheta)) posTheta = 0.0;
+          if (isNaN(posGamma)) posGamma = 0.0;
+          if (isNaN(posVega)) posVega = 0.0;
+        }
+      }
 
       return {
         ...p,
@@ -8266,7 +8358,11 @@
         slDist,
         entryCredit,
         btcQty: cryptoQty,
-        ivPct
+        ivPct,
+        delta: Math.round(posDelta * 10000) / 10000,
+        theta: Math.round(posTheta * 100) / 100,
+        gamma: Math.round(posGamma * 100000) / 100000,
+        vega: Math.round(posVega * 100) / 100
       };
     }
 
@@ -8417,15 +8513,22 @@
         const stratBadge = p.strategy_id
           ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-gray-800 text-gray-400 border border-gray-700">${p.strategy_id}</span>`
           : '';
+        const sideBadge = isLong
+          ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-mono" title="Long Position">L</span>`
+          : `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/40 font-mono" title="Short Position">S</span>`;
         let legBadge = '';
         if (isOpt) {
-          legBadge = isLong
-            ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">LONG ${isCall ? 'CALL' : 'PUT'}</span>`
-            : `<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold ${isCall ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : 'bg-purple-500/10 text-purple-400 border border-purple-500/20'}">SELL ${isCall ? 'CALL' : 'PUT'}</span>`;
+          legBadge = `
+            <div class="flex items-center gap-1.5">
+              ${sideBadge}
+              <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold ${isCall ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' : 'bg-purple-500/10 text-purple-400 border border-purple-500/20'}">${isCall ? 'CALL' : 'PUT'}</span>
+            </div>`;
         } else {
-          legBadge = isLong
-            ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">LONG PERP</span>`
-            : `<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">SHORT PERP</span>`;
+          legBadge = `
+            <div class="flex items-center gap-1.5">
+              ${sideBadge}
+              <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">PERP</span>
+            </div>`;
         }
 
         const expInfo = (p.parsed && p.parsed.isOption && p.parsed.expFormatted)
@@ -8589,15 +8692,14 @@
         ? liveEthSpotPriceNumeric
         : liveSpotPriceNumeric;
 
-      const corridorOptionPositions = allParsedPositions.filter(p => {
-        const s = p.symbol || '';
-        return s.startsWith('C-') || s.startsWith('P-');
-      });
-
-      renderSafeZoneCorridor(corridorOptionPositions, activeSpotPx);
+      renderSafeZoneCorridor(allParsedPositions, activeSpotPx);
     }
 
     // 4b. Options Math Engine (Black-Scholes Theoretical Pricing & Greeks)
+    function normPdf(x) {
+      return Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI);
+    }
+
     function normCdf(x) {
       const a1 = 0.254829592, a2 = -0.284496736, a3 = 1.421413741;
       const a4 = -1.453152027, a5 = 1.061405429, p = 0.3275911;
@@ -8629,6 +8731,31 @@
       const sT = sigma * Math.sqrt(T);
       const d1 = (Math.log(S / K) + 0.5 * sigma * sigma * T) / sT;
       return isCall ? normCdf(d1) : (normCdf(d1) - 1.0);
+    }
+
+    function bsGamma(S, K, sigma, T) {
+      if (T <= 0.0001 || sigma <= 0.001 || S <= 0) return 0.0;
+      const sT = sigma * Math.sqrt(T);
+      if (sT <= 0.00001) return 0.0;
+      const d1 = (Math.log(S / K) + 0.5 * sigma * sigma * T) / sT;
+      return normPdf(d1) / (S * sT);
+    }
+
+    function bsVega(S, K, sigma, T) {
+      if (T <= 0.0001 || sigma <= 0.001 || S <= 0) return 0.0;
+      const sT = sigma * Math.sqrt(T);
+      if (sT <= 0.00001) return 0.0;
+      const d1 = (Math.log(S / K) + 0.5 * sigma * sigma * T) / sT;
+      return (S * normPdf(d1) * Math.sqrt(T)) / 100.0;
+    }
+
+    function bsTheta(S, K, sigma, T, isCall) {
+      if (T <= 0.0001 || sigma <= 0.001 || S <= 0) return 0.0;
+      const sT = sigma * Math.sqrt(T);
+      if (sT <= 0.00001) return 0.0;
+      const d1 = (Math.log(S / K) + 0.5 * sigma * sigma * T) / sT;
+      const annualTheta = -(S * normPdf(d1) * sigma) / (2 * Math.sqrt(T));
+      return annualTheta / 365.0;
     }
 
     function getLiveHoursToSettlement() {
@@ -8697,6 +8824,7 @@
     function toggleAllCorridorLegs(enable) {
       const cohortPositions = (currentCorridorPositions || []).filter(p => {
         if (currentCorridorCohort === 'all') return true;
+        if (currentCorridorCohort === 'options') return p.parsed && p.parsed.isOption;
         return p.parsed && p.parsed.expCode === currentCorridorCohort;
       });
       cohortPositions.forEach(p => {
@@ -8998,9 +9126,9 @@
 
       // Domain Scaling (strictly encompass all strikes, live spot, eval spot, and safety margins)
       const strikeSpread = Math.max(isEth ? 200 : 2500, maxStrike - minStrike);
-      const padMargin = Math.max(isEth ? 150 : 3500, Math.round(strikeSpread * 0.35));
+      const padMargin = Math.max(isEth ? 600 : 25000, Math.round(strikeSpread * 2.5));
 
-      const rawMinDomain = Math.min(minStrike, spotPx, evalSpot) - padMargin;
+      const rawMinDomain = Math.max(isEth ? 100 : 10000, Math.min(minStrike, spotPx, evalSpot) - padMargin);
       const rawMaxDomain = Math.max(maxStrike, spotPx, evalSpot) + padMargin;
 
       const minDomain = Math.floor(rawMinDomain / roundStep) * roundStep;
@@ -9017,11 +9145,17 @@
         }
         let pnl = 0;
         for (const p of activePositions) {
-          const k = p.parsed.strike;
-          const intrinsic = p.parsed.isCall ? Math.max(0, S - k) : Math.max(0, k - S);
-          const isLong = (p.lots || 0) > 0;
+          const isOption = p.parsed && p.parsed.isOption;
+          const isLong = (p.isLong !== undefined) ? p.isLong : (Number(p.lots || p.size || 0) > 0);
           const qty = p.cryptoQty || p.btcQty || (isEth ? 2.5 : 0.5);
-          pnl += isLong ? (intrinsic - p.entryPx) * qty : (p.entryPx - intrinsic) * qty;
+          if (isOption) {
+            const k = p.parsed.strike;
+            const intrinsic = p.parsed.isCall ? Math.max(0, S - k) : Math.max(0, k - S);
+            pnl += isLong ? (intrinsic - p.entryPx) * qty : (p.entryPx - intrinsic) * qty;
+          } else {
+            // Linear contract (perpetual futures e.g. BTCUSD, ETHUSD)
+            pnl += isLong ? (S - p.entryPx) * qty : (p.entryPx - S) * qty;
+          }
         }
         return pnl;
       };
@@ -9041,35 +9175,51 @@
         }
         let pnl = 0;
         for (const p of activePositions) {
-          const k = p.parsed.strike;
-          const intrinsic = p.parsed.isCall ? Math.max(0, S - k) : Math.max(0, k - S);
-          const isLong = (p.lots || 0) > 0;
+          const isOption = p.parsed && p.parsed.isOption;
+          const isLong = (p.isLong !== undefined) ? p.isLong : (Number(p.lots || p.size || 0) > 0);
           const qty = p.cryptoQty || p.btcQty || (isEth ? 2.5 : 0.5);
-          let legPnl = isLong ? (intrinsic - p.entryPx) * qty : (p.entryPx - intrinsic) * qty;
+          if (isOption) {
+            const k = p.parsed.strike;
+            const intrinsic = p.parsed.isCall ? Math.max(0, S - k) : Math.max(0, k - S);
+            let legPnl = isLong ? (intrinsic - p.entryPx) * qty : (p.entryPx - intrinsic) * qty;
 
-          // Only cap if simDynamicBrackets is ON AND this contract has an actual live order on Delta Exchange
-          if (simDynamicBrackets) {
-            if (!isLong) {
-              if (p.hasSlOrder && p.slTrigger !== null && intrinsic >= p.slTrigger) {
-                const maxLoss = -(p.slTrigger - p.entryPx) * qty;
-                legPnl = Math.max(maxLoss, legPnl);
-              }
-              if (p.hasTpOrder && p.tpTrigger !== null && intrinsic <= p.tpTrigger) {
-                const maxGain = (p.entryPx - p.tpTrigger) * qty;
-                legPnl = Math.min(maxGain, legPnl);
-              }
-            } else {
-              if (p.hasSlOrder && p.slTrigger !== null && intrinsic <= p.slTrigger) {
-                const maxLoss = -(p.entryPx - p.slTrigger) * qty;
-                legPnl = Math.max(maxLoss, legPnl);
-              }
-              if (p.hasTpOrder && p.tpTrigger !== null && intrinsic >= p.tpTrigger) {
-                const maxGain = (p.tpTrigger - p.entryPx) * qty;
-                legPnl = Math.min(maxGain, legPnl);
+            // Only cap if simDynamicBrackets is ON AND this contract has an actual live order on Delta Exchange
+            if (simDynamicBrackets) {
+              if (!isLong) {
+                if (p.hasSlOrder && p.slTrigger !== null && intrinsic >= p.slTrigger) {
+                  const maxLoss = -(p.slTrigger - p.entryPx) * qty;
+                  legPnl = Math.max(maxLoss, legPnl);
+                }
+                if (p.hasTpOrder && p.tpTrigger !== null && intrinsic <= p.tpTrigger) {
+                  const maxGain = (p.entryPx - p.tpTrigger) * qty;
+                  legPnl = Math.min(maxGain, legPnl);
+                }
+              } else {
+                if (p.hasSlOrder && p.slTrigger !== null && intrinsic <= p.slTrigger) {
+                  const maxLoss = -(p.entryPx - p.slTrigger) * qty;
+                  legPnl = Math.max(maxLoss, legPnl);
+                }
+                if (p.hasTpOrder && p.tpTrigger !== null && intrinsic >= p.tpTrigger) {
+                  const maxGain = (p.tpTrigger - p.entryPx) * qty;
+                  legPnl = Math.min(maxGain, legPnl);
+                }
               }
             }
+            pnl += legPnl;
+          } else {
+            // Linear contract (perpetuals)
+            let legPnl = isLong ? (S - p.entryPx) * qty : (p.entryPx - S) * qty;
+            if (simDynamicBrackets && p.hasSlOrder && p.slTrigger !== null) {
+              if (isLong && S <= p.slTrigger) {
+                const maxLoss = (p.slTrigger - p.entryPx) * qty;
+                legPnl = Math.max(maxLoss, legPnl);
+              } else if (!isLong && S >= p.slTrigger) {
+                const maxLoss = (p.entryPx - p.slTrigger) * qty;
+                legPnl = Math.max(maxLoss, legPnl);
+              }
+            }
+            pnl += legPnl;
           }
-          pnl += legPnl;
         }
         return pnl;
       };
@@ -9088,44 +9238,58 @@
         }
         let pnl = 0;
         for (const p of activePositions) {
-          const k = p.parsed.strike;
-          const baseIv = (p.ivPct || 35.0) / 100.0;
-          const effectiveIv = Math.max(0.05, Math.min(1.5, baseIv + (simIvOffset / 100.0)));
-          
-          let legDays = (p.parsed && p.parsed.dteDays) ? p.parsed.dteDays : (getLiveHoursToSettlement() / 24.0);
-          let remDays = Math.max(0.0001, legDays - dateScrubberDays);
-          if (simTimeHoursOverride !== null) {
-            remDays = simTimeHoursOverride === 0 ? 0.0001 : (simTimeHoursOverride / 24.0);
-          }
-          const T_years = Math.max(0.0001, remDays / 365.25);
-          const optVal = bsPrice(S, k, effectiveIv, T_years, p.parsed.isCall);
-          const isLong = (p.lots || 0) > 0;
+          const isOption = p.parsed && p.parsed.isOption;
+          const isLong = (p.isLong !== undefined) ? p.isLong : (Number(p.lots || p.size || 0) > 0);
           const qty = p.cryptoQty || p.btcQty || (isEth ? 2.5 : 0.5);
-          let legPnl = isLong ? (optVal - p.entryPx) * qty : (p.entryPx - optVal) * qty;
+          if (isOption) {
+            const k = p.parsed.strike;
+            const baseIv = (p.ivPct || 35.0) / 100.0;
+            const effectiveIv = Math.max(0.05, Math.min(1.5, baseIv + (simIvOffset / 100.0)));
+            let legDays = (p.parsed && p.parsed.dteDays) ? p.parsed.dteDays : (getLiveHoursToSettlement() / 24.0);
+            let remDays = Math.max(0.0001, legDays - dateScrubberDays);
+            if (simTimeHoursOverride !== null) {
+              remDays = simTimeHoursOverride === 0 ? 0.0001 : (simTimeHoursOverride / 24.0);
+            }
+            const T_years = Math.max(0.0001, remDays / 365.25);
+            const optVal = bsPrice(S, k, effectiveIv, T_years, p.parsed.isCall);
+            let legPnl = isLong ? (optVal - p.entryPx) * qty : (p.entryPx - optVal) * qty;
 
-          // Only cap if simDynamicBrackets is ON AND this contract has an actual live order on Delta Exchange
-          if (simDynamicBrackets) {
-            if (!isLong) {
-              if (p.hasSlOrder && p.slTrigger !== null && optVal >= p.slTrigger) {
-                const maxLoss = -(p.slTrigger - p.entryPx) * qty;
-                legPnl = Math.max(maxLoss, legPnl);
-              }
-              if (p.hasTpOrder && p.tpTrigger !== null && optVal <= p.tpTrigger) {
-                const maxGain = (p.entryPx - p.tpTrigger) * qty;
-                legPnl = Math.min(maxGain, legPnl);
-              }
-            } else {
-              if (p.hasSlOrder && p.slTrigger !== null && optVal <= p.slTrigger) {
-                const maxLoss = -(p.entryPx - p.slTrigger) * qty;
-                legPnl = Math.max(maxLoss, legPnl);
-              }
-              if (p.hasTpOrder && p.tpTrigger !== null && optVal >= p.tpTrigger) {
-                const maxGain = (p.tpTrigger - p.entryPx) * qty;
-                legPnl = Math.min(maxGain, legPnl);
+            if (simDynamicBrackets) {
+              if (!isLong) {
+                if (p.hasSlOrder && p.slTrigger !== null && optVal >= p.slTrigger) {
+                  const maxLoss = -(p.slTrigger - p.entryPx) * qty;
+                  legPnl = Math.max(maxLoss, legPnl);
+                }
+                if (p.hasTpOrder && p.tpTrigger !== null && optVal <= p.tpTrigger) {
+                  const maxGain = (p.entryPx - p.tpTrigger) * qty;
+                  legPnl = Math.min(maxGain, legPnl);
+                }
+              } else {
+                if (p.hasSlOrder && p.slTrigger !== null && optVal <= p.slTrigger) {
+                  const maxLoss = -(p.entryPx - p.slTrigger) * qty;
+                  legPnl = Math.max(maxLoss, legPnl);
+                }
+                if (p.hasTpOrder && p.tpTrigger !== null && optVal >= p.tpTrigger) {
+                  const maxGain = (p.tpTrigger - p.entryPx) * qty;
+                  legPnl = Math.min(maxGain, legPnl);
+                }
               }
             }
+            pnl += legPnl;
+          } else {
+            // Linear contract (perpetuals)
+            let legPnl = isLong ? (S - p.entryPx) * qty : (p.entryPx - S) * qty;
+            if (simDynamicBrackets && p.hasSlOrder && p.slTrigger !== null) {
+              if (isLong && S <= p.slTrigger) {
+                const maxLoss = (p.slTrigger - p.entryPx) * qty;
+                legPnl = Math.max(maxLoss, legPnl);
+              } else if (!isLong && S >= p.slTrigger) {
+                const maxLoss = (p.entryPx - p.slTrigger) * qty;
+                legPnl = Math.max(maxLoss, legPnl);
+              }
+            }
+            pnl += legPnl;
           }
-          pnl += legPnl;
         }
         return pnl;
       };
@@ -9135,26 +9299,32 @@
         if (isFlat) return 0.0;
         let netDelta = 0;
         for (const p of activePositions) {
-          const k = p.parsed.strike;
-          const baseIv = (p.ivPct || 35.0) / 100.0;
-          const effectiveIv = Math.max(0.05, Math.min(1.5, baseIv + (simIvOffset / 100.0)));
-          let legDays = (p.parsed && p.parsed.dteDays) ? p.parsed.dteDays : (getLiveHoursToSettlement() / 24.0);
-          let remDays = Math.max(0.0001, legDays - dateScrubberDays);
-          if (simTimeHoursOverride !== null) {
-            remDays = simTimeHoursOverride === 0 ? 0.0001 : (simTimeHoursOverride / 24.0);
-          }
-          const T_years = Math.max(0.0001, remDays / 365.25);
-          const legDelta = bsDelta(S, k, effectiveIv, T_years, p.parsed.isCall);
-          const isLong = (p.lots || 0) > 0;
+          const isOption = p.parsed && p.parsed.isOption;
+          const isLong = (p.isLong !== undefined) ? p.isLong : (Number(p.lots || p.size || 0) > 0);
           const qty = p.cryptoQty || p.btcQty || (isEth ? 2.5 : 0.5);
-          netDelta += (isLong ? legDelta : -legDelta) * qty;
+          if (isOption) {
+            const k = p.parsed.strike;
+            const baseIv = (p.ivPct || 35.0) / 100.0;
+            const effectiveIv = Math.max(0.05, Math.min(1.5, baseIv + (simIvOffset / 100.0)));
+            let legDays = (p.parsed && p.parsed.dteDays) ? p.parsed.dteDays : (getLiveHoursToSettlement() / 24.0);
+            let remDays = Math.max(0.0001, legDays - dateScrubberDays);
+            if (simTimeHoursOverride !== null) {
+              remDays = simTimeHoursOverride === 0 ? 0.0001 : (simTimeHoursOverride / 24.0);
+            }
+            const T_years = Math.max(0.0001, remDays / 365.25);
+            const legDelta = bsDelta(S, k, effectiveIv, T_years, p.parsed.isCall);
+            netDelta += (isLong ? legDelta : -legDelta) * qty;
+          } else {
+            // Linear contract delta is 1.0 (long) or -1.0 (short)
+            netDelta += (isLong ? 1.0 : -1.0) * qty;
+          }
         }
         return netDelta;
       };
 
       // Numerical Breakeven Solver (ALWAYS solved on baseline unbracketed curve)
       const zeroCrossings = [];
-      const scanSteps = 160;
+      const scanSteps = 300;
       const stepSize = (maxDomain - minDomain) / scanSteps;
       let prevPx = minDomain;
       let prevPnl = calcBaselineExpiryPayoff(prevPx);
@@ -9170,15 +9340,11 @@
         prevPnl = curPnl;
       }
 
-      let putBreakeven = zeroCrossings.filter(px => px <= spotPx).pop();
-      let callBreakeven = zeroCrossings.filter(px => px >= spotPx)[0];
+      const putCrossings = zeroCrossings.filter(px => px <= spotPx);
+      const callCrossings = zeroCrossings.filter(px => px >= spotPx);
 
-      if (!putBreakeven) {
-        putBreakeven = zeroCrossings.length > 0 ? zeroCrossings[0] : (lowestPutStrike - (isEth ? 25 : 300));
-      }
-      if (!callBreakeven) {
-        callBreakeven = zeroCrossings.length > 0 ? zeroCrossings[zeroCrossings.length - 1] : (highestCallStrike + (isEth ? 25 : 300));
-      }
+      let putBreakeven = putCrossings.length > 0 ? putCrossings[putCrossings.length - 1] : (lowestPutStrike - (isEth ? 25 : 300));
+      let callBreakeven = callCrossings.length > 0 ? callCrossings[0] : (highestCallStrike + (isEth ? 25 : 300));
 
       currentCorridorPutBe = putBreakeven;
       currentCorridorCallBe = callBreakeven;
@@ -9215,12 +9381,13 @@
       let activeOrderCount = 0;
 
       activePositions.forEach(p => {
-        const isLong = (p.lots || 0) > 0;
+        const isOption = p.parsed && p.parsed.isOption;
+        const isLong = (p.isLong !== undefined) ? p.isLong : (Number(p.lots || p.size || 0) > 0);
         const qty = p.cryptoQty || p.btcQty || (isEth ? 2.5 : 0.5);
         if (!isLong) {
           if (p.hasSlOrder && p.slTrigger !== null) {
-            const legLoss = (p.slTrigger - p.entryPx) * qty;
-            totalBracketMaxLoss += Math.max(0, legLoss);
+            const legLoss = Math.abs(p.slTrigger - p.entryPx) * qty;
+            totalBracketMaxLoss += legLoss;
             activeOrderCount++;
           } else {
             hasUncappedShortLeg = true;
@@ -9232,7 +9399,7 @@
 
       let maxLossDisplay = 'Unlimited (Tail Risk)';
       if (simDynamicBrackets) {
-        if (activeOrderCount === 0) {
+        if (activeOrderCount === 0 && hasUncappedShortLeg) {
           maxLossDisplay = 'Unlimited (No Open SL Orders)';
         } else if (hasUncappedShortLeg) {
           maxLossDisplay = `-$${Math.round(totalBracketMaxLoss).toLocaleString()} (Partial Cap)`;
@@ -9240,19 +9407,28 @@
           maxLossDisplay = `-$${Math.round(totalBracketMaxLoss).toLocaleString()} (Live Orders Capped)`;
         }
       } else {
-        const hasShorts = activePositions.some(p => (p.lots || 0) < 0);
+        const hasShorts = activePositions.some(p => {
+          const isLong = (p.isLong !== undefined) ? p.isLong : (Number(p.lots || p.size || 0) > 0);
+          return !isLong;
+        });
         maxLossDisplay = (hasUncappedShortLeg || hasShorts) ? 'Unlimited (Tail Risk)' : `-$${Math.round(totalBracketMaxLoss).toLocaleString()}`;
       }
 
       const bufferPts = callBreakeven - putBreakeven;
       const bufferPct = ((bufferPts / spotPx) * 100).toFixed(1);
 
+      const formatPnlWithSign = (val) => {
+        const rounded = Math.round(val);
+        const sign = rounded < 0 ? '-' : '+';
+        return `${sign}$${Math.abs(rounded).toLocaleString()}`;
+      };
+
       if (isFlat) {
-        setSafeText('kpi-risk-max-profit', `+$${Math.round(maxExpiryPnl).toLocaleString()} USD (Model Preview)`);
-        setSafeText('kpi-risk-target-profit', `Theoretical: +$${Math.round(targetPnlAtEval).toLocaleString()}`);
+        setSafeText('kpi-risk-max-profit', `${formatPnlWithSign(maxExpiryPnl)} USD (Model Preview)`);
+        setSafeText('kpi-risk-target-profit', `Theoretical: ${formatPnlWithSign(targetPnlAtEval)}`);
       } else {
-        setSafeText('kpi-risk-max-profit', `+$${Math.round(maxExpiryPnl).toLocaleString()} USD`);
-        setSafeText('kpi-risk-target-profit', `Target Date: +$${Math.round(targetPnlAtEval).toLocaleString()}`);
+        setSafeText('kpi-risk-max-profit', `${formatPnlWithSign(maxExpiryPnl)} USD`);
+        setSafeText('kpi-risk-target-profit', `Target Date: ${formatPnlWithSign(targetPnlAtEval)}`);
       }
       setSafeText('kpi-risk-max-loss', maxLossDisplay);
       setSafeText('kpi-risk-sl-status', `Dynamic Brackets: ${simDynamicBrackets ? (activeOrderCount > 0 ? `ON (${activeOrderCount} Live Orders)` : 'ON (0 Active Orders)') : 'OFF'}`);
@@ -9274,16 +9450,17 @@
 
       const projPnlEl = document.getElementById('kpi-risk-projected-pnl');
       if (projPnlEl) {
-        projPnlEl.textContent = `${targetPnlAtEval >= 0 ? '+' : ''}$${targetPnlAtEval.toFixed(2)} USD`;
+        projPnlEl.textContent = `${targetPnlAtEval < 0 ? '-' : '+'}$${Math.abs(targetPnlAtEval).toFixed(2)} USD`;
         projPnlEl.className = `text-sm font-bold mt-0.5 ${targetPnlAtEval >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
       }
       setSafeText('kpi-risk-target-date-desc', dateScrubberDays === 0 ? 'Live T+0 (0 days)' : `+${dateScrubberDays} days elapsed`);
 
       const projTargetProfitPill = document.getElementById('lbl-projected-target-profit');
       if (projTargetProfitPill) {
-        const sign = targetPnlAtEval >= 0 ? '+' : '';
+        const roundedPnl = Math.round(targetPnlAtEval);
+        const sign = roundedPnl < 0 ? '-' : '+';
         const pct = spotPx > 0 ? (((evalSpot - spotPx) / spotPx) * 100).toFixed(0) : '0';
-        projTargetProfitPill.textContent = `${sign}$${Math.round(targetPnlAtEval).toLocaleString()} (${pct}%)`;
+        projTargetProfitPill.textContent = `${sign}$${Math.abs(roundedPnl).toLocaleString()} (${pct}%)`;
       }
 
       // Update Slider bounds
