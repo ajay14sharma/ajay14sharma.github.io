@@ -4362,28 +4362,46 @@
         decayPct = entryPx > 0 ? Math.min(100, Math.max(0, ((entryPx - markPx) / entryPx) * 100)) : 0;
       }
 
-      // Extract Greeks (native API or dynamic Black-Scholes fallback)
-      const tickerGreeks = (ticker && ticker.greeks) || {};
-      const posGreeks = p.greeks || {};
-      let delta = Number(tickerGreeks.delta ?? posGreeks.delta ?? 0);
-      let gamma = Number(tickerGreeks.gamma ?? posGreeks.gamma ?? 0);
-      let vega = Number(tickerGreeks.vega ?? posGreeks.vega ?? 0);
-      let theta = Number(tickerGreeks.theta ?? posGreeks.theta ?? 0);
-
-      // If Greeks are missing from ticker and position, run analytical Black-Scholes calculation
-      if (delta === 0 && gamma === 0 && parsed.isOption && parsed.strike > 0) {
-        const spot = parsed.underlying === 'ETH' ? (window.liveEthSpotPriceNumeric || 2500) : (window.liveSpotPriceNumeric || 84000);
-        const T_years = Math.max(0.0001, (parsed.dteDays || 1.0) / 365.25);
-        const iv = Math.max(0.10, Math.min(2.0, (Number(ticker.implied_volatility || p.iv || 45)) / 100));
-        delta = bsDelta(spot, parsed.strike, iv, T_years, parsed.isCall);
-        gamma = bsGamma(spot, parsed.strike, iv, T_years);
-        vega = bsVega(spot, parsed.strike, iv, T_years);
-        theta = bsTheta(spot, parsed.strike, iv, T_years, parsed.isCall);
-      }
-
       const slDist = slTrigger !== null ? (slTrigger - markPx) : null;
       const ivPct = p.ivPct || (ticker.implied_volatility ? parseFloat(ticker.implied_volatility) * 100 : 38.5);
       const strategyId = resolveStrategyId(p);
+
+      // Greeks extraction with dynamic Black-Scholes pricing engine fallback
+      let posDelta = parseFloat(p.delta);
+      let posTheta = parseFloat(p.theta);
+      let posGamma = parseFloat(p.gamma);
+      let posVega = parseFloat(p.vega);
+
+      if (parsed.isOption && parsed.strike > 0) {
+        const needsDelta = isNaN(posDelta) || posDelta === 0;
+        const needsGamma = isNaN(posGamma) || posGamma === 0;
+        const needsVega = isNaN(posVega) || posVega === 0;
+        const needsTheta = isNaN(posTheta) || posTheta === 0;
+
+        if (needsDelta || needsGamma || needsVega || needsTheta) {
+          const spotForGreeks = parseFloat(ticker.spot_price || ticker.mark_price || (assetUnit === 'ETH' ? (window.liveEthSpotPriceNumeric || 2500) : (window.liveSpotPriceNumeric || 84000)) || 84000);
+          const ivForGreeks = Math.max(0.05, Math.min(1.5, (ivPct / 100.0)));
+          const dteDaysForGreeks = Math.max(0.01, parsed.dteDays || 1.0);
+          const tYears = Math.max(0.0001, dteDaysForGreeks / 365.25);
+          const isCall = parsed.isCall;
+
+          const rawDelta = bsDelta(spotForGreeks, parsed.strike, ivForGreeks, tYears, isCall);
+          const rawGamma = bsGamma(spotForGreeks, parsed.strike, ivForGreeks, tYears);
+          const rawVega = bsVega(spotForGreeks, parsed.strike, ivForGreeks, tYears);
+          const rawTheta = bsTheta(spotForGreeks, parsed.strike, ivForGreeks, tYears, isCall);
+
+          if (needsDelta) posDelta = isLong ? (rawDelta * cryptoQty) : (-rawDelta * cryptoQty);
+          if (needsTheta) posTheta = isLong ? (rawTheta * cryptoQty) : (Math.abs(rawTheta) * cryptoQty);
+          if (needsVega) posVega = isLong ? (rawVega * cryptoQty) : (-rawVega * cryptoQty);
+          if (needsGamma) posGamma = isLong ? (rawGamma * cryptoQty) : (-rawGamma * cryptoQty);
+        }
+      } else {
+        // Linear contract (perpetuals)
+        if (isNaN(posDelta) || posDelta === 0) posDelta = isLong ? cryptoQty : -cryptoQty;
+        posTheta = 0.0;
+        posGamma = 0.0;
+        posVega = 0.0;
+      }
 
       return {
         ...p,
@@ -4406,10 +4424,10 @@
         entryCredit,
         btcQty: cryptoQty,
         ivPct,
-        delta,
-        gamma,
-        vega,
-        theta
+        delta: posDelta,
+        gamma: posGamma,
+        vega: posVega,
+        theta: posTheta
       };
     }
 
@@ -5029,6 +5047,36 @@
               ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-cyan-500/15 text-cyan-300 border border-cyan-500/30" title="Active Take-Profit Order on Delta Exchange (#${p.tp_order_id || 'live'})">🎯 Live TP: $${p.tpTrigger.toFixed(1)}</span>`
               : `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-gray-900 text-gray-500 border border-gray-800" title="No active Take-Profit order on Delta Exchange (held to expiry)">⚪ No TP Order</span>`;
 
+            const isOpt = p.parsed && p.parsed.isOption;
+            const isLong = (p.isLong !== undefined) ? p.isLong : (Number(p.lots || p.size || 0) > 0);
+            const sideBadge = isLong
+              ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-mono" title="Long Position">L</span>`
+              : `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/40 font-mono" title="Short Position">S</span>`;
+
+            let legHeaderHtml = '';
+            let legMetaHtml = '';
+            if (isOpt) {
+              legHeaderHtml = `
+                ${sideBadge}
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${p.parsed.isCall ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'bg-purple-500/20 text-purple-400 border border-purple-500/30'}">
+                  ${p.parsed.isCall ? 'CALL' : 'PUT'}
+                </span>
+                <span class="text-gray-100 font-bold font-mono text-sm">$${p.parsed.strike.toLocaleString()}</span>
+                <span class="text-[10px] font-mono px-1 rounded bg-gray-800 text-gray-400 border border-gray-700">${p.parsed.expFormatted || p.parsed.expCode || ''}</span>
+              `;
+              legMetaHtml = `Entry $${p.entryPx.toFixed(0)} • Mark $${p.markPx.toFixed(1)} • IV ${((p.ivPct || 38.5)).toFixed(1)}%`;
+            } else {
+              legHeaderHtml = `
+                ${sideBadge}
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 font-mono">
+                  PERP
+                </span>
+                <span class="text-gray-100 font-bold font-mono text-sm">${p.symbol}</span>
+                <span class="text-[10px] font-mono px-1 rounded bg-gray-800 text-gray-400 border border-gray-700">Perpetual</span>
+              `;
+              legMetaHtml = `Entry $${p.entryPx.toFixed(0)} • Mark $${p.markPx.toFixed(1)} • Delta ${isLong ? '+' : '-'}${qtyBtc.toFixed(3)}`;
+            }
+
             const row = document.createElement('div');
             row.className = `p-2.5 rounded-lg border text-xs transition flex items-center justify-between ${isSelected ? 'bg-gray-900 border-gray-750 hover:border-gray-650' : 'bg-gray-950/60 border-gray-900 opacity-40'}`;
             row.innerHTML = `
@@ -5036,14 +5084,10 @@
                 <input type="checkbox" ${isSelected ? 'checked' : ''} onchange="toggleCorridorLeg('${p.symbol}', this.checked)" class="w-4 h-4 rounded cursor-pointer text-orange-500 focus:ring-orange-500 bg-gray-950 border-gray-700" />
                 <div>
                   <div class="font-medium flex items-center gap-1.5 flex-wrap">
-                    <span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${p.parsed.isCall ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'bg-purple-500/20 text-purple-400 border border-purple-500/30'}">
-                      ${p.parsed.isCall ? 'CALL' : 'PUT'}
-                    </span>
-                    <span class="text-gray-100 font-bold font-mono text-sm">$${p.parsed.strike.toLocaleString()}</span>
-                    <span class="text-[10px] font-mono px-1 rounded bg-gray-800 text-gray-400 border border-gray-700">${p.parsed.expFormatted || p.parsed.expCode || ''}</span>
+                    ${legHeaderHtml}
                   </div>
                   <div class="text-[11px] text-gray-400 font-mono mt-0.5">
-                    Entry $${p.entryPx.toFixed(0)} • Mark $${p.markPx.toFixed(1)} • IV ${((p.ivPct || 38.5)).toFixed(1)}%
+                    ${legMetaHtml}
                   </div>
                   <div class="flex items-center gap-1.5 mt-1 flex-wrap">
                     ${slBadge}
@@ -5055,7 +5099,7 @@
                 <div class="${p.upnl >= 0 ? 'text-emerald-400' : 'text-rose-400'} font-bold text-sm">
                   ${formatMoney(p.upnl, true)}
                 </div>
-                <div class="text-[10px] text-gray-500">${qtyBtc.toFixed(2)} ${p.assetUnit || 'BTC'} (${p.lots || -500}L)</div>
+                <div class="text-[10px] text-gray-500">${qtyBtc.toFixed(2)} ${p.assetUnit || 'BTC'} (${p.lots || (isLong ? 500 : -500)}L)</div>
               </div>
             `;
             drawerGrid.appendChild(row);
@@ -5436,14 +5480,14 @@
       activePositions.forEach(p => { totalBookUpnl += (p.upnl || 0); });
       const upnlEl = document.getElementById('kpi-risk-current-upnl');
       if (upnlEl) {
-        upnlEl.textContent = `${formatMoney(totalBookUpnl, true)} USD`;
+        upnlEl.textContent = currentCurrency === 'INR' ? formatInr(totalBookUpnl, true) : `${formatUsd(totalBookUpnl, true)} USD`;
         upnlEl.className = `text-sm font-bold mt-0.5 ${totalBookUpnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
       }
 
       setSafeText('kpi-risk-spot-index', `$${spotPx.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
       const shiftPts = Math.round(evalSpot - spotPx);
       const shiftPct = (((evalSpot - spotPx) / spotPx) * 100).toFixed(1);
-      setSafeText('kpi-risk-spot-shift', shiftPts !== 0 ? `Shift: ${shiftPts >= 0 ? '+' : ''}${shiftPct}% (${shiftPts >= 0 ? '+' : ''}$${shiftPts.toLocaleString()})` : 'Shift: 0.0% ($0)');
+      setSafeText('kpi-risk-spot-shift', shiftPts !== 0 ? `Shift: ${shiftPts >= 0 ? '+' : ''}${shiftPct}% (${shiftPts < 0 ? '-' : '+'}$${Math.abs(shiftPts).toLocaleString()})` : 'Shift: 0.0% ($0)');
 
       const projPnlEl = document.getElementById('kpi-risk-projected-pnl');
       if (projPnlEl) {
@@ -5496,6 +5540,25 @@
           totTheta += parseFloat(p.theta) || 0;
           totVega += parseFloat(p.vega) || 0;
         });
+      } else {
+        // Model preview Greeks for theoretical next-cycle strangle
+        const hours = simTimeHoursOverride !== null ? (simTimeHoursOverride === 0 ? 0.001 : simTimeHoursOverride) : 24.0;
+        const effHours = Math.max(0.1, hours - (dateScrubberDays * 24.0));
+        const T_years = Math.max(0.0001, effHours / 8760.0);
+        const iv = Math.max(0.05, Math.min(1.5, 0.45 + (simIvOffset / 100.0)));
+        const qty = isEth ? 2.5 : 0.5;
+        const dP = bsDelta(spotPx, targetPutStrike, iv, T_years, false);
+        const dC = bsDelta(spotPx, targetCallStrike, iv, T_years, true);
+        totDelta = (-dP - dC) * qty;
+        const gP = bsGamma(spotPx, targetPutStrike, iv, T_years);
+        const gC = bsGamma(spotPx, targetCallStrike, iv, T_years);
+        totGamma = (-gP - gC) * qty;
+        const tP = bsTheta(spotPx, targetPutStrike, iv, T_years, false);
+        const tC = bsTheta(spotPx, targetCallStrike, iv, T_years, true);
+        totTheta = (Math.abs(tP) + Math.abs(tC)) * qty;
+        const vP = bsVega(spotPx, targetPutStrike, iv, T_years);
+        const vC = bsVega(spotPx, targetCallStrike, iv, T_years);
+        totVega = (-vP - vC) * qty;
       }
       const gDeltaEl = document.getElementById('greek-delta');
       const gGammaEl = document.getElementById('greek-gamma');
@@ -6196,7 +6259,7 @@
                   ticks: {
                     color: '#9CA3AF',
                     font: { family: 'ui-monospace, monospace', size: 10 },
-                    callback: (v) => `$${v}`
+                    callback: (v) => v < 0 ? `-$${Math.abs(v)}` : `$${v}`
                   }
                 },
                 yDaily: {

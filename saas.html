@@ -7499,8 +7499,22 @@
           const side = size < 0 ? 'sell' : 'buy';
           const lots = size; // preserve directional sign: negative for short, positive for long
           const entryPx = parseFloat(p.entry_price || 0);
-          const markPx = parseFloat(p.mark_price || 0);
-          const uPnl = parseFloat(p.unrealized_pnl || 0);
+          const multiplier = parseFloat(p.product?.contract_value || 0) || (underlying === 'ETH' ? 0.01 : (underlying === 'BTC' ? 0.001 : 1.0));
+          const cryptoQty = Math.abs(size) * multiplier;
+          const isLong = side === 'buy' || size > 0;
+
+          let uPnl = 0;
+          if (p.meta_data?.net_pnl !== undefined && !isNaN(parseFloat(p.meta_data.net_pnl))) {
+            uPnl = parseFloat(p.meta_data.net_pnl);
+          } else if (p.unrealized_pnl !== undefined && !isNaN(parseFloat(p.unrealized_pnl))) {
+            uPnl = parseFloat(p.unrealized_pnl);
+          } else if (p.net_pnl !== undefined && !isNaN(parseFloat(p.net_pnl))) {
+            uPnl = parseFloat(p.net_pnl);
+          } else if (size < 0) {
+            uPnl = (entryPx - markPx) * cryptoQty;
+          } else {
+            uPnl = (markPx - entryPx) * cryptoQty;
+          }
           const rPnl = parseFloat(p.realized_pnl || 0);
 
           const slOrder = slOrderBySymbol[sym];
@@ -7527,10 +7541,6 @@
             else if (sym === 'ETHUSD' || sym === 'ETHUSDT') strategyTag = 'eth_1dte';
             else strategyTag = 'perpetuals';
           }
-
-          const multiplier = parseFloat(p.product?.contract_value || 0) || (underlying === 'ETH' ? 0.01 : (underlying === 'BTC' ? 0.001 : 1.0));
-          const cryptoQty = Math.abs(size) * multiplier;
-          const isLong = side === 'buy' || size > 0;
 
           // Greeks extraction with dynamic Black-Scholes pricing engine fallback
           const tInfo = tickersBySymbol[sym] || liveTickersBySymbol[sym] || {};
@@ -7578,7 +7588,9 @@
             entry_price: entryPx,
             mark_price: markPx,
             unrealized_pnl_usd: uPnl,
+            unrealized_pnl: uPnl,
             realized_pnl_usd: rPnl,
+            meta_data: p.meta_data,
             sl_trigger: slTrigger,
             sl_active: !!slOrder,
             has_sl_order: !!slOrder,
@@ -7643,7 +7655,9 @@
         const dailyPnl = Object.values(dailyMap).sort((a, b) => a.date.localeCompare(b.date));
 
         const totalUpnl = openPositions.reduce((acc, p) => acc + (p.unrealized_pnl_usd || 0), 0);
-        const totalCredit = openPositions.reduce((acc, p) => acc + (p.lots * (p.symbol.includes('-ETH-') ? 0.01 : 0.001) * p.entry_price), 0);
+        const totalCredit = openPositions
+          .filter(p => !p.isLong)
+          .reduce((acc, p) => acc + (Math.abs(p.lots) * (p.contract_multiplier || (p.symbol.includes('-ETH-') ? 0.01 : 0.001)) * p.entry_price), 0);
 
         const snapshot = {
           is_empty_state: false,
@@ -8172,8 +8186,9 @@
     function parseOptionSymbol(sym) {
       const parts = String(sym || '').split('-');
       if (parts.length < 4 || (parts[0] !== 'C' && parts[0] !== 'P')) {
-        const u = String(sym || '').replace(/USD|USDT|BUSD|XUSD|ONUSD/g, '');
-        return { isOption: false, isCall: false, strike: 0, expCode: '', underlying: u || 'PERP', dteDays: 0, expiryDate: null, expFormatted: 'Perpetual' };
+        const u = String(sym || '').toUpperCase();
+        const underlying = u.includes('ETH') ? 'ETH' : (u.includes('SOL') ? 'SOL' : 'BTC');
+        return { isOption: false, isCall: false, strike: 0, expCode: 'PERP', underlying, dteDays: 0, expiryDate: null, expFormatted: 'Perpetual' };
       }
       const expCode = parts[3];
       let expiryDate = null;
@@ -8312,8 +8327,13 @@
       let posGamma = parseFloat(p.gamma);
       let posVega = parseFloat(p.vega);
 
-      if (isNaN(posDelta) || isNaN(posTheta) || isNaN(posGamma) || isNaN(posVega)) {
-        if (parsed.isOption && parsed.strike > 0) {
+      if (parsed.isOption && parsed.strike > 0) {
+        const needsDelta = isNaN(posDelta) || posDelta === 0;
+        const needsGamma = isNaN(posGamma) || posGamma === 0;
+        const needsVega = isNaN(posVega) || posVega === 0;
+        const needsTheta = isNaN(posTheta) || posTheta === 0;
+
+        if (needsDelta || needsGamma || needsVega || needsTheta) {
           const spotForGreeks = parseFloat(ticker.spot_price || ticker.mark_price || (assetUnit === 'ETH' ? liveEthSpotPriceNumeric : liveSpotPriceNumeric) || 83000);
           const ivForGreeks = Math.max(0.05, Math.min(1.5, (ivPct / 100.0)));
           const dteDaysForGreeks = Math.max(0.01, parsed.dteDays || 1.0);
@@ -8325,17 +8345,17 @@
           const rawVega = bsVega(spotForGreeks, parsed.strike, ivForGreeks, tYears);
           const rawTheta = bsTheta(spotForGreeks, parsed.strike, ivForGreeks, tYears, isCall);
 
-          if (isNaN(posDelta)) posDelta = isLong ? (rawDelta * cryptoQty) : (-rawDelta * cryptoQty);
-          if (isNaN(posTheta)) posTheta = isLong ? (rawTheta * cryptoQty) : (Math.abs(rawTheta) * cryptoQty);
-          if (isNaN(posVega)) posVega = isLong ? (rawVega * cryptoQty) : (-rawVega * cryptoQty);
-          if (isNaN(posGamma)) posGamma = isLong ? (rawGamma * cryptoQty) : (-rawGamma * cryptoQty);
-        } else {
-          // Linear contract (perpetuals)
-          if (isNaN(posDelta)) posDelta = isLong ? cryptoQty : -cryptoQty;
-          if (isNaN(posTheta)) posTheta = 0.0;
-          if (isNaN(posGamma)) posGamma = 0.0;
-          if (isNaN(posVega)) posVega = 0.0;
+          if (needsDelta) posDelta = isLong ? (rawDelta * cryptoQty) : (-rawDelta * cryptoQty);
+          if (needsTheta) posTheta = isLong ? (rawTheta * cryptoQty) : (Math.abs(rawTheta) * cryptoQty);
+          if (needsVega) posVega = isLong ? (rawVega * cryptoQty) : (-rawVega * cryptoQty);
+          if (needsGamma) posGamma = isLong ? (rawGamma * cryptoQty) : (-rawGamma * cryptoQty);
         }
+      } else {
+        // Linear contract (perpetuals)
+        if (isNaN(posDelta) || posDelta === 0) posDelta = isLong ? cryptoQty : -cryptoQty;
+        posTheta = 0.0;
+        posGamma = 0.0;
+        posVega = 0.0;
       }
 
       return {
@@ -8943,7 +8963,13 @@
           if (!distinctCohorts.has(code)) {
             const dte = Math.round(p.parsed.dteDays || 0);
             const label = p.parsed.expFormatted ? p.parsed.expFormatted : code;
-            distinctCohorts.set(code, { label, dte, count: 1 });
+            let shortLabel = label;
+            if (p.parsed.expiryDate) {
+              const d = p.parsed.expiryDate.getUTCDate();
+              const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+              shortLabel = `${d} ${monthNames[p.parsed.expiryDate.getUTCMonth()] || ''}`;
+            }
+            distinctCohorts.set(code, { label, shortLabel, dte, count: 1 });
           } else {
             distinctCohorts.get(code).count++;
           }
@@ -8954,16 +8980,21 @@
       const cohortContainer = document.getElementById('corridor-cohort-pills');
       if (cohortContainer) {
         const allIsActive = currentCorridorCohort === 'all';
+        const optIsActive = currentCorridorCohort === 'options';
+        const optCount = (positions || []).filter(p => p.parsed && p.parsed.isOption).length;
         let cohortHtml = `
           <button onclick="setCorridorCohort('all')" id="btn-cohort-all" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${allIsActive ? 'bg-orange-600 text-white shadow-md ring-2 ring-orange-500/50' : 'bg-gray-900 hover:bg-gray-800 text-gray-300 border border-gray-750 font-medium'}">
-            <span>🌐</span> All Expiries (${(positions || []).length})
+            <span>🌐</span> All Positions (${(positions || []).length})
+          </button>
+          <button onclick="setCorridorCohort('options')" id="btn-cohort-options" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${optIsActive ? 'bg-orange-600 text-white shadow-md ring-2 ring-orange-500/50' : 'bg-gray-900 hover:bg-gray-800 text-gray-300 border border-gray-750 font-medium'}">
+            <span>⚡</span> Options Only (${optCount})
           </button>
         `;
         distinctCohorts.forEach((cData, code) => {
           const isActive = currentCorridorCohort === code;
           cohortHtml += `
             <button onclick="setCorridorCohort('${code}')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${isActive ? 'bg-orange-600 text-white shadow-md ring-2 ring-orange-500/50' : 'bg-gray-900 hover:bg-gray-800 text-gray-300 border border-gray-750 font-medium'}">
-              <span>📅</span> ${cData.label} (${cData.count} Legs • ${cData.dte}D)
+              <span>📅</span> ${cData.shortLabel || cData.label} (${cData.count} Legs • ${cData.dte}D)
             </button>
           `;
         });
@@ -8976,6 +9007,7 @@
       // Filter cohort positions
       const cohortPositions = (positions || []).filter(p => {
         if (currentCorridorCohort === 'all') return true;
+        if (currentCorridorCohort === 'options') return p.parsed && p.parsed.isOption;
         return p.parsed && p.parsed.expCode === currentCorridorCohort;
       });
 
@@ -8995,9 +9027,12 @@
         } else if (currentCorridorCohort === 'all') {
           activeCohortTagEl.textContent = 'All Positions';
           activeCohortTagEl.className = 'text-[10px] font-mono px-2 py-0.5 rounded bg-orange-500/10 text-orange-400 border border-orange-500/20';
+        } else if (currentCorridorCohort === 'options') {
+          activeCohortTagEl.textContent = 'Options Only';
+          activeCohortTagEl.className = 'text-[10px] font-mono px-2 py-0.5 rounded bg-orange-500/10 text-orange-400 border border-orange-500/20';
         } else {
           const cInfo = distinctCohorts.get(currentCorridorCohort);
-          activeCohortTagEl.textContent = cInfo ? `${cInfo.label} Cohort` : currentCorridorCohort;
+          activeCohortTagEl.textContent = cInfo ? `${cInfo.shortLabel || cInfo.label} Cohort` : currentCorridorCohort;
           activeCohortTagEl.className = 'text-[10px] font-mono px-2 py-0.5 rounded bg-orange-500/10 text-orange-400 border border-orange-500/20';
         }
       }
@@ -9032,6 +9067,36 @@
               ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-cyan-500/15 text-cyan-300 border border-cyan-500/30" title="Active Take-Profit Order on Delta Exchange (#${p.tp_order_id || 'live'})">🎯 Live TP: $${p.tpTrigger.toFixed(1)}</span>`
               : `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-gray-900 text-gray-500 border border-gray-800" title="No active Take-Profit order on Delta Exchange (held to expiry)">⚪ No TP Order</span>`;
 
+            const isOpt = p.parsed && p.parsed.isOption;
+            const isLong = (p.isLong !== undefined) ? p.isLong : (Number(p.lots || p.size || 0) > 0);
+            const sideBadge = isLong
+              ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-mono" title="Long Position">L</span>`
+              : `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/40 font-mono" title="Short Position">S</span>`;
+
+            let legHeaderHtml = '';
+            let legMetaHtml = '';
+            if (isOpt) {
+              legHeaderHtml = `
+                ${sideBadge}
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${p.parsed.isCall ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'bg-purple-500/20 text-purple-400 border border-purple-500/30'}">
+                  ${p.parsed.isCall ? 'CALL' : 'PUT'}
+                </span>
+                <span class="text-gray-100 font-bold font-mono text-sm">$${p.parsed.strike.toLocaleString()}</span>
+                <span class="text-[10px] font-mono px-1 rounded bg-gray-800 text-gray-400 border border-gray-700">${p.parsed.expFormatted || p.parsed.expCode || ''}</span>
+              `;
+              legMetaHtml = `Entry $${p.entryPx.toFixed(0)} • Mark $${p.markPx.toFixed(1)} • IV ${((p.ivPct || 38.5)).toFixed(1)}%`;
+            } else {
+              legHeaderHtml = `
+                ${sideBadge}
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 font-mono">
+                  PERP
+                </span>
+                <span class="text-gray-100 font-bold font-mono text-sm">${p.symbol}</span>
+                <span class="text-[10px] font-mono px-1 rounded bg-gray-800 text-gray-400 border border-gray-700">Perpetual</span>
+              `;
+              legMetaHtml = `Entry $${p.entryPx.toFixed(0)} • Mark $${p.markPx.toFixed(1)} • Delta ${isLong ? '+' : '-'}${qtyBtc.toFixed(3)}`;
+            }
+
             const row = document.createElement('div');
             row.className = `p-2.5 rounded-lg border text-xs transition flex items-center justify-between ${isSelected ? 'bg-gray-900 border-gray-750 hover:border-gray-650' : 'bg-gray-950/60 border-gray-900 opacity-40'}`;
             row.innerHTML = `
@@ -9039,14 +9104,10 @@
                 <input type="checkbox" ${isSelected ? 'checked' : ''} onchange="toggleCorridorLeg('${p.symbol}', this.checked)" class="w-4 h-4 rounded cursor-pointer text-orange-500 focus:ring-orange-500 bg-gray-950 border-gray-700" />
                 <div>
                   <div class="font-medium flex items-center gap-1.5 flex-wrap">
-                    <span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${p.parsed.isCall ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'bg-purple-500/20 text-purple-400 border border-purple-500/30'}">
-                      ${p.parsed.isCall ? 'CALL' : 'PUT'}
-                    </span>
-                    <span class="text-gray-100 font-bold font-mono text-sm">$${p.parsed.strike.toLocaleString()}</span>
-                    <span class="text-[10px] font-mono px-1 rounded bg-gray-800 text-gray-400 border border-gray-700">${p.parsed.expFormatted || p.parsed.expCode || ''}</span>
+                    ${legHeaderHtml}
                   </div>
                   <div class="text-[11px] text-gray-400 font-mono mt-0.5">
-                    Entry $${p.entryPx.toFixed(0)} • Mark $${p.markPx.toFixed(1)} • IV ${((p.ivPct || 38.5)).toFixed(1)}%
+                    ${legMetaHtml}
                   </div>
                   <div class="flex items-center gap-1.5 mt-1 flex-wrap">
                     ${slBadge}
@@ -9058,7 +9119,7 @@
                 <div class="${p.upnl >= 0 ? 'text-emerald-400' : 'text-rose-400'} font-bold text-sm">
                   ${formatMoney(p.upnl, true)}
                 </div>
-                <div class="text-[10px] text-gray-500">${qtyBtc.toFixed(2)} ${p.assetUnit || 'BTC'} (${p.lots || -500}L)</div>
+                <div class="text-[10px] text-gray-500">${qtyBtc.toFixed(2)} ${p.assetUnit || 'BTC'} (${p.lots || (isLong ? 500 : -500)}L)</div>
               </div>
             `;
             drawerGrid.appendChild(row);
@@ -9439,14 +9500,14 @@
       activePositions.forEach(p => { totalBookUpnl += (p.upnl || 0); });
       const upnlEl = document.getElementById('kpi-risk-current-upnl');
       if (upnlEl) {
-        upnlEl.textContent = `${formatMoney(totalBookUpnl, true)} USD`;
+        upnlEl.textContent = currentCurrency === 'INR' ? formatInr(totalBookUpnl, true) : `${formatUsd(totalBookUpnl, true)} USD`;
         upnlEl.className = `text-sm font-bold mt-0.5 ${totalBookUpnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
       }
 
       setSafeText('kpi-risk-spot-index', `$${spotPx.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
       const shiftPts = Math.round(evalSpot - spotPx);
       const shiftPct = (((evalSpot - spotPx) / spotPx) * 100).toFixed(1);
-      setSafeText('kpi-risk-spot-shift', shiftPts !== 0 ? `Shift: ${shiftPts >= 0 ? '+' : ''}${shiftPct}% (${shiftPts >= 0 ? '+' : ''}$${shiftPts.toLocaleString()})` : 'Shift: 0.0% ($0)');
+      setSafeText('kpi-risk-spot-shift', shiftPts !== 0 ? `Shift: ${shiftPts >= 0 ? '+' : ''}${shiftPct}% (${shiftPts < 0 ? '-' : '+'}$${Math.abs(shiftPts).toLocaleString()})` : 'Shift: 0.0% ($0)');
 
       const projPnlEl = document.getElementById('kpi-risk-projected-pnl');
       if (projPnlEl) {
@@ -9499,6 +9560,25 @@
           totTheta += parseFloat(p.theta) || 0;
           totVega += parseFloat(p.vega) || 0;
         });
+      } else {
+        // Model preview Greeks for theoretical next-cycle strangle
+        const hours = simTimeHoursOverride !== null ? (simTimeHoursOverride === 0 ? 0.001 : simTimeHoursOverride) : 24.0;
+        const effHours = Math.max(0.1, hours - (dateScrubberDays * 24.0));
+        const T_years = Math.max(0.0001, effHours / 8760.0);
+        const iv = Math.max(0.05, Math.min(1.5, 0.45 + (simIvOffset / 100.0)));
+        const qty = isEth ? 2.5 : 0.5;
+        const dP = bsDelta(spotPx, targetPutStrike, iv, T_years, false);
+        const dC = bsDelta(spotPx, targetCallStrike, iv, T_years, true);
+        totDelta = (-dP - dC) * qty;
+        const gP = bsGamma(spotPx, targetPutStrike, iv, T_years);
+        const gC = bsGamma(spotPx, targetCallStrike, iv, T_years);
+        totGamma = (-gP - gC) * qty;
+        const tP = bsTheta(spotPx, targetPutStrike, iv, T_years, false);
+        const tC = bsTheta(spotPx, targetCallStrike, iv, T_years, true);
+        totTheta = (Math.abs(tP) + Math.abs(tC)) * qty;
+        const vP = bsVega(spotPx, targetPutStrike, iv, T_years);
+        const vC = bsVega(spotPx, targetCallStrike, iv, T_years);
+        totVega = (-vP - vC) * qty;
       }
       const gDeltaEl = document.getElementById('greek-delta');
       const gGammaEl = document.getElementById('greek-gamma');
@@ -10214,7 +10294,7 @@
                   ticks: {
                     color: '#9CA3AF',
                     font: { family: 'ui-monospace, monospace', size: 10 },
-                    callback: (v) => `$${v}`
+                    callback: (v) => v < 0 ? `-$${Math.abs(v)}` : `$${v}`
                   }
                 },
                 yDaily: {
