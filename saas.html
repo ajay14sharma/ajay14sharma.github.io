@@ -744,8 +744,8 @@
         <div class="flex items-center gap-3">
           <span class="text-2xl">👁️</span>
           <div>
-            <h4 class="text-xs font-bold text-amber-200">Read-Only Dashboard Mode</h4>
-            <p class="text-[11px] text-amber-300/80">
+            <h4 id="tenant-read-only-banner-title" class="text-xs font-bold text-amber-200">Read-Only Dashboard Mode</h4>
+            <p id="tenant-read-only-banner-desc" class="text-[11px] text-amber-300/80">
               No broker API keys are configured. You are monitoring live public market prices (BTC &amp; ETH) and terminal metrics. Connect your exchange API keys to enable automated trade execution and private portfolio syncing.
             </p>
           </div>
@@ -4349,6 +4349,7 @@
         sessionStorage.removeItem("delta_vault_key_" + userId);
         sessionStorage.removeItem("delta_vault_secret_" + userId);
         localStorage.removeItem("delta_vault_cipher_" + userId);
+        localStorage.removeItem("delta_saas_tenant_snapshot_" + userId);
       } catch (_) {}
 
       if (session && session.access_token && !session.is_demo) {
@@ -4364,12 +4365,31 @@
       if (session) {
         session.has_vault_keys = false;
         session.masked_api_key = null;
+        session.vault_auth_error = null;
         SessionManager.saveSession(session);
       }
+
+      // Reset dashboardState to empty state
+      dashboardState = getTenantEmptyStateData();
+      dashboardState.is_empty_state = true;
+      dashboardState.open_positions = [];
+      dashboardState.wallet = { balance_usd: 0, available_usd: 0, account_value_usd: 0, blocked_margin_usd: 0 };
+      dashboardState.portfolio_performance = { summary: { total_net_pnl_usd: 0, day_win_rate_pct: 0 } };
 
       appStateMachine.setVaultKeys(false);
       updateVaultUI();
       updateTenantContextBar();
+      renderHeaderAndKPIs();
+      renderLivePositions();
+      renderMultiStrategySleeves();
+      renderAuditCohortPills();
+      renderAuditLedger();
+      renderPortfolioPerformanceChart();
+      renderCalendarHeatmap();
+
+      const emptyEl = document.getElementById('tenant-empty-state');
+      if (emptyEl) emptyEl.classList.remove('hidden');
+
       showToast('Delta Exchange broker disconnected & credentials removed.', 'info');
     }
     window.disconnectTenantBroker = disconnectTenantBroker;
@@ -4720,6 +4740,15 @@
       if (readOnlyBanner) {
         if (session && session.user && !session.has_vault_keys && !session.is_demo) {
           readOnlyBanner.classList.remove('hidden');
+          const titleEl = document.getElementById('tenant-read-only-banner-title');
+          const descEl = document.getElementById('tenant-read-only-banner-desc');
+          if (session.vault_auth_error) {
+            if (titleEl) titleEl.textContent = 'Delta Exchange API Key Invalid or Deleted';
+            if (descEl) descEl.textContent = 'Delta Exchange rejected your API keys (401 invalid_api_key). Stale portfolio data has been purged. Please connect active API keys to view live positions.';
+          } else {
+            if (titleEl) titleEl.textContent = 'Read-Only Dashboard Mode';
+            if (descEl) descEl.textContent = 'No broker API keys are configured. You are monitoring live public market prices (BTC & ETH) and terminal metrics. Connect your exchange API keys to enable automated trade execution and private portfolio syncing.';
+          }
         } else {
           readOnlyBanner.classList.add('hidden');
         }
@@ -4746,7 +4775,13 @@
       if (session && session.user) {
         if (emailEl) emailEl.textContent = session.user.email || 'Trader';
         if (idEl) idEl.textContent = session.user.user_id || 'usr_live';
-        if (keyEl) keyEl.textContent = session.masked_api_key || (session.has_vault_keys ? 'Configured' : 'No Keys (Read-Only)');
+        let keyText = 'No Keys (Read-Only)';
+        if (session.has_vault_keys && session.masked_api_key) {
+          keyText = session.masked_api_key;
+        } else if (session.vault_auth_error) {
+          keyText = '🔑 Keys Invalid / Deleted';
+        }
+        if (keyEl) keyEl.textContent = keyText;
         if (adminPill) {
           if (session.user.role === 'admin') {
             adminPill.classList.remove('hidden');
@@ -6099,7 +6134,7 @@
       }
 
       // 1c. Institutional Greeks & Risk Strip Update
-      const positions = dashboardState?.open_positions || [];
+      const positions = isReadOnlyTenant ? [] : (dashboardState?.open_positions || []);
       let netDelta = 0;
       let dailyTheta = 0;
       let netVega = 0;
@@ -6131,7 +6166,7 @@
         netVega += pVega;
       });
 
-      const marginUtil = parseFloat(dashboardState?.wallet?.margin_utilization_pct || dashboardState?.portfolio_risk?.current_margin_utilization_pct || 0);
+      const marginUtil = isReadOnlyTenant ? 0 : parseFloat(dashboardState?.wallet?.margin_utilization_pct || dashboardState?.portfolio_risk?.current_margin_utilization_pct || 0);
 
       const elDelta = document.getElementById('greeks-net-delta');
       if (elDelta) {
@@ -6980,39 +7015,10 @@
           return false;
         }
 
-        // Check if tenant has cached snapshot in localStorage
-        const cachedRaw = localStorage.getItem('delta_saas_tenant_snapshot_' + userId);
-        if (cachedRaw) {
-          try {
-            const cached = JSON.parse(cachedRaw);
-            if (cached && (cached.wallet || cached.open_positions)) {
-              dashboardState = cached;
-              const emptyEl = document.getElementById('tenant-empty-state');
-              if (emptyEl) emptyEl.classList.add('hidden');
-            }
-          } catch (_) {}
-        }
-
-        // If local storage is empty, eagerly fetch latest snapshot from Cloudflare KV
-        if (!dashboardState || dashboardState.is_empty_state) {
-          const kvLoaded = await fetchEdgeTenantSnapshot();
-          if (!kvLoaded) {
-            await fetchPrimaryAdminEdgeSnapshot();
-          }
-        }
-
-        // Primary Method: Retrieve credentials (locally or via Cross-Device Vault Sync) and sync live
+        // Retrieve credentials (locally or via Cross-Device Vault Sync)
         const creds = await getTenantCredentials(userId);
+
         if (creds && creds.apiKey && creds.apiSecret) {
-          session.has_vault_keys = true;
-          session.skipped_vault = false;
-          session.masked_api_key = maskApiKey(creds.apiKey);
-          SessionManager.saveSession(session);
-          appStateMachine.setVaultKeys(true);
-          appStateMachine.setSkippedVault(false);
-          updateVaultConnectedUI(session.masked_api_key);
-          updateTenantContextBar();
-          
           let liveSyncOk = false;
           try {
             liveSyncOk = await syncBrokerPortfolio(creds.apiKey, creds.apiSecret);
@@ -7021,24 +7027,45 @@
             liveSyncOk = false;
           }
 
-          // Fallback: If direct Delta API fails/times out (e.g. mobile IP mismatch), gracefully load latest snapshot from Cloudflare KV
-          if (!liveSyncOk) {
-            const fallbackOk = await fetchEdgeTenantSnapshot();
-            if (!fallbackOk && (!dashboardState || dashboardState.is_empty_state)) {
-              await fetchPrimaryAdminEdgeSnapshot();
+          // Fallback: ONLY if live sync failed due to network/cellular IP restriction AND credentials were NOT rejected (keys remain active)
+          if (!liveSyncOk && session && session.has_vault_keys) {
+            const cachedRaw = localStorage.getItem('delta_saas_tenant_snapshot_' + userId);
+            if (cachedRaw) {
+              try {
+                const cached = JSON.parse(cachedRaw);
+                if (cached && (cached.wallet || cached.open_positions) && !cached.is_empty_state) {
+                  dashboardState = cached;
+                  const emptyEl = document.getElementById('tenant-empty-state');
+                  if (emptyEl) emptyEl.classList.add('hidden');
+                }
+              } catch (_) {}
+            }
+            if (!dashboardState || dashboardState.is_empty_state) {
+              const fallbackOk = await fetchEdgeTenantSnapshot();
+              if (!fallbackOk) {
+                await fetchPrimaryAdminEdgeSnapshot();
+              }
             }
           }
+        } else {
+          // No credentials configured: strictly Read-Only Mode. Do NOT display private portfolio positions!
+          dashboardState = getTenantEmptyStateData();
+          dashboardState.is_empty_state = true;
+          session.has_vault_keys = false;
+          session.masked_api_key = null;
+          SessionManager.saveSession(session);
+          if (typeof appStateMachine !== 'undefined' && appStateMachine.setVaultKeys) {
+            appStateMachine.setVaultKeys(false);
+          }
+          updateTenantContextBar();
         }
 
-        if (!dashboardState) {
+        if (!dashboardState || dashboardState.is_empty_state) {
           dashboardState = getTenantEmptyStateData();
+          dashboardState.is_empty_state = true;
           const emptyEl = document.getElementById('tenant-empty-state');
           if (emptyEl) {
-            if (session.has_vault_keys) {
-              emptyEl.classList.remove('hidden');
-            } else {
-              emptyEl.classList.add('hidden');
-            }
+            emptyEl.classList.remove('hidden');
           }
         }
         return;
@@ -7191,7 +7218,10 @@
           });
           if (!resp.ok) {
             const errTxt = await resp.text();
-            throw new Error(`Delta API error (${resp.status}): ${errTxt}`);
+            const err = new Error(`Delta API error (${resp.status}): ${errTxt}`);
+            err.status = resp.status;
+            err.isAuthError = (resp.status === 401 || errTxt.includes('invalid_api_key') || errTxt.includes('invalid_signature') || errTxt.includes('unauthorized'));
+            throw err;
           }
           return resp.json();
         }
@@ -7444,6 +7474,59 @@
       } catch (err) {
         console.warn('Direct broker portfolio sync notice:', err);
         const msg = String(err.message || '');
+        const isAuthError = err.isAuthError || err.status === 401 || msg.includes('401') || msg.includes('invalid_api_key') || msg.includes('invalid_signature') || msg.includes('unauthorized');
+
+        if (isAuthError) {
+          // Hard authentication failure: Delta Exchange deleted or revoked the keys!
+          // 1. Purge all local and session credentials
+          sessionStorage.removeItem('delta_vault_key_' + userId);
+          sessionStorage.removeItem('delta_vault_secret_' + userId);
+          localStorage.removeItem('delta_vault_cipher_' + userId);
+          localStorage.removeItem('delta_saas_tenant_snapshot_' + userId);
+
+          // 2. Wipe cloud vault from Cloudflare KV so other devices also de-authenticate
+          if (session && session.access_token && !session.is_demo) {
+            ApiClient.fetchWithAuth('https://delta-strangle-scheduler.ajay14sharma.workers.dev/api/tenant/vault', {
+              method: 'DELETE'
+            }).catch(() => {});
+          }
+
+          // 3. Demote session state to unauthenticated / disconnected
+          if (session) {
+            session.has_vault_keys = false;
+            session.masked_api_key = null;
+            session.vault_auth_error = 'Delta API key deleted or rejected (401 invalid_api_key). Stale data purged.';
+            SessionManager.saveSession(session);
+          }
+          if (typeof appStateMachine !== 'undefined' && appStateMachine.setVaultKeys) {
+            appStateMachine.setVaultKeys(false);
+          }
+
+          // 4. Wipe dashboardState to empty state so NO private data is displayed
+          dashboardState = getTenantEmptyStateData();
+          dashboardState.is_empty_state = true;
+          dashboardState.open_positions = [];
+          dashboardState.wallet = { balance_usd: 0, available_usd: 0, account_value_usd: 0, blocked_margin_usd: 0 };
+          dashboardState.portfolio_performance = { summary: { total_net_pnl_usd: 0, total_gross_pnl_usd: 0, total_fees_usd: 0, day_win_rate_pct: 0 } };
+
+          // 5. Update UI immediately
+          updateTenantContextBar();
+          updateVaultUI();
+          renderHeaderAndKPIs();
+          renderLivePositions();
+          renderMultiStrategySleeves();
+          renderAuditCohortPills();
+          renderAuditLedger();
+          renderPortfolioPerformanceChart();
+          renderCalendarHeatmap();
+
+          const emptyEl = document.getElementById('tenant-empty-state');
+          if (emptyEl) emptyEl.classList.remove('hidden');
+
+          showToast('⚠️ Delta Exchange API Key rejected (401 invalid_api_key). Credentials removed & stale portfolio data purged.', 'error');
+          return false;
+        }
+
         if (msg.includes('400') || msg.includes('ip') || msg.includes('whitelist') || msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
           showToast('Direct exchange sync unavailable on current IP/network. Loading latest cloud snapshot...', 'info');
         } else {
@@ -7485,8 +7568,9 @@
 
     function renderHeaderAndKPIs() {
       if (!dashboardState) return;
-      const w = dashboardState.wallet || {};
-      const positions = dashboardState.open_positions || [];
+      const isReadOnlyTenant = (SessionManager.session && !SessionManager.session.has_vault_keys && !SessionManager.session.is_demo) || (dashboardState && dashboardState.is_empty_state);
+      const w = isReadOnlyTenant ? {} : (dashboardState.wallet || {});
+      const positions = isReadOnlyTenant ? [] : (dashboardState.open_positions || []);
 
       // Calculate total short option credit & uPnL
       const totalShortCredit = positions.reduce((acc, p) => {
@@ -7499,8 +7583,6 @@
         return acc;
       }, 0);
       const totalUpnl = positions.reduce((acc, p) => acc + (parseFloat(p.unrealized_pnl_usd) || 0), 0);
-
-      const isReadOnlyTenant = (SessionManager.session && !SessionManager.session.has_vault_keys && !SessionManager.session.is_demo) || (dashboardState && dashboardState.is_empty_state);
 
       let balUsd = isReadOnlyTenant ? 0.0 : Number(w.account_value_usd ?? w.balance_usd ?? 0.0);
       let availUsd = isReadOnlyTenant ? 0.0 : Number(w.available_usd ?? 0.0);
@@ -7924,9 +8006,11 @@
     }
 
     function renderLivePositions() {
-      const allPositions = (dashboardState && Array.isArray(dashboardState.open_positions))
-        ? dashboardState.open_positions
-        : [];
+      const isReadOnly = (SessionManager.session && !SessionManager.session.has_vault_keys && !SessionManager.session.is_demo);
+      const isTenantEmpty = !dashboardState || dashboardState.is_empty_state;
+      const allPositions = (isReadOnly || isTenantEmpty || !Array.isArray(dashboardState.open_positions))
+        ? []
+        : dashboardState.open_positions;
 
       const allParsedPositions = allPositions.map(parsePositionLeg);
 
@@ -7951,7 +8035,7 @@
       }
 
       // Safeguard Action Buttons for Read-Only & 0-position state
-      const isReadOnlyTenant = (SessionManager.session && !SessionManager.session.has_vault_keys && !SessionManager.session.is_demo) || (dashboardState && dashboardState.is_empty_state);
+      const isReadOnlyTenant = isReadOnly || isTenantEmpty;
 
       const btnAttachSl = document.getElementById('btn-attach-sl-global');
       if (btnAttachSl) {
@@ -8021,13 +8105,26 @@
       tbody.innerHTML = '';
 
       if (rawPositions.length === 0) {
-        const stratName = currentPositionSleeve !== 'all' ? currentPositionSleeve.toUpperCase() : (currentStrategy === 'btc_1dte' ? 'BTC 1DTE Strangle' : currentStrategy.toUpperCase());
-        tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-gray-500">
-          <div class="flex flex-col items-center justify-center space-y-1">
-            <span class="text-base text-gray-400">🛡️ No active positions for ${stratName}</span>
-            <span class="text-xs text-gray-500">Capital is currently flat in 100% cash reserve. Next automated cycle scheduled today at 10:30 PM IST.</span>
-          </div>
-        </td></tr>`;
+        if (isReadOnly) {
+          tbody.innerHTML = `<tr><td colspan="7" class="py-12 text-center text-gray-500">
+            <div class="flex flex-col items-center justify-center space-y-2">
+              <span class="text-2xl">🔒</span>
+              <span class="text-sm font-semibold text-gray-300">Read-Only Dashboard Mode</span>
+              <span class="text-xs text-gray-500 max-w-md">Private portfolio positions and 2.0x SL monitoring are hidden until Delta Exchange API credentials are authenticated.</span>
+              <button type="button" onclick="openProfileBrokerModal('brokers')" class="mt-2 px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-gray-950 text-xs font-bold shadow transition cursor-pointer">
+                🔑 Connect Delta Keys
+              </button>
+            </div>
+          </td></tr>`;
+        } else {
+          const stratName = currentPositionSleeve !== 'all' ? currentPositionSleeve.toUpperCase() : (currentStrategy === 'btc_1dte' ? 'BTC 1DTE Strangle' : currentStrategy.toUpperCase());
+          tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-gray-500">
+            <div class="flex flex-col items-center justify-center space-y-1">
+              <span class="text-base text-gray-400">🛡️ No active positions for ${stratName}</span>
+              <span class="text-xs text-gray-500">Capital is currently flat in 100% cash reserve. Next automated cycle scheduled today at 10:30 PM IST.</span>
+            </div>
+          </td></tr>`;
+        }
       }
 
       let totalUpnl = 0;
@@ -8040,12 +8137,12 @@
       });
 
       // Update KPI Card 2
-      document.getElementById('kpi-open-pnl').textContent = formatMoney(totalUpnl, true);
-      const overallDecayPct = totalCredit > 0 ? (totalUpnl / totalCredit) * 100 : 0;
-      document.getElementById('kpi-theta-pct').textContent = `${totalCredit > 0 ? '+' : ''}${overallDecayPct.toFixed(1)}% Theta`;
+      document.getElementById('kpi-open-pnl').textContent = formatMoney(isReadOnly ? 0 : totalUpnl, true);
+      const overallDecayPct = (totalCredit > 0 && !isReadOnly) ? (totalUpnl / totalCredit) * 100 : 0;
+      document.getElementById('kpi-theta-pct').textContent = `${(totalCredit > 0 && !isReadOnly) ? '+' : ''}${overallDecayPct.toFixed(1)}% Theta`;
       const activeLabel = currentPositionSleeve !== 'all' ? currentPositionSleeve.toUpperCase() : currentStrategy.toUpperCase();
-      document.getElementById('kpi-open-details').textContent = `Credit: ${formatMoney(Math.max(0, totalCredit))} • Sleeve: ${activeLabel}`;
-      document.getElementById('kpi-open-legs-count').textContent = `${rawPositions.length} Open Legs`;
+      document.getElementById('kpi-open-details').textContent = isReadOnly ? 'Read-Only Mode • Connect Broker Keys' : `Credit: ${formatMoney(Math.max(0, totalCredit))} • Sleeve: ${activeLabel}`;
+      document.getElementById('kpi-open-legs-count').textContent = isReadOnly ? '0 Open Legs' : `${rawPositions.length} Open Legs`;
 
       // Render Table Rows (7 Columns)
       parsedPositions.forEach(p => {
@@ -9364,6 +9461,21 @@
       const kpiDd = document.getElementById('perf-kpi-dd');
       const kpiDdSub = document.getElementById('perf-kpi-dd-sub');
 
+      const isReadOnly = (SessionManager.session && !SessionManager.session.has_vault_keys && !SessionManager.session.is_demo);
+      if (isReadOnly || !dashboardState || dashboardState.is_empty_state) {
+        if (kpiNet) kpiNet.textContent = '$0.00';
+        if (kpiNetInr) kpiNetInr.textContent = '₹0.00L';
+        if (kpiSharpe) kpiSharpe.textContent = '0.00';
+        if (kpiSortino) kpiSortino.textContent = '0.00';
+        if (kpiWin) kpiWin.textContent = '0.0%';
+        if (kpiWinSub) kpiWinSub.textContent = '0 Win / 0 Loss';
+        if (kpiPf) kpiPf.textContent = '0.00x';
+        if (kpiDd) kpiDd.textContent = '0.0%';
+        if (kpiDdSub) kpiDdSub.textContent = 'Max Drawdown';
+        container.innerHTML = '<div class="h-64 flex flex-col items-center justify-center text-gray-500 text-xs gap-2 border border-gray-800 rounded-xl bg-gray-900/30"><span class="text-2xl">🔒</span><span class="text-gray-300 font-semibold">Performance Curve Protected</span><span class="text-gray-500 text-[11px]">Connect and authenticate your Delta Exchange API keys to unlock cumulative equity analytics.</span></div>';
+        return;
+      }
+
       // 1. Resolve strategy series and attribution summary
       let targetSeries = [];
       let isStandby = false;
@@ -9778,6 +9890,18 @@
       const container = document.getElementById('calendar-heatmap-container');
       if (!container || !currentCalendarMonth) return;
 
+      const isReadOnly = (SessionManager.session && !SessionManager.session.has_vault_keys && !SessionManager.session.is_demo);
+      if (isReadOnly || !dashboardState || dashboardState.is_empty_state) {
+        const netEl = document.getElementById('cal-month-net-pnl');
+        const countEl = document.getElementById('cal-month-trades-count');
+        const winrateEl = document.getElementById('cal-month-winrate');
+        if (netEl) netEl.textContent = '$0.00';
+        if (countEl) countEl.textContent = '0 Trading Days';
+        if (winrateEl) winrateEl.textContent = 'Win Rate: --%';
+        container.innerHTML = '<div class="col-span-7 py-12 flex flex-col items-center justify-center text-gray-500 text-xs gap-2 border border-gray-800 rounded-xl bg-gray-900/30"><span class="text-2xl">🔒</span><span class="text-gray-300 font-semibold">Calendar P&L Protected</span><span class="text-gray-500 text-[11px]">Connect and authenticate broker keys to view historical daily realized settlement breakdowns.</span></div>';
+        return;
+      }
+
       const [year, month] = currentCalendarMonth.split('-').map(Number);
       const firstDay = new Date(year, month - 1, 1);
       const daysInMonth = new Date(year, month, 0).getDate();
@@ -10164,6 +10288,8 @@
     }
 
     function getFilteredAuditOrders() {
+      const isReadOnly = (SessionManager.session && !SessionManager.session.has_vault_keys && !SessionManager.session.is_demo);
+      if (isReadOnly || !dashboardState || dashboardState.is_empty_state) return [];
       const orders = (dashboardState && Array.isArray(dashboardState.audit_orders)) ? dashboardState.audit_orders : [];
       return orders.filter(o => {
         // 0. Strategy filter
