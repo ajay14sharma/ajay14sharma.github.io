@@ -7192,34 +7192,6 @@
       if (session && session.access_token && !session.is_demo) {
         const userId = (session.user && session.user.user_id) ? session.user.user_id : 'usr_g_guest';
 
-        // Helper for primary admin legacy fallback
-        async function fetchPrimaryAdminEdgeSnapshot() {
-          const isPrimaryAdmin = session.user && (
-            session.user.email === 'ajay14sharma@gmail.com' ||
-            session.user.user_id === 'usr_g_15766573' ||
-            session.user.email === 'admin@delta-strangle.com' ||
-            (session.user.role === 'admin' && String(session.user.email || '').toLowerCase().includes('admin'))
-          );
-          if (isPrimaryAdmin) {
-            try {
-              const edgeResp = await fetch(`https://delta-strangle-scheduler.ajay14sharma.workers.dev/api/snapshot?t=${Date.now()}`);
-              if (edgeResp && edgeResp.ok) {
-                const edgeData = await edgeResp.json();
-                if (edgeData && (edgeData.wallet || edgeData.open_positions)) {
-                  dashboardState = edgeData;
-                  dashboardState.is_empty_state = false;
-                  const emptyEl = document.getElementById('tenant-empty-state');
-                  if (emptyEl) emptyEl.classList.add('hidden');
-                  return true;
-                }
-              }
-            } catch (edgeErr) {
-              console.warn('Failed to load live edge snapshot fallback for primary admin:', edgeErr);
-            }
-          }
-          return false;
-        }
-
         // Retrieve credentials (locally or via Cross-Device Vault Sync)
         const creds = await getTenantCredentials(userId);
 
@@ -7234,6 +7206,19 @@
 
           // Fallback: If direct sync failed or was bypassed (e.g. mobile IP restriction)
           if (!liveSyncOk) {
+            // If session has vault auth error (e.g. keys deleted on Delta), strictly prevent restoring stale snapshot
+            if (session && session.vault_auth_error) {
+              dashboardState = getTenantEmptyStateData();
+              dashboardState.is_empty_state = true;
+              dashboardState.is_revoked = true;
+              try {
+                localStorage.removeItem('delta_saas_tenant_snapshot_' + userId);
+              } catch (_) {}
+              const emptyEl = document.getElementById('tenant-empty-state');
+              if (emptyEl) emptyEl.classList.remove('hidden');
+              return;
+            }
+
             // ONLY restore cached snapshot if session has active vault keys and NO auth errors
             if (session && session.has_vault_keys && !session.vault_auth_error) {
               const cachedRaw = localStorage.getItem('delta_saas_tenant_snapshot_' + userId);
@@ -7250,15 +7235,21 @@
             } else {
               localStorage.removeItem('delta_saas_tenant_snapshot_' + userId);
             }
-            if (!dashboardState || dashboardState.is_empty_state) {
-              const fallbackOk = await fetchEdgeTenantSnapshot(userId);
-              if (!fallbackOk) {
-                await fetchPrimaryAdminEdgeSnapshot();
-              }
+            if ((!dashboardState || dashboardState.is_empty_state) && !session.vault_auth_error) {
+              await fetchEdgeTenantSnapshot(userId);
             }
           }
         } else {
           // No credentials configured locally: check Cloudflare Edge KV for tenant snapshot or admin fallback
+          if (session && session.vault_auth_error) {
+            dashboardState = getTenantEmptyStateData();
+            dashboardState.is_empty_state = true;
+            dashboardState.is_revoked = true;
+            const emptyEl = document.getElementById('tenant-empty-state');
+            if (emptyEl) emptyEl.classList.remove('hidden');
+            return;
+          }
+
           const edgeOk = await fetchEdgeTenantSnapshot(userId);
           if (!edgeOk) {
             dashboardState = getTenantEmptyStateData();
@@ -7437,7 +7428,8 @@
             const errTxt = await resp.text();
             const err = new Error(`Delta API error (${resp.status}): ${errTxt}`);
             err.status = resp.status;
-            const isExplicitRevoked = (errTxt.includes('invalid_api_key') ||
+            const isExplicitRevoked = (resp.status === 401 ||
+                                       errTxt.includes('invalid_api_key') ||
                                        errTxt.includes('ApiKey not found') ||
                                        errTxt.includes('signature_verification_failed') ||
                                        errTxt.includes('invalid_signature'));
@@ -7696,10 +7688,92 @@
       } catch (err) {
         console.warn('Direct broker portfolio sync notice:', err);
         const msg = String(err.message || '');
-        const isExplicitRevocation = !!(err && err.isDeltaRevoked);
+        const isAuthError = (
+          (err && err.status === 401) ||
+          (err && err.isDeltaRevoked) ||
+          (err && err.isAuthError) ||
+          msg.includes('401') ||
+          msg.includes('invalid_api_key') ||
+          msg.includes('ApiKey not found') ||
+          msg.includes('signature_verification_failed') ||
+          msg.includes('invalid_signature')
+        );
 
+        // 1. HARD AUTH FAILURE: User deleted, revoked, or invalidated API keys on Delta Exchange!
+        if (isAuthError) {
+          console.warn('[BROKER REVOCATION] Delta Exchange rejected API credentials (401 / invalid_api_key). Initiating hard purge...');
+
+          // Purge all local and session credentials immediately
+          sessionStorage.removeItem('delta_vault_key_' + userId);
+          sessionStorage.removeItem('delta_vault_secret_' + userId);
+          localStorage.removeItem('delta_vault_cipher_' + userId);
+          localStorage.removeItem('delta_vault_updated_at_' + userId);
+          localStorage.removeItem('delta_saas_tenant_snapshot_' + userId);
+
+          // Wipe cloud vault and overwrite snapshot in Cloudflare KV so all devices immediately de-authenticate
+          if (session && session.access_token && !session.is_demo && userId && userId !== 'usr_g_guest') {
+            try {
+              await ApiClient.fetchWithAuth('https://delta-strangle-scheduler.ajay14sharma.workers.dev/api/tenant/vault', {
+                method: 'DELETE'
+              });
+            } catch (_) {}
+
+            try {
+              await ApiClient.fetchWithAuth(`https://delta-strangle-scheduler.ajay14sharma.workers.dev/api/tenant/${encodeURIComponent(userId)}/snapshot`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  is_empty_state: true,
+                  is_revoked: true,
+                  tenant_id: userId,
+                  last_synced_utc: new Date().toISOString(),
+                  wallet: { balance_usd: 0, account_value_usd: 0, available_usd: 0, blocked_margin_usd: 0 },
+                  open_positions: [],
+                  strategies: {},
+                  strategies_summary: { total_credit_usd: 0, active_sleeves_count: 0 }
+                })
+              });
+            } catch (_) {}
+          }
+
+          // Demote session state to disconnected
+          if (session) {
+            session.has_vault_keys = false;
+            session.masked_api_key = null;
+            session.vault_auth_error = 'Delta API key deleted or rejected on exchange (401 invalid_api_key). Stale portfolio data purged.';
+            SessionManager.saveSession(session);
+          }
+          if (typeof appStateMachine !== 'undefined' && appStateMachine.setVaultKeys) {
+            appStateMachine.setVaultKeys(false);
+          }
+
+          // Wipe dashboardState so ZERO private data is displayed
+          dashboardState = getTenantEmptyStateData();
+          dashboardState.is_empty_state = true;
+          dashboardState.is_revoked = true;
+          dashboardState.open_positions = [];
+          dashboardState.wallet = { balance_usd: 0, available_usd: 0, account_value_usd: 0, blocked_margin_usd: 0 };
+          dashboardState.portfolio_performance = { summary: { total_net_pnl_usd: 0, day_win_rate_pct: 0 } };
+
+          // Update UI
+          updateTenantContextBar();
+          updateVaultUI();
+          renderHeaderAndKPIs();
+          renderLivePositions();
+          renderMultiStrategySleeves();
+          renderAuditCohortPills();
+          renderAuditLedger();
+          renderPortfolioPerformanceChart();
+          renderCalendarHeatmap();
+          const emptyEl = document.getElementById('tenant-empty-state');
+          if (emptyEl) emptyEl.classList.remove('hidden');
+
+          showToast('⚠️ Delta API key was deleted or rejected on Delta Exchange. Stale positions purged & keys disconnected.', 'error');
+          return false;
+        }
+
+        // 2. NETWORK / MOBILE CELLULAR IP RESTRICTION (Not an auth error):
         // Check whether Cloudflare Edge KV has a fresh, valid portfolio snapshot
-        // (This happens if desktop or cloud runner synced the account, but mobile cellular IP is restricted by Delta Exchange)
         const edgeOk = await fetchEdgeTenantSnapshot(userId);
         const hasFreshEdgeSnapshot = edgeOk && dashboardState && !dashboardState.is_empty_state && !dashboardState.is_revoked && (
           (dashboardState.open_positions && dashboardState.open_positions.length > 0) ||
@@ -7722,76 +7796,6 @@
           return true;
         }
 
-        // If Cloudflare Edge does NOT have a valid fresh snapshot:
-        // ONLY perform hard credential purge if Delta Exchange explicitly confirmed the API key was revoked/deleted!
-        if (isExplicitRevocation) {
-          // Hard authentication failure: User deleted, revoked, or invalidated API keys on Delta Exchange!
-          // 1. Purge all local and session credentials immediately
-          sessionStorage.removeItem('delta_vault_key_' + userId);
-          sessionStorage.removeItem('delta_vault_secret_' + userId);
-          localStorage.removeItem('delta_vault_cipher_' + userId);
-          localStorage.removeItem('delta_vault_updated_at_' + userId);
-          localStorage.removeItem('delta_saas_tenant_snapshot_' + userId);
-
-          // 2. Wipe cloud vault and overwrite snapshot in Cloudflare KV so all devices immediately de-authenticate
-          if (session && session.access_token && !session.is_demo && userId && userId !== 'usr_g_guest') {
-            ApiClient.fetchWithAuth('https://delta-strangle-scheduler.ajay14sharma.workers.dev/api/tenant/vault', {
-              method: 'DELETE'
-            }).catch(() => {});
-
-            ApiClient.fetchWithAuth(`https://delta-strangle-scheduler.ajay14sharma.workers.dev/api/tenant/${encodeURIComponent(userId)}/snapshot`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                is_empty_state: true,
-                is_revoked: true,
-                tenant_id: userId,
-                last_synced_utc: new Date().toISOString(),
-                wallet: { balance_usd: 0, account_value_usd: 0, available_usd: 0, blocked_margin_usd: 0 },
-                open_positions: [],
-                strategies: {},
-                strategies_summary: { total_credit_usd: 0, active_sleeves_count: 0 }
-              })
-            }).catch(() => {});
-          }
-
-          // 3. Demote session state to disconnected
-          if (session) {
-            session.has_vault_keys = false;
-            session.masked_api_key = null;
-            session.vault_auth_error = 'Delta API key deleted or rejected (401 invalid_api_key). Stale portfolio data purged.';
-            SessionManager.saveSession(session);
-          }
-          if (typeof appStateMachine !== 'undefined' && appStateMachine.setVaultKeys) {
-            appStateMachine.setVaultKeys(false);
-          }
-
-          // 4. Wipe dashboardState so ZERO private data is displayed
-          dashboardState = getTenantEmptyStateData();
-          dashboardState.is_empty_state = true;
-          dashboardState.is_revoked = true;
-          dashboardState.open_positions = [];
-          dashboardState.wallet = { balance_usd: 0, available_usd: 0, account_value_usd: 0, blocked_margin_usd: 0 };
-          dashboardState.portfolio_performance = { summary: { total_net_pnl_usd: 0, day_win_rate_pct: 0 } };
-
-          // 5. Update UI
-          updateTenantContextBar();
-          updateVaultUI();
-          renderHeaderAndKPIs();
-          renderLivePositions();
-          renderMultiStrategySleeves();
-          renderAuditCohortPills();
-          renderAuditLedger();
-          renderPortfolioPerformanceChart();
-          renderCalendarHeatmap();
-          const emptyEl = document.getElementById('tenant-empty-state');
-          if (emptyEl) emptyEl.classList.remove('hidden');
-
-          showToast('⚠️ Delta API key rejected (401 invalid_api_key). Stale positions purged & keys disconnected.', 'error');
-          return false;
-        }
-
-        // If Cloudflare Edge also has no snapshot:
         showToast('Direct exchange sync unavailable on current IP. Connect via desktop Wi-Fi to sync snapshot.', 'info');
         return false;
       }
