@@ -3437,6 +3437,7 @@
 
       shouldRefresh() {
         if (!this.session || !this.session.expires_at) return false;
+        if (this.session.user && this.session.user.provider === 'google') return false;
         const nowSec = Math.floor(Date.now() / 1000);
         const remaining = this.session.expires_at - nowSec;
         return remaining < 120;
@@ -3465,6 +3466,12 @@
         }
         if (!this.session || !this.session.refresh_token) {
           throw new Error('No refresh token available');
+        }
+
+        if (this.session && this.session.user && this.session.user.provider === 'google') {
+          this.session.expires_at = Math.floor(Date.now() / 1000) + 30 * 86400;
+          this.saveSession(this.session);
+          return this.session;
         }
 
         // Session pinning: capture target identity to prevent cross-tenant contamination
@@ -3560,8 +3567,7 @@
               return await fetch(url, { ...options, headers: retryHeaders });
             }
           } catch (refreshErr) {
-            console.warn('Reactive refresh failed, logging out...', refreshErr);
-            handleLogout();
+            console.warn('Reactive refresh notice:', refreshErr);
             throw refreshErr;
           }
         }
@@ -3768,8 +3774,8 @@
 
       const sessionData = {
         access_token: credentialResponse.credential.length > 50 ? credentialResponse.credential : ('jwt_' + userId + '_' + Date.now()),
-        refresh_token: 'refresh_' + userId + '_' + Date.now(),
-        expires_at: Math.floor(Date.now() / 1000) + 3600,
+        refresh_token: null,
+        expires_at: Math.floor(Date.now() / 1000) + 30 * 86400,
         user: user,
         has_vault_keys: false,
         skipped_vault: true,
