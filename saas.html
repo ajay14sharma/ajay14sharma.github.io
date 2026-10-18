@@ -4255,31 +4255,61 @@
         }
       }
 
-      // 1. In-memory / sessionStorage
+      // 1. Cross-Device Vault Sync: Check Cloudflare Edge KV vault FIRST for authenticated multi-tenant users
+      // This ensures that when new credentials are saved on desktop, mobile receives them immediately!
+      if (session && session.access_token && !session.is_demo && userId && userId !== 'usr_g_guest') {
+        try {
+          const resp = await ApiClient.fetchWithAuth(`https://delta-strangle-scheduler.ajay14sharma.workers.dev/api/tenant/vault?t=${Date.now()}`);
+          if (resp && resp.status === 200) {
+            const data = await resp.json();
+            const remoteCipher = data?.ciphertext || data?.vault || (typeof data === 'string' ? data : null);
+            if (remoteCipher && typeof remoteCipher === 'string' && remoteCipher.includes(':')) {
+              const localCipher = localStorage.getItem("delta_vault_cipher_" + userId);
+              const localUpdatedAt = parseInt(localStorage.getItem("delta_vault_updated_at_" + userId) || '0', 10);
+              const remoteUpdatedAt = data.updated_at ? new Date(data.updated_at).getTime() : 0;
+
+              // If remote is newer, or local doesn't match or doesn't exist, use remote!
+              if (!localCipher || remoteCipher !== localCipher || remoteUpdatedAt >= localUpdatedAt) {
+                const creds = await decryptCredentials(userId, remoteCipher);
+                if (creds && creds.apiKey && creds.apiSecret) {
+                  localStorage.setItem("delta_vault_cipher_" + userId, remoteCipher);
+                  localStorage.setItem("delta_vault_updated_at_" + userId, String(remoteUpdatedAt || Date.now()));
+                  sessionStorage.setItem("delta_vault_key_" + userId, creds.apiKey);
+                  sessionStorage.setItem("delta_vault_secret_" + userId, creds.apiSecret);
+                  syncSessionKeys(creds);
+                  return creds;
+                }
+              }
+            }
+          } else if (resp && resp.status === 404) {
+            // Cloud vault was deleted or does not exist (e.g. keys revoked or deleted on another device)
+            // Clean up stale local credentials so this device also enters Read-Only mode cleanly
+            localStorage.removeItem("delta_vault_cipher_" + userId);
+            localStorage.removeItem("delta_vault_updated_at_" + userId);
+            sessionStorage.removeItem("delta_vault_key_" + userId);
+            sessionStorage.removeItem("delta_vault_secret_" + userId);
+            if (session && !session.is_demo) {
+              session.has_vault_keys = false;
+              session.masked_api_key = null;
+              SessionManager.saveSession(session);
+            }
+            return null;
+          }
+        } catch (edgeVaultErr) {
+          console.warn('Cross-device vault sync check failed:', edgeVaultErr);
+        }
+      }
+
+      // 2. In-memory / sessionStorage fallback
       const sKey = sessionStorage.getItem("delta_vault_key_" + userId);
       const sSecret = sessionStorage.getItem("delta_vault_secret_" + userId);
       if (sKey && sSecret) {
         const creds = { apiKey: sKey, apiSecret: sSecret };
         syncSessionKeys(creds);
-
-        // Ensure ciphertext is also synced to localStorage and Cloudflare KV
-        const localCipher = localStorage.getItem("delta_vault_cipher_" + userId);
-        if (!localCipher && session && session.access_token && !session.is_demo && userId && userId !== 'usr_g_guest') {
-          encryptCredentials(userId, sKey, sSecret).then(cipher => {
-            if (cipher) {
-              localStorage.setItem("delta_vault_cipher_" + userId, cipher);
-              ApiClient.fetchWithAuth('https://delta-strangle-scheduler.ajay14sharma.workers.dev/api/tenant/vault', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ciphertext: cipher, tenant_id: userId })
-              }).catch(() => {});
-            }
-          }).catch(() => {});
-        }
         return creds;
       }
 
-      // 2. Encrypted localStorage vault
+      // 3. Encrypted localStorage vault fallback
       const cipher = localStorage.getItem("delta_vault_cipher_" + userId);
       if (cipher) {
         const creds = await decryptCredentials(userId, cipher);
@@ -4287,40 +4317,7 @@
           sessionStorage.setItem("delta_vault_key_" + userId, creds.apiKey);
           sessionStorage.setItem("delta_vault_secret_" + userId, creds.apiSecret);
           syncSessionKeys(creds);
-
-          // Asynchronously ensure Cloudflare Edge KV vault has ciphertext backed up
-          if (session && session.access_token && !session.is_demo && userId && userId !== 'usr_g_guest') {
-            ApiClient.fetchWithAuth('https://delta-strangle-scheduler.ajay14sharma.workers.dev/api/tenant/vault', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ ciphertext: cipher, tenant_id: userId })
-            }).catch(() => {});
-          }
           return creds;
-        }
-      }
-
-      // 3. Cross-Device Vault Sync: Fetch encrypted vault from Cloudflare Edge KV
-      if (session && session.access_token && !session.is_demo) {
-        try {
-          const resp = await ApiClient.fetchWithAuth(`https://delta-strangle-scheduler.ajay14sharma.workers.dev/api/tenant/vault?t=${Date.now()}`);
-          if (resp && resp.status === 200) {
-            const data = await resp.json();
-            const remoteCipher = data?.ciphertext || data?.vault || (typeof data === 'string' ? data : null);
-            if (remoteCipher && typeof remoteCipher === 'string' && remoteCipher.includes(':')) {
-              const creds = await decryptCredentials(userId, remoteCipher);
-              if (creds && creds.apiKey && creds.apiSecret) {
-                // Populate local vault & session storage
-                localStorage.setItem("delta_vault_cipher_" + userId, remoteCipher);
-                sessionStorage.setItem("delta_vault_key_" + userId, creds.apiKey);
-                sessionStorage.setItem("delta_vault_secret_" + userId, creds.apiSecret);
-                syncSessionKeys(creds);
-                return creds;
-              }
-            }
-          }
-        } catch (edgeVaultErr) {
-          console.warn('Cross-device vault sync failed or no edge vault found:', edgeVaultErr);
         }
       }
 
@@ -4333,13 +4330,27 @@
       sessionStorage.setItem("delta_vault_secret_" + userId, apiSecret);
       const cipher = await encryptCredentials(userId, apiKey, apiSecret);
       if (cipher) {
+        const nowIso = new Date().toISOString();
+        const nowMs = Date.now();
         localStorage.setItem("delta_vault_cipher_" + userId, cipher);
+        localStorage.setItem("delta_vault_updated_at_" + userId, String(nowMs));
+
+        // Update active session metadata immediately
+        const session = SessionManager.session;
+        if (session && !session.is_demo) {
+          session.has_vault_keys = true;
+          session.skipped_vault = false;
+          session.masked_api_key = maskApiKey(apiKey);
+          delete session.vault_auth_error;
+          SessionManager.saveSession(session);
+        }
+
         // Asynchronously push encrypted ciphertext to Cloudflare Edge KV vault
         try {
           await ApiClient.fetchWithAuth('https://delta-strangle-scheduler.ajay14sharma.workers.dev/api/tenant/vault', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ciphertext: cipher, tenant_id: userId })
+            body: JSON.stringify({ ciphertext: cipher, tenant_id: userId, updated_at: nowIso })
           }).catch(err => console.warn('Failed to sync vault ciphertext to edge:', err));
         } catch (pushErr) {
           console.warn('Async vault push error:', pushErr);
@@ -4355,6 +4366,7 @@
         sessionStorage.removeItem("delta_vault_key_" + userId);
         sessionStorage.removeItem("delta_vault_secret_" + userId);
         localStorage.removeItem("delta_vault_cipher_" + userId);
+        localStorage.removeItem("delta_vault_updated_at_" + userId);
         localStorage.removeItem("delta_saas_tenant_snapshot_" + userId);
       } catch (_) {}
 
@@ -7488,6 +7500,7 @@
           sessionStorage.removeItem('delta_vault_key_' + userId);
           sessionStorage.removeItem('delta_vault_secret_' + userId);
           localStorage.removeItem('delta_vault_cipher_' + userId);
+          localStorage.removeItem('delta_vault_updated_at_' + userId);
           localStorage.removeItem('delta_saas_tenant_snapshot_' + userId);
 
           // 2. Wipe cloud vault from Cloudflare KV so other devices also de-authenticate
