@@ -3558,17 +3558,30 @@
           throw e;
         }
 
-        if (resp.status === 401 && session && session.refresh_token) {
-          try {
-            const newSession = await SessionManager.refreshSession();
-            if (newSession && newSession.access_token) {
-              const retryHeaders = new Headers(options.headers || {});
-              retryHeaders.set('Authorization', `Bearer ${newSession.access_token}`);
-              return await fetch(url, { ...options, headers: retryHeaders });
+        if (resp && resp.status === 401) {
+          if (session && session.refresh_token) {
+            try {
+              const newSession = await SessionManager.refreshSession();
+              if (newSession && newSession.access_token) {
+                const retryHeaders = new Headers(options.headers || {});
+                retryHeaders.set('Authorization', `Bearer ${newSession.access_token}`);
+                return await fetch(url, { ...options, headers: retryHeaders });
+              }
+            } catch (refreshErr) {
+              console.warn('Reactive refresh notice:', refreshErr);
+              throw refreshErr;
             }
-          } catch (refreshErr) {
-            console.warn('Reactive refresh notice:', refreshErr);
-            throw refreshErr;
+          } else if (session && session.provider === 'google') {
+            console.warn('[ApiClient] 401 Unauthorized for Google token. Attempting silent GIS re-auth...');
+            if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
+              try {
+                google.accounts.id.prompt((notification) => {
+                  if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+                    console.log('[GIS] Background prompt status:', notification);
+                  }
+                });
+              } catch (_) {}
+            }
           }
         }
         return resp;
@@ -3772,24 +3785,57 @@
         provider: 'google'
       };
 
+      const localCipher = localStorage.getItem("delta_vault_cipher_" + userId);
+      const existingSession = SessionManager.session || SessionManager.loadSession();
+      const hasExistingKeys = !!(localCipher || (existingSession && existingSession.has_vault_keys && existingSession.user && existingSession.user.user_id === userId));
+      const maskedKey = (existingSession && existingSession.masked_api_key) ? existingSession.masked_api_key : '';
+
       const sessionData = {
         access_token: credentialResponse.credential.length > 50 ? credentialResponse.credential : ('jwt_' + userId + '_' + Date.now()),
         refresh_token: null,
         expires_at: Math.floor(Date.now() / 1000) + 30 * 86400,
         user: user,
-        has_vault_keys: false,
-        skipped_vault: true,
-        masked_api_key: ''
+        has_vault_keys: hasExistingKeys,
+        skipped_vault: !hasExistingKeys,
+        masked_api_key: maskedKey
       };
 
       SessionManager.saveSession(sessionData);
       appStateMachine.setUser(user);
-      appStateMachine.setVaultKeys(false);
-      appStateMachine.setSkippedVault(true);
+      appStateMachine.setVaultKeys(hasExistingKeys);
+      appStateMachine.setSkippedVault(!hasExistingKeys);
 
       closeGoogleConfigModal();
       navigateTo('#/dashboard');
-      showToast(`Welcome, ${name || email}! Viewing Read-Only Pro Dashboard.`, 'success');
+      showToast(`Welcome back, ${name || email}!`, 'success');
+
+      // If user already has credentials stored in localStorage on this device,
+      // immediately push the encrypted vault ciphertext to Cloudflare Edge KV with this fresh token!
+      if (localCipher) {
+        ApiClient.fetchWithAuth('https://delta-strangle-scheduler.ajay14sharma.workers.dev/api/tenant/vault', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ciphertext: localCipher, tenant_id: userId, updated_at: new Date().toISOString() })
+        }).then(r => {
+          if (r && r.ok) console.log('✓ Re-synced local vault ciphertext to Cloudflare KV with fresh Google token');
+        }).catch(() => {});
+
+        // Sync broker portfolio with decrypted credentials
+        getTenantCredentials(userId).then(creds => {
+          if (creds && creds.apiKey && creds.apiSecret) {
+            syncBrokerPortfolio(creds.apiKey, creds.apiSecret);
+          }
+        }).catch(() => {});
+      } else {
+        // No local keys on this device: fetch cross-device vault from Cloudflare KV (e.g. mobile opening for first time)
+        setTimeout(() => {
+          getTenantCredentials(userId).then(creds => {
+            if (creds && creds.apiKey && creds.apiSecret) {
+              syncBrokerPortfolio(creds.apiKey, creds.apiSecret);
+            }
+          }).catch(() => {});
+        }, 100);
+      }
     }
 
     window.DELTA_GOOGLE_CLIENT_ID = '967203654354-is3h5up0c0vdfmikliv0esed58t209hm.apps.googleusercontent.com';
@@ -3870,10 +3916,11 @@
       function attachGIS() {
         if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
           try {
+            const hasExistingUser = !!(SessionManager.session && SessionManager.session.provider === 'google');
             google.accounts.id.initialize({
               client_id: clientId,
               callback: handleGoogleSignIn,
-              auto_select: false,
+              auto_select: hasExistingUser,
               cancel_on_tap_outside: true
             });
             if (btnContainer) {
@@ -3907,6 +3954,32 @@
         }, 150);
       }
     }
+
+    // Proactive Google ID token freshness verification
+    function checkGoogleSessionFreshness() {
+      const session = SessionManager.session || SessionManager.loadSession();
+      if (!session || session.provider !== 'google' || !session.access_token) return;
+      const payload = parseJwtPayload(session.access_token);
+      if (!payload || !payload.exp) return;
+      const now = Math.floor(Date.now() / 1000);
+      if (now > payload.exp - 600) {
+        console.log('[GIS] Google token near expiry or expired (' + (payload.exp - now) + 's). Quietly refreshing via GIS...');
+        if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
+          try {
+            google.accounts.id.prompt((notification) => {
+              if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+                console.log('[GIS] Background refresh status:', notification.getNotDisplayedReason?.() || notification.getSkippedReason?.() || 'skipped');
+              }
+            });
+          } catch (_) {}
+        }
+      }
+    }
+    window.addEventListener('focus', checkGoogleSessionFreshness);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') checkGoogleSessionFreshness();
+    });
+    setInterval(checkGoogleSessionFreshness, 10 * 60 * 1000);
 
     window.initGoogleIdentity = initGoogleIdentity;
 
@@ -4282,17 +4355,29 @@
               }
             }
           } else if (resp && resp.status === 404) {
-            // Cloud vault was deleted or does not exist (e.g. keys revoked or deleted on another device)
-            // Clean up stale local credentials and cached snapshot so this device enters clean empty state
-            localStorage.removeItem("delta_vault_cipher_" + userId);
-            localStorage.removeItem("delta_vault_updated_at_" + userId);
-            localStorage.removeItem("delta_saas_tenant_snapshot_" + userId);
-            sessionStorage.removeItem("delta_vault_key_" + userId);
-            sessionStorage.removeItem("delta_vault_secret_" + userId);
+            // Cloud vault has no record for this tenant yet.
+            // If local storage on this device has keys, automatically sync them to Cloudflare Edge KV!
+            const localCipher = localStorage.getItem("delta_vault_cipher_" + userId);
+            if (localCipher) {
+              const creds = await decryptCredentials(userId, localCipher);
+              if (creds && creds.apiKey && creds.apiSecret) {
+                console.log('[VAULT RE-SYNC] Cloud vault empty but local keys exist. Syncing local keys to cloud...');
+                ApiClient.fetchWithAuth('https://delta-strangle-scheduler.ajay14sharma.workers.dev/api/tenant/vault', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ ciphertext: localCipher, tenant_id: userId, updated_at: new Date().toISOString() })
+                }).catch(() => {});
+                sessionStorage.setItem("delta_vault_key_" + userId, creds.apiKey);
+                sessionStorage.setItem("delta_vault_secret_" + userId, creds.apiSecret);
+                syncSessionKeys(creds);
+                return creds;
+              }
+            }
+            // Neither cloud nor local has keys: maintain clean initial unconfigured state (never trigger false alarm)
             if (session && !session.is_demo) {
               session.has_vault_keys = false;
               session.masked_api_key = null;
-              session.vault_auth_error = 'Delta API key deleted or disconnected';
+              delete session.vault_auth_error;
               SessionManager.saveSession(session);
             }
             if (typeof appStateMachine !== 'undefined' && appStateMachine.setVaultKeys) {
@@ -4353,11 +4438,22 @@
 
         // Asynchronously push encrypted ciphertext to Cloudflare Edge KV vault
         try {
-          await ApiClient.fetchWithAuth('https://delta-strangle-scheduler.ajay14sharma.workers.dev/api/tenant/vault', {
+          const pushResp = await ApiClient.fetchWithAuth('https://delta-strangle-scheduler.ajay14sharma.workers.dev/api/tenant/vault', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ciphertext: cipher, tenant_id: userId, updated_at: nowIso })
-          }).catch(err => console.warn('Failed to sync vault ciphertext to edge:', err));
+          });
+          if (pushResp && pushResp.status === 401) {
+            console.warn('[VAULT PUSH] 401 Unauthorized from Cloudflare. Prompting Google session re-auth...');
+            showToast('⚠️ Google session expired. Please click "Continue with Google" to re-authenticate & sync keys with your mobile phone.', 'warning');
+            if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
+              try { google.accounts.id.prompt(); } catch (_) {}
+            }
+          } else if (pushResp && pushResp.ok) {
+            console.log('[VAULT PUSH] Successfully synced encrypted vault to Cloudflare KV');
+          } else {
+            console.warn('[VAULT PUSH] Cloudflare vault push returned:', pushResp?.status);
+          }
         } catch (pushErr) {
           console.warn('Async vault push error:', pushErr);
         }
@@ -7341,7 +7437,12 @@
             const errTxt = await resp.text();
             const err = new Error(`Delta API error (${resp.status}): ${errTxt}`);
             err.status = resp.status;
-            err.isAuthError = (resp.status === 401 || errTxt.includes('invalid_api_key') || errTxt.includes('invalid_signature') || errTxt.includes('unauthorized'));
+            const isExplicitRevoked = (errTxt.includes('invalid_api_key') ||
+                                       errTxt.includes('ApiKey not found') ||
+                                       errTxt.includes('signature_verification_failed') ||
+                                       errTxt.includes('invalid_signature'));
+            err.isDeltaRevoked = isExplicitRevoked;
+            err.isAuthError = isExplicitRevoked;
             throw err;
           }
           return resp.json();
@@ -7595,7 +7696,7 @@
       } catch (err) {
         console.warn('Direct broker portfolio sync notice:', err);
         const msg = String(err.message || '');
-        const isAuthError = err.isAuthError || err.status === 401 || msg.includes('401') || msg.includes('invalid_api_key') || msg.includes('invalid_signature') || msg.includes('unauthorized');
+        const isExplicitRevocation = !!(err && err.isDeltaRevoked);
 
         // Check whether Cloudflare Edge KV has a fresh, valid portfolio snapshot
         // (This happens if desktop or cloud runner synced the account, but mobile cellular IP is restricted by Delta Exchange)
@@ -7622,7 +7723,8 @@
         }
 
         // If Cloudflare Edge does NOT have a valid fresh snapshot:
-        if (isAuthError) {
+        // ONLY perform hard credential purge if Delta Exchange explicitly confirmed the API key was revoked/deleted!
+        if (isExplicitRevocation) {
           // Hard authentication failure: User deleted, revoked, or invalidated API keys on Delta Exchange!
           // 1. Purge all local and session credentials immediately
           sessionStorage.removeItem('delta_vault_key_' + userId);
