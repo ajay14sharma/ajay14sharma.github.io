@@ -4048,6 +4048,36 @@
         }
       }
 
+      // If opened in read-only state, asynchronously check if cloud vault keys are available
+      if (!hasKeys && session && session.access_token && !session.is_demo && user && user.user_id) {
+        getTenantCredentials(user.user_id).then(creds => {
+          if (creds && creds.apiKey) {
+            const reSession = SessionManager.session || SessionManager.loadSession();
+            if (reSession && reSession.has_vault_keys) {
+              const dKey = document.getElementById('modal-delta-masked-key');
+              const dBadge = document.getElementById('modal-delta-badge');
+              const dExec = document.getElementById('modal-delta-exec-status');
+              const dConn = document.getElementById('modal-delta-connect-btn');
+              const dSync = document.getElementById('modal-delta-sync-btn');
+              if (dKey) dKey.textContent = reSession.masked_api_key || maskApiKey(creds.apiKey);
+              if (dBadge) {
+                dBadge.textContent = 'CONNECTED & LIVE';
+                dBadge.className = 'px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+              }
+              if (dExec) {
+                dExec.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Active';
+                dExec.className = 'text-emerald-400 font-semibold flex items-center gap-1';
+              }
+              if (dConn) {
+                dConn.innerHTML = '🔑 Update / Rotate Keys';
+                dConn.className = 'flex-1 py-1.5 px-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-medium border border-gray-700 transition cursor-pointer';
+              }
+              if (dSync) dSync.classList.remove('hidden');
+            }
+          }
+        }).catch(() => {});
+      }
+
       // Load saved secondary profile details from localStorage
       const storageKey = 'delta_saas_user_profile_' + user.user_id;
       let profileData = {};
@@ -4197,10 +4227,51 @@
 
     async function getTenantCredentials(userId) {
       if (!userId) return null;
+
+      const session = SessionManager.session || SessionManager.loadSession();
+
+      function syncSessionKeys(creds) {
+        if (session && !session.is_demo) {
+          session.has_vault_keys = true;
+          session.skipped_vault = false;
+          session.masked_api_key = maskApiKey(creds.apiKey);
+          SessionManager.saveSession(session);
+          if (typeof appStateMachine !== 'undefined' && appStateMachine.setVaultKeys) {
+            appStateMachine.setVaultKeys(true);
+            appStateMachine.setSkippedVault(false);
+          }
+          if (typeof updateVaultConnectedUI === 'function') {
+            updateVaultConnectedUI(session.masked_api_key);
+          }
+          if (typeof updateTenantContextBar === 'function') {
+            updateTenantContextBar();
+          }
+        }
+      }
+
       // 1. In-memory / sessionStorage
       const sKey = sessionStorage.getItem("delta_vault_key_" + userId);
       const sSecret = sessionStorage.getItem("delta_vault_secret_" + userId);
-      if (sKey && sSecret) return { apiKey: sKey, apiSecret: sSecret };
+      if (sKey && sSecret) {
+        const creds = { apiKey: sKey, apiSecret: sSecret };
+        syncSessionKeys(creds);
+
+        // Ensure ciphertext is also synced to localStorage and Cloudflare KV
+        const localCipher = localStorage.getItem("delta_vault_cipher_" + userId);
+        if (!localCipher && session && session.access_token && !session.is_demo && userId && userId !== 'usr_g_guest') {
+          encryptCredentials(userId, sKey, sSecret).then(cipher => {
+            if (cipher) {
+              localStorage.setItem("delta_vault_cipher_" + userId, cipher);
+              ApiClient.fetchWithAuth('https://delta-strangle-scheduler.ajay14sharma.workers.dev/api/tenant/vault', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ciphertext: cipher, tenant_id: userId })
+              }).catch(() => {});
+            }
+          }).catch(() => {});
+        }
+        return creds;
+      }
 
       // 2. Encrypted localStorage vault
       const cipher = localStorage.getItem("delta_vault_cipher_" + userId);
@@ -4209,8 +4280,9 @@
         if (creds && creds.apiKey && creds.apiSecret) {
           sessionStorage.setItem("delta_vault_key_" + userId, creds.apiKey);
           sessionStorage.setItem("delta_vault_secret_" + userId, creds.apiSecret);
+          syncSessionKeys(creds);
+
           // Asynchronously ensure Cloudflare Edge KV vault has ciphertext backed up
-          const session = SessionManager.session || SessionManager.loadSession();
           if (session && session.access_token && !session.is_demo && userId && userId !== 'usr_g_guest') {
             ApiClient.fetchWithAuth('https://delta-strangle-scheduler.ajay14sharma.workers.dev/api/tenant/vault', {
               method: 'POST',
@@ -4223,7 +4295,6 @@
       }
 
       // 3. Cross-Device Vault Sync: Fetch encrypted vault from Cloudflare Edge KV
-      const session = SessionManager.session || SessionManager.loadSession();
       if (session && session.access_token && !session.is_demo) {
         try {
           const resp = await ApiClient.fetchWithAuth(`https://delta-strangle-scheduler.ajay14sharma.workers.dev/api/tenant/vault?t=${Date.now()}`);
@@ -4237,6 +4308,7 @@
                 localStorage.setItem("delta_vault_cipher_" + userId, remoteCipher);
                 sessionStorage.setItem("delta_vault_key_" + userId, creds.apiKey);
                 sessionStorage.setItem("delta_vault_secret_" + userId, creds.apiSecret);
+                syncSessionKeys(creds);
                 return creds;
               }
             }
@@ -7370,8 +7442,13 @@
         showToast(`✓ Synced ${openPositions.length} positions ($${formatMoney(accountEquity)}) from Delta Exchange!`, 'success');
         return true;
       } catch (err) {
-        console.error('Error syncing broker portfolio:', err);
-        showToast(`Failed to sync from Delta Exchange: ${err.message}`, 'error');
+        console.warn('Direct broker portfolio sync notice:', err);
+        const msg = String(err.message || '');
+        if (msg.includes('400') || msg.includes('ip') || msg.includes('whitelist') || msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+          showToast('Direct exchange sync unavailable on current IP/network. Loading latest cloud snapshot...', 'info');
+        } else {
+          showToast(`Direct exchange sync notice: ${err.message}`, 'warning');
+        }
         return false;
       }
     }
