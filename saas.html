@@ -7499,6 +7499,8 @@
           const side = size < 0 ? 'sell' : 'buy';
           const lots = size; // preserve directional sign: negative for short, positive for long
           const entryPx = parseFloat(p.entry_price || 0);
+          const tInfo = tickersBySymbol[sym] || liveTickersBySymbol[sym] || {};
+          const markPx = parseFloat(tInfo.mark_price || p.mark_price || entryPx);
           const multiplier = parseFloat(p.product?.contract_value || 0) || (underlying === 'ETH' ? 0.01 : (underlying === 'BTC' ? 0.001 : 1.0));
           const cryptoQty = Math.abs(size) * multiplier;
           const isLong = side === 'buy' || size > 0;
@@ -7543,7 +7545,6 @@
           }
 
           // Greeks extraction with dynamic Black-Scholes pricing engine fallback
-          const tInfo = tickersBySymbol[sym] || liveTickersBySymbol[sym] || {};
           const tGreeks = tInfo.greeks || {};
 
           let rawDelta = parseFloat(p.delta ?? tGreeks.delta);
@@ -7656,7 +7657,7 @@
 
         const totalUpnl = openPositions.reduce((acc, p) => acc + (p.unrealized_pnl_usd || 0), 0);
         const totalCredit = openPositions
-          .filter(p => !p.isLong)
+          .filter(p => !p.isLong && (p.option_type || (p.symbol && p.symbol.split('-').length >= 4 && (p.symbol.startsWith('C-') || p.symbol.startsWith('P-')))))
           .reduce((acc, p) => acc + (Math.abs(p.lots) * (p.contract_multiplier || (p.symbol.includes('-ETH-') ? 0.01 : 0.001)) * p.entry_price), 0);
 
         const snapshot = {
@@ -8185,36 +8186,60 @@
     // 4. Positions & Corridor Math
     function parseOptionSymbol(sym) {
       const parts = String(sym || '').split('-');
-      if (parts.length < 4 || (parts[0] !== 'C' && parts[0] !== 'P')) {
-        const u = String(sym || '').toUpperCase();
-        const underlying = u.includes('ETH') ? 'ETH' : (u.includes('SOL') ? 'SOL' : 'BTC');
-        return { isOption: false, isCall: false, strike: 0, expCode: 'PERP', underlying, dteDays: 0, expiryDate: null, expFormatted: 'Perpetual' };
+      if (parts.length >= 4 && (parts[0] === 'C' || parts[0] === 'P')) {
+        const expCode = parts[3];
+        let expiryDate = null;
+        let dteDays = 1.0;
+        let expFormatted = expCode;
+        if (expCode && expCode.length === 6 && /^\d+$/.test(expCode)) {
+          const d = parseInt(expCode.substring(0, 2), 10);
+          const m = parseInt(expCode.substring(2, 4), 10) - 1;
+          const y = 2000 + parseInt(expCode.substring(4, 6), 10);
+          const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+          expFormatted = `${d} ${monthNames[m] || ''} ${y}`;
+          expiryDate = new Date(Date.UTC(y, m, d, 12, 0, 0));
+          const now = new Date();
+          const diffMs = expiryDate.getTime() - now.getTime();
+          dteDays = Math.max(0.01, diffMs / (1000 * 60 * 60 * 24));
+        }
+        return {
+          isOption: true,
+          isCall: parts[0] === 'C',
+          underlying: (parts[1] || 'BTC').toUpperCase(),
+          strike: parseFloat(parts[2]) || 0,
+          expCode: expCode,
+          expFormatted,
+          expiryDate,
+          dteDays
+        };
       }
-      const expCode = parts[3];
-      let expiryDate = null;
-      let dteDays = 1.0;
-      let expFormatted = expCode;
-      if (expCode && expCode.length === 6 && /^\d+$/.test(expCode)) {
-        const d = parseInt(expCode.substring(0, 2), 10);
-        const m = parseInt(expCode.substring(2, 4), 10) - 1;
-        const y = 2000 + parseInt(expCode.substring(4, 6), 10);
-        const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-        expFormatted = `${d} ${monthNames[m] || ''} ${y}`;
-        expiryDate = new Date(Date.UTC(y, m, d, 12, 0, 0));
-        const now = new Date();
-        const diffMs = expiryDate.getTime() - now.getTime();
-        dteDays = Math.max(0.01, diffMs / (1000 * 60 * 60 * 24));
+      // Alternate option formats e.g. BTC-30OCT26-84000-C or BTC-84000-C
+      if (parts.length >= 3 && (parts[parts.length - 1] === 'C' || parts[parts.length - 1] === 'P' || parts[parts.length - 1] === 'CALL' || parts[parts.length - 1] === 'PUT')) {
+        const isCall = parts[parts.length - 1].startsWith('C');
+        const underlying = parts[0].toUpperCase();
+        const strike = parseFloat(parts[parts.length - 2]) || 0;
+        const expCode = parts.length >= 4 ? parts[1] : '';
+        return {
+          isOption: true,
+          isCall,
+          underlying,
+          strike,
+          expCode: expCode || 'CUSTOM',
+          expFormatted: expCode || 'Custom Option',
+          expiryDate: null,
+          dteDays: 1.0
+        };
       }
-      return {
-        isOption: true,
-        isCall: parts[0] === 'C',
-        underlying: parts[1] || 'BTC',
-        strike: parseFloat(parts[2]) || 0,
-        expCode: expCode,
-        expFormatted,
-        expiryDate,
-        dteDays
-      };
+      const u = String(sym || '').toUpperCase();
+      let underlying = 'BTC';
+      if (u.includes('ETH')) underlying = 'ETH';
+      else if (u.includes('SOL')) underlying = 'SOL';
+      else if (u.includes('XRP')) underlying = 'XRP';
+      else {
+        const cleaned = u.replace(/[-_]?(PERP|USDT|USD|BUSD)$/, '');
+        if (cleaned) underlying = cleaned;
+      }
+      return { isOption: false, isCall: false, strike: 0, expCode: 'PERP', underlying, dteDays: 0, expiryDate: null, expFormatted: 'Perpetual' };
     }
 
     function resolveStrategyId(item) {
@@ -8276,7 +8301,7 @@
       const hasTpOrder = Boolean(p.tp_active && p.tp_trigger !== null && p.tp_trigger !== undefined && Number(p.tp_trigger) > 0);
       const slTrigger = hasSlOrder ? Number(p.sl_trigger) : null;
       const tpTrigger = hasTpOrder ? Number(p.tp_trigger) : null;
-      const multiplier = p.contract_multiplier || (parsed.underlying === 'ETH' ? 0.01 : 0.001);
+      const multiplier = p.contract_multiplier || (parsed.underlying === 'ETH' ? 0.01 : (parsed.underlying === 'SOL' ? 1.0 : (parsed.underlying === 'XRP' ? 10.0 : 0.001)));
       const assetUnit = parsed.underlying || 'BTC';
       const cryptoQty = Math.abs(lots) * multiplier;
       const markPx = Number(ticker.mark_price || p.mark_price || (entryPx > 0 ? entryPx * 0.35 : 10.0));
@@ -8310,12 +8335,17 @@
         }
       }
 
-      if (isLong) {
-        entryCredit = -(entryPx * cryptoQty);
-        decayPct = 0;
+      if (parsed.isOption) {
+        if (isLong) {
+          entryCredit = -(entryPx * cryptoQty);
+          decayPct = 0;
+        } else {
+          entryCredit = entryPx * cryptoQty;
+          decayPct = entryPx > 0 ? Math.min(100, Math.max(0, ((entryPx - markPx) / entryPx) * 100)) : 0;
+        }
       } else {
-        entryCredit = entryPx * cryptoQty;
-        decayPct = entryPx > 0 ? Math.min(100, Math.max(0, ((entryPx - markPx) / entryPx) * 100)) : 0;
+        entryCredit = 0;
+        decayPct = 0;
       }
       const slDist = slTrigger !== null ? (slTrigger - markPx) : null;
       const ivPct = p.ivPct || (ticker.implied_volatility ? parseFloat(ticker.implied_volatility) * 100 : 38.5);
@@ -9401,11 +9431,22 @@
         prevPnl = curPnl;
       }
 
-      const putCrossings = zeroCrossings.filter(px => px <= spotPx);
-      const callCrossings = zeroCrossings.filter(px => px >= spotPx);
+      zeroCrossings.sort((a, b) => a - b);
+      let putBreakeven = lowestPutStrike - (isEth ? 25 : 300);
+      let callBreakeven = highestCallStrike + (isEth ? 25 : 300);
 
-      let putBreakeven = putCrossings.length > 0 ? putCrossings[putCrossings.length - 1] : (lowestPutStrike - (isEth ? 25 : 300));
-      let callBreakeven = callCrossings.length > 0 ? callCrossings[0] : (highestCallStrike + (isEth ? 25 : 300));
+      if (zeroCrossings.length >= 2) {
+        putBreakeven = zeroCrossings[0];
+        callBreakeven = zeroCrossings[zeroCrossings.length - 1];
+      } else if (zeroCrossings.length === 1) {
+        if (zeroCrossings[0] <= spotPx) {
+          putBreakeven = zeroCrossings[0];
+          callBreakeven = highestCallStrike + (isEth ? 25 : 300);
+        } else {
+          putBreakeven = lowestPutStrike - (isEth ? 25 : 300);
+          callBreakeven = zeroCrossings[0];
+        }
+      }
 
       currentCorridorPutBe = putBreakeven;
       currentCorridorCallBe = callBreakeven;
@@ -9440,11 +9481,20 @@
       let totalBracketMaxLoss = 0;
       let hasUncappedShortLeg = false;
       let activeOrderCount = 0;
+      let netSlopeUp = 0;
 
       activePositions.forEach(p => {
         const isOption = p.parsed && p.parsed.isOption;
         const isLong = (p.isLong !== undefined) ? p.isLong : (Number(p.lots || p.size || 0) > 0);
         const qty = p.cryptoQty || p.btcQty || (isEth ? 2.5 : 0.5);
+        if (isOption) {
+          if (p.parsed.isCall) {
+            netSlopeUp += isLong ? qty : -qty;
+          }
+        } else {
+          netSlopeUp += isLong ? qty : -qty;
+        }
+
         if (!isLong) {
           if (p.hasSlOrder && p.slTrigger !== null) {
             const legLoss = Math.abs(p.slTrigger - p.entryPx) * qty;
@@ -9460,19 +9510,23 @@
 
       let maxLossDisplay = 'Unlimited (Tail Risk)';
       if (simDynamicBrackets) {
-        if (activeOrderCount === 0 && hasUncappedShortLeg) {
+        if (activeOrderCount === 0 && hasUncappedShortLeg && netSlopeUp < -0.0001) {
           maxLossDisplay = 'Unlimited (No Open SL Orders)';
-        } else if (hasUncappedShortLeg) {
+        } else if (hasUncappedShortLeg && netSlopeUp < -0.0001) {
           maxLossDisplay = `-$${Math.round(totalBracketMaxLoss).toLocaleString()} (Partial Cap)`;
-        } else {
+        } else if (activeOrderCount > 0) {
           maxLossDisplay = `-$${Math.round(totalBracketMaxLoss).toLocaleString()} (Live Orders Capped)`;
+        } else {
+          const minPnl = Math.min(...curveData.map(c => c.expiryPnl));
+          maxLossDisplay = minPnl < 0 ? `-$${Math.abs(Math.round(minPnl)).toLocaleString()}` : '$0';
         }
       } else {
-        const hasShorts = activePositions.some(p => {
-          const isLong = (p.isLong !== undefined) ? p.isLong : (Number(p.lots || p.size || 0) > 0);
-          return !isLong;
-        });
-        maxLossDisplay = (hasUncappedShortLeg || hasShorts) ? 'Unlimited (Tail Risk)' : `-$${Math.round(totalBracketMaxLoss).toLocaleString()}`;
+        if (netSlopeUp < -0.0001) {
+          maxLossDisplay = 'Unlimited (Tail Risk)';
+        } else {
+          const minPnl = Math.min(...curveData.map(c => c.expiryPnl));
+          maxLossDisplay = minPnl < 0 ? `-$${Math.abs(Math.round(minPnl)).toLocaleString()}` : '$0';
+        }
       }
 
       const bufferPts = callBreakeven - putBreakeven;
