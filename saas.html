@@ -4209,6 +4209,15 @@
         if (creds && creds.apiKey && creds.apiSecret) {
           sessionStorage.setItem("delta_vault_key_" + userId, creds.apiKey);
           sessionStorage.setItem("delta_vault_secret_" + userId, creds.apiSecret);
+          // Asynchronously ensure Cloudflare Edge KV vault has ciphertext backed up
+          const session = SessionManager.session || SessionManager.loadSession();
+          if (session && session.access_token && !session.is_demo && userId && userId !== 'usr_g_guest') {
+            ApiClient.fetchWithAuth('https://delta-strangle-scheduler.ajay14sharma.workers.dev/api/tenant/vault', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ ciphertext: cipher, tenant_id: userId })
+            }).catch(() => {});
+          }
           return creds;
         }
       }
@@ -6829,7 +6838,7 @@
         technical_alerts: [],
         portfolio_alerts: [],
         github_actions: {
-          active_branch: "green",
+          active_branch: "blue",
           bot_mode: "live",
           bot_lots: 0
         }
