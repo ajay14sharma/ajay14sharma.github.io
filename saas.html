@@ -6970,6 +6970,31 @@
       };
     }
 
+    // Helper to load snapshot from Cloudflare Edge KV for a given tenant
+    async function fetchEdgeTenantSnapshot(targetUserId = null) {
+      const session = SessionManager.session;
+      const userId = targetUserId || ((session && session.user && session.user.user_id) ? session.user.user_id : 'usr_g_guest');
+      try {
+        const resp = await ApiClient.fetchWithAuth(`https://delta-strangle-scheduler.ajay14sharma.workers.dev/api/tenant/snapshot?t=${Date.now()}`);
+        if (resp && resp.status === 200) {
+          const data = await resp.json();
+          if (data && (data.wallet || data.open_positions)) {
+            dashboardState = data;
+            dashboardState.is_empty_state = false;
+            try {
+              localStorage.setItem('delta_saas_tenant_snapshot_' + userId, JSON.stringify(data));
+            } catch (_) {}
+            const emptyEl = document.getElementById('tenant-empty-state');
+            if (emptyEl) emptyEl.classList.add('hidden');
+            return true;
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to load multi-tenant edge snapshot:', e);
+      }
+      return false;
+    }
+
     // 2. Fetch Data from Multi-Tenant Cloudflare Edge KV & Delta Exchange
     async function loadDashboardSnapshot() {
       const session = SessionManager.session;
@@ -6986,26 +7011,6 @@
       if (session && session.access_token && !session.is_demo) {
         const userId = (session.user && session.user.user_id) ? session.user.user_id : 'usr_g_guest';
 
-        // Helper to load snapshot from Cloudflare Edge KV
-        async function fetchEdgeTenantSnapshot() {
-          try {
-            const resp = await ApiClient.fetchWithAuth(`https://delta-strangle-scheduler.ajay14sharma.workers.dev/api/tenant/snapshot?t=${Date.now()}`);
-            if (resp && resp.status === 200) {
-              const data = await resp.json();
-              if (data && (data.wallet || data.open_positions)) {
-                dashboardState = data;
-                localStorage.setItem('delta_saas_tenant_snapshot_' + userId, JSON.stringify(data));
-                const emptyEl = document.getElementById('tenant-empty-state');
-                if (emptyEl) emptyEl.classList.add('hidden');
-                return true;
-              }
-            }
-          } catch (e) {
-            console.warn('Failed to load multi-tenant edge snapshot:', e);
-          }
-          return false;
-        }
-
         // Helper for primary admin legacy fallback
         async function fetchPrimaryAdminEdgeSnapshot() {
           const isPrimaryAdmin = session.user && (
@@ -7021,6 +7026,7 @@
                 const edgeData = await edgeResp.json();
                 if (edgeData && (edgeData.wallet || edgeData.open_positions)) {
                   dashboardState = edgeData;
+                  dashboardState.is_empty_state = false;
                   const emptyEl = document.getElementById('tenant-empty-state');
                   if (emptyEl) emptyEl.classList.add('hidden');
                   return true;
@@ -7041,12 +7047,12 @@
           try {
             liveSyncOk = await syncBrokerPortfolio(creds.apiKey, creds.apiSecret);
           } catch (syncErr) {
-            console.warn('Direct Delta sync failed:', syncErr);
+            console.warn('Direct Delta sync notice:', syncErr);
             liveSyncOk = false;
           }
 
-          // Fallback: ONLY if live sync failed due to network/cellular IP restriction AND credentials were NOT rejected (keys remain active)
-          if (!liveSyncOk && session && session.has_vault_keys) {
+          // Fallback: If direct sync failed or was bypassed (e.g. mobile IP restriction)
+          if (!liveSyncOk) {
             const cachedRaw = localStorage.getItem('delta_saas_tenant_snapshot_' + userId);
             if (cachedRaw) {
               try {
@@ -7059,23 +7065,26 @@
               } catch (_) {}
             }
             if (!dashboardState || dashboardState.is_empty_state) {
-              const fallbackOk = await fetchEdgeTenantSnapshot();
+              const fallbackOk = await fetchEdgeTenantSnapshot(userId);
               if (!fallbackOk) {
                 await fetchPrimaryAdminEdgeSnapshot();
               }
             }
           }
         } else {
-          // No credentials configured: strictly Read-Only Mode. Do NOT display private portfolio positions!
-          dashboardState = getTenantEmptyStateData();
-          dashboardState.is_empty_state = true;
-          session.has_vault_keys = false;
-          session.masked_api_key = null;
-          SessionManager.saveSession(session);
-          if (typeof appStateMachine !== 'undefined' && appStateMachine.setVaultKeys) {
-            appStateMachine.setVaultKeys(false);
+          // No credentials configured locally: check Cloudflare Edge KV for tenant snapshot or admin fallback
+          const edgeOk = await fetchEdgeTenantSnapshot(userId);
+          if (!edgeOk) {
+            dashboardState = getTenantEmptyStateData();
+            dashboardState.is_empty_state = true;
+            session.has_vault_keys = false;
+            session.masked_api_key = null;
+            SessionManager.saveSession(session);
+            if (typeof appStateMachine !== 'undefined' && appStateMachine.setVaultKeys) {
+              appStateMachine.setVaultKeys(false);
+            }
+            updateTenantContextBar();
           }
-          updateTenantContextBar();
         }
 
         if (!dashboardState || dashboardState.is_empty_state) {
@@ -7491,46 +7500,15 @@
         return true;
       } catch (err) {
         console.warn('Direct broker portfolio sync notice:', err);
-        const msg = String(err.message || '');
-        const isAuthError = err.isAuthError || err.status === 401 || msg.includes('401') || msg.includes('invalid_api_key') || msg.includes('invalid_signature') || msg.includes('unauthorized');
 
-        if (isAuthError) {
-          // Hard authentication failure: Delta Exchange deleted or revoked the keys!
-          // 1. Purge all local and session credentials
-          sessionStorage.removeItem('delta_vault_key_' + userId);
-          sessionStorage.removeItem('delta_vault_secret_' + userId);
-          localStorage.removeItem('delta_vault_cipher_' + userId);
-          localStorage.removeItem('delta_vault_updated_at_' + userId);
-          localStorage.removeItem('delta_saas_tenant_snapshot_' + userId);
-
-          // 2. Wipe cloud vault from Cloudflare KV so other devices also de-authenticate
-          if (session && session.access_token && !session.is_demo) {
-            ApiClient.fetchWithAuth('https://delta-strangle-scheduler.ajay14sharma.workers.dev/api/tenant/vault', {
-              method: 'DELETE'
-            }).catch(() => {});
-          }
-
-          // 3. Demote session state to unauthenticated / disconnected
-          if (session) {
-            session.has_vault_keys = false;
-            session.masked_api_key = null;
-            session.vault_auth_error = 'Delta API key deleted or rejected (401 invalid_api_key). Stale data purged.';
-            SessionManager.saveSession(session);
-          }
-          if (typeof appStateMachine !== 'undefined' && appStateMachine.setVaultKeys) {
-            appStateMachine.setVaultKeys(false);
-          }
-
-          // 4. Wipe dashboardState to empty state so NO private data is displayed
-          dashboardState = getTenantEmptyStateData();
-          dashboardState.is_empty_state = true;
-          dashboardState.open_positions = [];
-          dashboardState.wallet = { balance_usd: 0, available_usd: 0, account_value_usd: 0, blocked_margin_usd: 0 };
-          dashboardState.portfolio_performance = { summary: { total_net_pnl_usd: 0, total_gross_pnl_usd: 0, total_fees_usd: 0, day_win_rate_pct: 0 } };
-
-          // 5. Update UI immediately
-          updateTenantContextBar();
-          updateVaultUI();
+        // Mobile IP Whitelisting & Network Resilient Fallback:
+        // Direct calls to Delta Exchange from cellular/mobile carrier networks often return 401
+        // because the user's Delta API key is whitelisted to their desktop/runner IP address (e.g. 49.43.90.231).
+        // NEVER delete the vault or purge credentials on direct mobile fetch failure!
+        // Instead, smoothly fall back to the authenticated Cloudflare Edge KV snapshot synced by desktop or runner.
+        const edgeOk = await fetchEdgeTenantSnapshot(userId);
+        if (edgeOk && dashboardState && !dashboardState.is_empty_state && (dashboardState.wallet || dashboardState.open_positions)) {
+          // Render all UI views with the fresh Cloudflare Edge snapshot
           renderHeaderAndKPIs();
           renderLivePositions();
           renderMultiStrategySleeves();
@@ -7539,18 +7517,14 @@
           renderPortfolioPerformanceChart();
           renderCalendarHeatmap();
 
-          const emptyEl = document.getElementById('tenant-empty-state');
-          if (emptyEl) emptyEl.classList.remove('hidden');
-
-          showToast('⚠️ Delta Exchange API Key rejected (401 invalid_api_key). Credentials removed & stale portfolio data purged.', 'error');
-          return false;
+          const openCount = (dashboardState.open_positions || []).length;
+          const equity = dashboardState.wallet?.account_value_usd || 0;
+          showToast(`⚡ Synced ${openCount} positions ($${formatMoney(equity)}) via Cloudflare Edge (Delta direct restricted for mobile IP)`, 'success');
+          return true;
         }
 
-        if (msg.includes('400') || msg.includes('ip') || msg.includes('whitelist') || msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
-          showToast('Direct exchange sync unavailable on current IP/network. Loading latest cloud snapshot...', 'info');
-        } else {
-          showToast(`Direct exchange sync notice: ${err.message}`, 'warning');
-        }
+        // If Cloudflare Edge also has no snapshot:
+        showToast('Direct exchange sync unavailable on current IP. Connect via desktop Wi-Fi to sync snapshot.', 'info');
         return false;
       }
     }
