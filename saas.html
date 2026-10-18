@@ -7458,11 +7458,27 @@
 
         const now = new Date();
         const metaEquity = parseFloat(balRes?.meta?.net_equity || 0);
-        const usdWallet = (balRes?.result || []).find(r => r.asset_symbol === 'USD') || (balRes?.result || [])[0] || {};
-        const totalCash = parseFloat(usdWallet.balance || 0);
-        const availCash = parseFloat(usdWallet.available_balance || 0);
-        const blockedMargin = Math.max(0, totalCash - availCash);
-        const accountEquity = metaEquity > 0 ? metaEquity : totalCash;
+        const balances = Array.isArray(balRes?.result) ? balRes.result : [];
+        const usdWallets = balances.filter(r => r.asset_symbol === 'USD' || r.asset_symbol === 'USDT');
+        const targetWallets = usdWallets.length > 0 ? usdWallets : balances.slice(0, 1);
+
+        let totalCash = 0;
+        let availCash = 0;
+        let blockedMargin = 0;
+
+        for (const w of targetWallets) {
+          totalCash += parseFloat(w.balance || 0);
+          availCash += parseFloat(w.available_balance || 0);
+          const posM = parseFloat(w.position_margin || 0);
+          const ordM = parseFloat(w.order_margin || 0);
+          const blkM = parseFloat(w.blocked_margin || 0);
+          const totalM = posM + ordM;
+          blockedMargin += totalM > 0 ? totalM : (blkM > 0 ? blkM : Math.max(0, parseFloat(w.balance || 0) - parseFloat(w.available_balance || 0)));
+        }
+
+        // In Delta Exchange derivatives accounts, Account Value (Net Equity) is:
+        // Available Margin + Blocked Margin (position_margin + order_margin).
+        let accountEquity = (availCash + blockedMargin) > 0 ? (availCash + blockedMargin) : (metaEquity > 0 ? metaEquity : totalCash);
 
         const rawPositions = posRes?.result || [];
         const openOrders = openOrdersRes?.result || [];
@@ -7505,14 +7521,12 @@
           const cryptoQty = Math.abs(size) * multiplier;
           const isLong = side === 'buy' || size > 0;
 
+          // True directional uPnL calculation:
+          // Long (size > 0): (mark_price - entry_price) * crypto_qty
+          // Short (size < 0): (entry_price - mark_price) * crypto_qty
+          // Delta API p.unrealized_pnl for options is cashflow liability, NOT directional uPnL
           let uPnl = 0;
-          if (p.meta_data?.net_pnl !== undefined && !isNaN(parseFloat(p.meta_data.net_pnl))) {
-            uPnl = parseFloat(p.meta_data.net_pnl);
-          } else if (p.unrealized_pnl !== undefined && !isNaN(parseFloat(p.unrealized_pnl))) {
-            uPnl = parseFloat(p.unrealized_pnl);
-          } else if (p.net_pnl !== undefined && !isNaN(parseFloat(p.net_pnl))) {
-            uPnl = parseFloat(p.net_pnl);
-          } else if (size < 0) {
+          if (size < 0) {
             uPnl = (entryPx - markPx) * cryptoQty;
           } else {
             uPnl = (markPx - entryPx) * cryptoQty;
@@ -7660,6 +7674,14 @@
           .filter(p => !p.isLong && (p.option_type || (p.symbol && p.symbol.split('-').length >= 4 && (p.symbol.startsWith('C-') || p.symbol.startsWith('P-')))))
           .reduce((acc, p) => acc + (Math.abs(p.lots) * (p.contract_multiplier || (p.symbol.includes('-ETH-') ? 0.01 : 0.001)) * p.entry_price), 0);
 
+        // Period Realized P&L: Sum of closed trades' net_pnl_usd from auditOrders, defaulting to 0.00
+        const totalRealizedNet = auditOrders.reduce((acc, o) => acc + (parseFloat(o.net_pnl_usd) || 0), 0);
+        const totalRealizedGross = auditOrders.reduce((acc, o) => acc + (parseFloat(o.pnl_usd) || 0), 0);
+        const totalFees = auditOrders.reduce((acc, o) => acc + (parseFloat(o.paid_commission || o.fee) || 0), 0);
+        const closedCount = auditOrders.filter(o => o.audit_status === 'CLOSED' || o.state === 'closed' || (parseFloat(o.net_pnl_usd) || 0) !== 0).length;
+        const winCount = auditOrders.filter(o => (parseFloat(o.net_pnl_usd) || 0) > 0).length;
+        const winRate = closedCount > 0 ? Math.round((winCount / closedCount) * 1000) / 10 : 0.0;
+
         const snapshot = {
           is_empty_state: false,
           tenant_id: userId,
@@ -7668,33 +7690,33 @@
           btc_spot_price: liveSpotPriceNumeric || 84250.0,
           eth_spot_price: liveEthSpotPriceNumeric || 3120.0,
           wallet: {
-            balance_usd: totalCash,
-            account_value_usd: accountEquity,
-            available_usd: availCash,
-            blocked_margin_usd: blockedMargin,
-            gross_cash_usd: totalCash,
-            balance_inr_est: accountEquity * 88.5
+            balance_usd: Math.round(accountEquity * 100) / 100,
+            account_value_usd: Math.round(accountEquity * 100) / 100,
+            available_usd: Math.round(availCash * 100) / 100,
+            blocked_margin_usd: Math.round(blockedMargin * 100) / 100,
+            gross_cash_usd: Math.round((totalCash > 0 ? totalCash : accountEquity) * 100) / 100,
+            balance_inr_est: Math.round(accountEquity * 85.0)
           },
           portfolio_risk: {
             allow_new_entries: true,
-            total_risk_pool_usd: accountEquity,
+            total_risk_pool_usd: Math.round(accountEquity * 100) / 100,
             margin_ceiling_pct: 65,
-            margin_utilization_pct: totalCash > 0 ? Math.round((blockedMargin / totalCash) * 1000) / 10 : 0.0,
+            margin_utilization_pct: accountEquity > 0 ? Math.round((blockedMargin / accountEquity) * 1000) / 10 : 0.0,
             circuit_breakers: {
               portfolio_drawdown_5pct: false,
-              margin_ceiling_exceeded: blockedMargin > totalCash * 0.65
+              margin_ceiling_exceeded: blockedMargin > accountEquity * 0.65
             },
             sleeve_budgets: {}
           },
           portfolio_performance: {
             summary: {
-              total_net_pnl_usd: totalUpnl,
-              total_gross_pnl_usd: totalUpnl,
-              total_fees_usd: 0.0,
-              day_win_rate_pct: 100.0,
-              profit_factor: 1.0,
-              sharpe_ratio: 2.1,
-              sortino_ratio: 3.2,
+              total_net_pnl_usd: Math.round(totalRealizedNet * 100) / 100,
+              total_gross_pnl_usd: Math.round(totalRealizedGross * 100) / 100,
+              total_fees_usd: Math.round(totalFees * 100) / 100,
+              day_win_rate_pct: winRate,
+              profit_factor: totalFees > 0 ? 1.0 : 0.0,
+              sharpe_ratio: 0.0,
+              sortino_ratio: 0.0,
               max_drawdown_pct: 0.0
             }
           },
@@ -7919,16 +7941,8 @@
       let blockedUsd = isReadOnlyTenant ? 0.0 : Number(w.blocked_margin_usd ?? 0.0);
       let grossCashUsd = isReadOnlyTenant ? 0.0 : Number(w.gross_cash_usd ?? balUsd);
 
-      // Reconcile legacy snapshot if account_value_usd was not explicitly present or was raw cash ledger
-      if (!isReadOnlyTenant && (!balUsd || (balUsd > 8000 && totalShortCredit > 0))) {
-        const rawBal = Number(w.gross_cash_usd ?? w.balance_usd ?? balUsd ?? 0.0);
-        if (rawBal > 8000 && totalShortCredit > 0) {
-          grossCashUsd = rawBal;
-          balUsd = Math.max(0, rawBal - totalShortCredit + totalUpnl);
-          blockedUsd = Math.max(0, balUsd - availUsd);
-        } else if (rawBal > 0) {
-          balUsd = rawBal;
-        }
+      if (!balUsd && !isReadOnlyTenant) {
+        balUsd = Number(w.balance_usd ?? (availUsd + blockedUsd));
       }
 
       if (!grossCashUsd && !isReadOnlyTenant) {
@@ -8310,29 +8324,17 @@
       let entryCredit = 0;
       let decayPct = 0;
 
-      // Prefer Delta Exchange native net_pnl or unrealized_pnl, then directional fallback
-      if (p.meta_data?.net_pnl !== undefined && !isNaN(parseFloat(p.meta_data.net_pnl))) {
-        upnl = parseFloat(p.meta_data.net_pnl);
-      } else if (p.unrealized_pnl !== undefined && !isNaN(parseFloat(p.unrealized_pnl))) {
-        upnl = parseFloat(p.unrealized_pnl);
-      } else if (p.net_pnl !== undefined && !isNaN(parseFloat(p.net_pnl))) {
-        upnl = parseFloat(p.net_pnl);
-      } else if (p.unrealized_pnl_usd !== undefined && !isNaN(parseFloat(p.unrealized_pnl_usd))) {
-        upnl = parseFloat(p.unrealized_pnl_usd);
-      } else if (isLong) {
+      // True directional uPnL calculation:
+      // Long (size > 0): (mark_price - entry_price) * crypto_qty
+      // Short (size < 0): (entry_price - mark_price) * crypto_qty
+      // Delta API p.unrealized_pnl for options is cashflow liability, NOT directional uPnL
+      if (isLong) {
         upnl = (markPx - entryPx) * cryptoQty;
       } else {
         upnl = (entryPx - markPx) * cryptoQty;
       }
-
-      const hasNativeOrSnapUpnl = (p.meta_data?.net_pnl !== undefined || p.unrealized_pnl !== undefined || p.net_pnl !== undefined || p.unrealized_pnl_usd !== undefined);
-      if (hasNativeOrSnapUpnl && ticker.mark_price && p.mark_price && !isNaN(parseFloat(ticker.mark_price)) && !isNaN(parseFloat(p.mark_price))) {
-        const snapMark = parseFloat(p.mark_price);
-        const liveMark = parseFloat(ticker.mark_price);
-        if (Math.abs(liveMark - snapMark) > 0.0001) {
-          const incrementalMove = isLong ? (liveMark - snapMark) : (snapMark - liveMark);
-          upnl += incrementalMove * cryptoQty;
-        }
+      if (isNaN(upnl) || (entryPx === 0 && markPx === 0)) {
+        upnl = parseFloat(p.unrealized_pnl_usd || 0.0);
       }
 
       if (parsed.isOption) {

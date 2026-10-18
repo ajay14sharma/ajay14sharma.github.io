@@ -3970,16 +3970,8 @@
       let blockedUsd = Number(w.blocked_margin_usd || 0);
       let grossCashUsd = Number(w.gross_cash_usd || 0);
 
-      // Reconcile legacy snapshot if account_value_usd was not explicitly present or was raw cash ledger
-      if (!balUsd || (balUsd > 8000 && totalShortCredit > 0)) {
-        const rawBal = Number(w.gross_cash_usd || w.balance_usd || balUsd || 5676.07);
-        if (rawBal > 8000 && totalShortCredit > 0) {
-          grossCashUsd = rawBal;
-          balUsd = Math.max(0, rawBal - totalShortCredit + totalUpnl);
-          blockedUsd = Math.max(0, balUsd - availUsd);
-        } else {
-          balUsd = rawBal;
-        }
+      if (!balUsd) {
+        balUsd = Number(w.balance_usd || (availUsd + blockedUsd));
       }
 
       if (!grossCashUsd) {
@@ -4359,23 +4351,17 @@
       let entryCredit = 0;
       let decayPct = 0;
 
-      if (p.meta_data && p.meta_data.net_pnl !== undefined && !isNaN(parseFloat(p.meta_data.net_pnl))) {
-        upnl = parseFloat(p.meta_data.net_pnl);
-      } else if (p.unrealized_pnl !== undefined && !isNaN(parseFloat(p.unrealized_pnl))) {
-        upnl = parseFloat(p.unrealized_pnl);
-      } else if (p.unrealized_pnl_usd !== undefined && !isNaN(parseFloat(p.unrealized_pnl_usd))) {
-        upnl = parseFloat(p.unrealized_pnl_usd);
-      } else if (isLong) {
+      // True directional uPnL calculation:
+      // Long (size > 0): (mark_price - entry_price) * crypto_qty
+      // Short (size < 0): (entry_price - mark_price) * crypto_qty
+      // Delta API p.unrealized_pnl for options is cashflow liability, NOT directional uPnL
+      if (isLong) {
         upnl = (markPx - entryPx) * cryptoQty;
       } else {
         upnl = (entryPx - markPx) * cryptoQty;
       }
-
-      if (ticker.mark_price && p.mark_price && !isNaN(parseFloat(ticker.mark_price)) && !isNaN(parseFloat(p.mark_price))) {
-        const snapMark = parseFloat(p.mark_price);
-        const liveMark = parseFloat(ticker.mark_price);
-        const incrementalMove = isLong ? (liveMark - snapMark) : (snapMark - liveMark);
-        upnl += incrementalMove * cryptoQty;
+      if (isNaN(upnl) || (entryPx === 0 && markPx === 0)) {
+        upnl = parseFloat(p.unrealized_pnl_usd || 0.0);
       }
 
       if (parsed.isOption) {
