@@ -6691,18 +6691,26 @@
       const rc = parseFloat(p.realized_cashflow || 0);
       const uc = parseFloat(p.unrealized_cashflow || 0);
       const rawGrossUpnl = isLong ? (markPx - entryPx) * cryptoQty : (entryPx - markPx) * cryptoQty;
-      let grossUpnl = rawGrossUpnl;
+      let grossUpnl = (entryPx > 0 && markPx > 0) ? rawGrossUpnl : (rc !== 0 || uc !== 0 ? rc + uc : 0);
+
+      // Delta Exchange UI Positions UPNL Parity:
+      // When native cashflows rc + uc are present, the exchange UI displays (rc + uc).
+      // If live ticker markPx has moved relative to snapMark (p.mark_price), adjust uPnL in real time.
+      const snapMark = Number(p.mark_price || markPx);
+      const markDelta = (markPx > 0 && snapMark > 0) ? (markPx - snapMark) : 0;
+      const liveCashflowDelta = isLong ? (markDelta * cryptoQty) : (-markDelta * cryptoQty);
+
       if (metaNet !== undefined && !isNaN(parseFloat(metaNet))) {
         upnl = parseFloat(metaNet);
-        grossUpnl = (entryPx > 0 && markPx > 0) ? rawGrossUpnl : Math.round((upnl + comm) * 100) / 100;
+      } else if (rc !== 0 || uc !== 0) {
+        upnl = Math.round((rc + uc + liveCashflowDelta) * 100) / 100;
+      } else if (p.unrealized_pnl_usd !== undefined || p.unrealized_pnl !== undefined) {
+        const basePnl = parseFloat(p.unrealized_pnl_usd ?? p.unrealized_pnl ?? 0);
+        upnl = Math.round((basePnl + liveCashflowDelta) * 100) / 100;
       } else if (entryPx > 0 && markPx > 0) {
-        grossUpnl = rawGrossUpnl;
         upnl = Math.round((rawGrossUpnl - comm) * 100) / 100;
-      } else if (p.realized_cashflow !== undefined && p.unrealized_cashflow !== undefined && (rc !== 0 || uc !== 0)) {
-        grossUpnl = rc + uc;
-        upnl = Math.round((grossUpnl - comm) * 100) / 100;
       } else {
-        grossUpnl = parseFloat(p.gross_unrealized_pnl_usd ?? (p.unrealized_pnl_usd || p.unrealized_pnl || 0.0));
+        grossUpnl = parseFloat(p.gross_unrealized_pnl_usd ?? 0.0);
         upnl = Math.round((grossUpnl - comm) * 100) / 100;
       }
       if (isNaN(upnl)) {
