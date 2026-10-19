@@ -7604,11 +7604,12 @@
         const openPositions = rawPositions.map(p => {
           const sym = p.product_symbol || '';
           const parts = sym.split('-');
-          const isOption = parts.length >= 4 && (parts[0] === 'C' || parts[0] === 'P');
+          const isOption = (parts.length >= 4 || parts.length === 3) && (parts[0] === 'C' || parts[0] === 'P');
+          const is3Part = parts.length === 3;
           const optType = isOption ? (parts[0] === 'C' ? 'call' : 'put') : '';
-          const underlying = isOption ? parts[1] : (p.product?.underlying_asset?.symbol || sym.replace(/USD|USDT|BUSD|XUSD|ONUSD/g, '') || 'BTC');
-          const strike = isOption ? parseFloat(parts[2]) : 0;
-          const expCode = isOption ? parts[3] : '';
+          const underlying = isOption ? (is3Part ? 'BTC' : parts[1]) : (p.product?.underlying_asset?.symbol || sym.replace(/USD|USDT|BUSD|XUSD|ONUSD/g, '') || 'BTC');
+          const strike = isOption ? parseFloat(is3Part ? parts[1] : parts[2]) : 0;
+          const expCode = isOption ? (is3Part ? parts[2] : parts[3]) : '';
 
           let expIso = '';
           if (expCode && expCode.length === 6) {
@@ -7647,7 +7648,7 @@
             seenFillIds.add(fId);
 
             if ((f.side || '').toLowerCase() === openSide.toLowerCase()) {
-              const feeVal = parseFloat(f.commission ?? f.fee ?? f.paid_commission ?? 0);
+              const feeVal = parseFloat(f.commission ?? f.fee ?? f.paid_commission ?? f.commission_usd ?? 0);
               if (!isNaN(feeVal) && feeVal > 0) {
                 exactComm += feeVal;
                 foundExactFill = true;
@@ -7663,7 +7664,7 @@
           if (foundExactFill && exactComm > 0) {
             comm = exactComm;
           } else {
-            comm = parseFloat(p.commission || p.paid_commission || (p.meta_data && (p.meta_data.commission || p.meta_data.entry_commission)) || 0);
+            comm = parseFloat(p.commission || p.commission_usd || p.paid_commission || (p.meta_data && (p.meta_data.commission || p.meta_data.entry_commission)) || 0);
           }
 
           if (!comm && entryPx > 0 && cryptoQty > 0) {
@@ -7872,7 +7873,7 @@
         const totalNetUpnl = openPositions.reduce((acc, p) => acc + (p.unrealized_pnl_usd || 0), 0);
         const totalGrossUpnl = openPositions.reduce((acc, p) => acc + (p.gross_unrealized_pnl_usd !== undefined ? p.gross_unrealized_pnl_usd : ((p.unrealized_pnl_usd || 0) + (p.commission_usd || 0))), 0);
         const totalCredit = openPositions
-          .filter(p => !p.isLong && (p.option_type || (p.symbol && p.symbol.split('-').length >= 4 && (p.symbol.startsWith('C-') || p.symbol.startsWith('P-')))))
+          .filter(p => !p.isLong && (p.option_type || (p.symbol && (p.symbol.split('-').length >= 4 || (p.symbol.split('-').length === 3 && (p.symbol.startsWith('C-') || p.symbol.startsWith('P-')))) && (p.symbol.startsWith('C-') || p.symbol.startsWith('P-')))))
           .reduce((acc, p) => acc + (Math.abs(p.lots) * (p.contract_multiplier || (p.symbol.includes('-ETH-') ? 0.01 : 0.001)) * p.entry_price), 0);
 
         // Account Value (Net Equity) & Margin Utilization Parity
@@ -8646,8 +8647,11 @@
     // 4. Positions & Corridor Math
     function parseOptionSymbol(sym) {
       const parts = String(sym || '').split('-');
-      if (parts.length >= 4 && (parts[0] === 'C' || parts[0] === 'P')) {
-        const expCode = parts[3];
+      if ((parts.length >= 4 || parts.length === 3) && (parts[0] === 'C' || parts[0] === 'P')) {
+        const is3Part = parts.length === 3;
+        const underlying = is3Part ? 'BTC' : (parts[1] || 'BTC').toUpperCase();
+        const strike = parseFloat(is3Part ? parts[1] : parts[2]) || 0;
+        const expCode = is3Part ? parts[2] : parts[3];
         let expiryDate = null;
         let dteDays = 1.0;
         let expFormatted = expCode;
@@ -8665,8 +8669,8 @@
         return {
           isOption: true,
           isCall: parts[0] === 'C',
-          underlying: (parts[1] || 'BTC').toUpperCase(),
-          strike: parseFloat(parts[2]) || 0,
+          underlying: underlying,
+          strike: strike,
           expCode: expCode,
           expFormatted,
           expiryDate,
@@ -8812,15 +8816,20 @@
       }
       const rc = parseFloat(p.realized_cashflow || 0);
       const uc = parseFloat(p.unrealized_cashflow || 0);
+      const rawGrossUpnl = isLong ? (markPx - entryPx) * cryptoQty : (entryPx - markPx) * cryptoQty;
+      let grossUpnl = rawGrossUpnl;
       if (metaNet !== undefined && !isNaN(parseFloat(metaNet))) {
         upnl = parseFloat(metaNet);
+        grossUpnl = upnl + comm;
       } else if (entryPx > 0 && markPx > 0) {
-        const rawUpnl = isLong ? (markPx - entryPx) * cryptoQty : (entryPx - markPx) * cryptoQty;
-        upnl = Math.round((rawUpnl - comm) * 100) / 100;
+        upnl = Math.round((rawGrossUpnl - comm) * 100) / 100;
+        grossUpnl = rawGrossUpnl;
       } else if (p.realized_cashflow !== undefined && p.unrealized_cashflow !== undefined && (rc !== 0 || uc !== 0)) {
         upnl = rc + uc;
+        grossUpnl = upnl + comm;
       } else {
         upnl = parseFloat(p.unrealized_pnl_usd || p.unrealized_pnl || 0.0);
+        grossUpnl = upnl + comm;
       }
       if (isNaN(upnl)) {
         upnl = 0.0;
@@ -8895,6 +8904,10 @@
         hasTpOrder,
         markPx,
         upnl,
+        unrealized_pnl: upnl,
+        unrealized_pnl_usd: upnl,
+        gross_unrealized_pnl_usd: Math.round(grossUpnl * 100) / 100,
+        commission_usd: comm,
         decayPct,
         slDist,
         entryCredit,

@@ -6536,8 +6536,11 @@
     // 4. Positions & Corridor Math
     function parseOptionSymbol(sym) {
       const parts = String(sym || '').split('-');
-      if (parts.length >= 4 && (parts[0] === 'C' || parts[0] === 'P')) {
-        const expCode = parts[3];
+      if ((parts.length >= 4 || parts.length === 3) && (parts[0] === 'C' || parts[0] === 'P')) {
+        const is3Part = parts.length === 3;
+        const underlying = is3Part ? 'BTC' : (parts[1] || 'BTC').toUpperCase();
+        const strike = parseFloat(is3Part ? parts[1] : parts[2]) || 0;
+        const expCode = is3Part ? parts[2] : parts[3];
         let expiryDate = null;
         let dteDays = 1.0;
         let expFormatted = expCode;
@@ -6555,8 +6558,8 @@
         return {
           isOption: true,
           isCall: parts[0] === 'C',
-          underlying: (parts[1] || 'BTC').toUpperCase(),
-          strike: parseFloat(parts[2]) || 0,
+          underlying: underlying,
+          strike: strike,
           expCode: expCode,
           expFormatted,
           expiryDate,
@@ -6698,15 +6701,20 @@
       }
       const rc = parseFloat(p.realized_cashflow || 0);
       const uc = parseFloat(p.unrealized_cashflow || 0);
+      const rawGrossUpnl = isLong ? (markPx - entryPx) * cryptoQty : (entryPx - markPx) * cryptoQty;
+      let grossUpnl = rawGrossUpnl;
       if (metaNet !== undefined && !isNaN(parseFloat(metaNet))) {
         upnl = parseFloat(metaNet);
+        grossUpnl = upnl + comm;
       } else if (entryPx > 0 && markPx > 0) {
-        const rawUpnl = isLong ? (markPx - entryPx) * cryptoQty : (entryPx - markPx) * cryptoQty;
-        upnl = Math.round((rawUpnl - comm) * 100) / 100;
+        upnl = Math.round((rawGrossUpnl - comm) * 100) / 100;
+        grossUpnl = rawGrossUpnl;
       } else if (p.realized_cashflow !== undefined && p.unrealized_cashflow !== undefined && (rc !== 0 || uc !== 0)) {
         upnl = rc + uc;
+        grossUpnl = upnl + comm;
       } else {
         upnl = parseFloat(p.unrealized_pnl_usd || p.unrealized_pnl || 0.0);
+        grossUpnl = upnl + comm;
       }
       if (isNaN(upnl)) {
         upnl = 0.0;
@@ -6781,6 +6789,10 @@
         hasTpOrder,
         markPx,
         upnl,
+        unrealized_pnl: upnl,
+        unrealized_pnl_usd: upnl,
+        gross_unrealized_pnl_usd: Math.round(grossUpnl * 100) / 100,
+        commission_usd: comm,
         decayPct,
         slDist,
         entryCredit,
