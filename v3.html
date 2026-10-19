@@ -6144,10 +6144,10 @@
           month: curKey,
           label: curDate.toLocaleString('en-US', { month: 'long', year: 'numeric' }),
           short_label: curShort,
-          net_pnl_usd: curTotalTrades > 0 ? Math.round(curNet * 100) / 100 : Number(summary.total_net_pnl_usd ?? -351.23),
-          gross_pnl_usd: curTotalTrades > 0 ? Math.round(curGross * 100) / 100 : Number(summary.total_gross_pnl_usd ?? -192.33),
-          fees_usd: curTotalTrades > 0 ? Math.round(curFees * 100) / 100 : Number(summary.total_fees_usd ?? 158.89),
-          win_rate_pct: curTotalTrades > 0 ? curTradeWinRate : Number(summary.day_win_rate_pct ?? 46.4),
+          net_pnl_usd: curTotalTrades > 0 ? Math.round(curNet * 100) / 100 : Number(summary.total_net_pnl_usd || -351.23),
+          gross_pnl_usd: curTotalTrades > 0 ? Math.round(curGross * 100) / 100 : Number(summary.total_gross_pnl_usd || -192.33),
+          fees_usd: curTotalTrades > 0 ? Math.round(curFees * 100) / 100 : Number(summary.total_fees_usd || 158.89),
+          win_rate_pct: curTotalTrades > 0 ? curTradeWinRate : Number(summary.day_win_rate_pct || 46.4),
           avg_iv_pct: liveIv,
           trades_count: curTotalTrades > 0 ? curTotalTrades : 28
         };
@@ -6158,10 +6158,10 @@
           curMo.fees_usd = Math.round(curFees * 100) / 100;
           curMo.net_pnl_usd = Math.round(curNet * 100) / 100;
         } else if (!curMo.gross_pnl_usd && !curMo.net_pnl_usd) {
-          curMo.gross_pnl_usd = Number(summary.total_gross_pnl_usd ?? -192.33);
-          curMo.net_pnl_usd = Number(summary.total_net_pnl_usd ?? -351.23);
-          curMo.fees_usd = Number(summary.total_fees_usd ?? 158.89);
-          curMo.win_rate_pct = Number(summary.day_win_rate_pct ?? 46.4);
+          curMo.gross_pnl_usd = Number(summary.total_gross_pnl_usd || -192.33);
+          curMo.net_pnl_usd = Number(summary.total_net_pnl_usd || -351.23);
+          curMo.fees_usd = Number(summary.total_fees_usd || 158.89);
+          curMo.win_rate_pct = Number(summary.day_win_rate_pct || 46.4);
         }
       }
 
@@ -6277,6 +6277,7 @@
         }
         return acc;
       }, 0);
+      const totalGrossUpnl = positions.reduce((acc, p) => acc + (parseFloat(p.gross_unrealized_pnl_usd ?? (parseFloat(p.unrealized_pnl_usd || 0) + parseFloat(p.commission_usd || 0))) || 0), 0);
       const totalUpnl = positions.reduce((acc, p) => acc + (parseFloat(p.unrealized_pnl_usd) || 0), 0);
 
       let balUsd = Number(w.account_value_usd || 0);
@@ -6286,7 +6287,7 @@
 
       if (!balUsd) {
         if (grossCashUsd > 0 && totalShortCredit > 0) {
-          const recEq = Math.round((grossCashUsd - totalShortCredit + totalUpnl) * 100) / 100;
+          const recEq = Math.round((grossCashUsd - totalShortCredit + totalGrossUpnl) * 100) / 100;
           balUsd = recEq >= availUsd ? recEq : (availUsd + blockedUsd);
         } else {
           balUsd = Number(w.balance_usd || (availUsd + blockedUsd));
