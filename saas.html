@@ -7370,7 +7370,16 @@
         if (btcJson && btcJson.result) {
           let spot = null;
           for (const t of btcJson.result) {
+            if (!t.symbol) continue;
             liveTickersBySymbol[t.symbol] = t;
+            const normSym = t.symbol.replace('-BTC-', '-').replace('-ETH-', '-').replace('-SOL-', '-').replace('-XRP-', '-');
+            if (normSym !== t.symbol) {
+              liveTickersBySymbol[normSym] = t;
+            }
+            const parts = t.symbol.split('-');
+            if (parts.length === 3 && (parts[0] === 'C' || parts[0] === 'P')) {
+              liveTickersBySymbol[`${parts[0]}-BTC-${parts[1]}-${parts[2]}`] = t;
+            }
             if (!spot && t.spot_price) spot = parseFloat(t.spot_price);
           }
           if (spot && spot > 0) {
@@ -7382,7 +7391,16 @@
         if (ethJson && ethJson.result) {
           let ethSpot = null;
           for (const t of ethJson.result) {
+            if (!t.symbol) continue;
             liveTickersBySymbol[t.symbol] = t;
+            const normSym = t.symbol.replace('-BTC-', '-').replace('-ETH-', '-').replace('-SOL-', '-').replace('-XRP-', '-');
+            if (normSym !== t.symbol) {
+              liveTickersBySymbol[normSym] = t;
+            }
+            const parts = t.symbol.split('-');
+            if (parts.length === 3 && (parts[0] === 'C' || parts[0] === 'P')) {
+              liveTickersBySymbol[`${parts[0]}-ETH-${parts[1]}-${parts[2]}`] = t;
+            }
             if (!ethSpot && t.spot_price) ethSpot = parseFloat(t.spot_price);
           }
           if (ethSpot && ethSpot > 0) {
@@ -7538,6 +7556,18 @@
           if (t.symbol) {
             tickersBySymbol[t.symbol] = t;
             liveTickersBySymbol[t.symbol] = t;
+            const normSym = t.symbol.replace('-BTC-', '-').replace('-ETH-', '-').replace('-SOL-', '-').replace('-XRP-', '-');
+            if (normSym !== t.symbol) {
+              tickersBySymbol[normSym] = t;
+              liveTickersBySymbol[normSym] = t;
+            }
+            const parts = t.symbol.split('-');
+            if (parts.length === 3 && (parts[0] === 'C' || parts[0] === 'P')) {
+              tickersBySymbol[`${parts[0]}-BTC-${parts[1]}-${parts[2]}`] = t;
+              tickersBySymbol[`${parts[0]}-ETH-${parts[1]}-${parts[2]}`] = t;
+              liveTickersBySymbol[`${parts[0]}-BTC-${parts[1]}-${parts[2]}`] = t;
+              liveTickersBySymbol[`${parts[0]}-ETH-${parts[1]}-${parts[2]}`] = t;
+            }
           }
         }
 
@@ -7625,71 +7655,41 @@
           const pid = p.product_id;
           const normSym = sym.replace('-BTC-', '-').replace('-ETH-', '-').replace('-SOL-', '-').replace('-XRP-', '-');
           const lots = size; // preserve directional sign: negative for short, positive for long
-          const entryPx = parseFloat(p.entry_price || 0);
-          const tInfo = tickersBySymbol[sym] || liveTickersBySymbol[sym] || {};
+          const entryPx = parseFloat(p.entry_price || p.average_fill_price || p.avg_entry_price || p.entry_px || 0);
+          const tInfo = tickersBySymbol[sym] || liveTickersBySymbol[sym] || (normSym ? (tickersBySymbol[normSym] || liveTickersBySymbol[normSym]) : {}) || {};
           const markPx = parseFloat(tInfo.mark_price || p.mark_price || entryPx);
           const multiplier = parseFloat(p.product?.contract_value || 0) || (underlying === 'ETH' ? 0.01 : (underlying === 'BTC' ? 0.001 : 1.0));
           const cryptoQty = Math.abs(size) * multiplier;
           const isLong = side === 'buy' || size > 0;
 
-          // Check fill slips for exact opening commission
-          const candidateFills = [];
-          if (pid && fillsByPid[pid]) candidateFills.push(...fillsByPid[pid]);
-          if (sym && fillsBySymbol[sym]) candidateFills.push(...fillsBySymbol[sym]);
-          if (normSym && fillsBySymbol[normSym]) candidateFills.push(...fillsBySymbol[normSym]);
-
-          const seenFillIds = new Set();
-          let exactComm = 0;
-          let foundExactFill = false;
-
-          for (const f of candidateFills) {
-            const fId = f.id || `${f.order_id}_${f.created_at}_${f.price}`;
-            if (seenFillIds.has(fId)) continue;
-            seenFillIds.add(fId);
-
-            if ((f.side || '').toLowerCase() === openSide.toLowerCase()) {
-              const feeVal = parseFloat(f.commission ?? f.fee ?? f.paid_commission ?? f.commission_usd ?? 0);
-              if (!isNaN(feeVal) && feeVal > 0) {
-                exactComm += feeVal;
-                foundExactFill = true;
-              }
-            }
-          }
-          exactComm = Math.round(exactComm * 100) / 100;
-
           // True directional uPnL calculation:
-          // Delta Exchange position UPNL in the UI displays directional PnL net of entry commission.
+          // Delta Exchange position UPNL in the UI displays directional PnL net of standard options entry commission.
           const metaNet = p.meta_data ? p.meta_data.net_pnl : undefined;
-          let comm = 0;
-          if (foundExactFill && exactComm > 0) {
-            comm = exactComm;
-          } else {
-            comm = parseFloat(p.commission || p.commission_usd || p.paid_commission || (p.meta_data && (p.meta_data.commission || p.meta_data.entry_commission)) || 0);
-          }
+          let comm = parseFloat(p.commission || p.commission_usd || p.paid_commission || (p.meta_data && (p.meta_data.commission || p.meta_data.entry_commission)) || 0);
 
-          if (!comm && entryPx > 0 && cryptoQty > 0) {
+          if (!comm && (isOption || entryPx > 0) && cryptoQty > 0) {
             const spotPx = parseFloat(tInfo.spot_price || (underlying === 'ETH' ? liveEthSpotPriceNumeric : liveSpotPriceNumeric) || (underlying === 'ETH' ? 3120 : 84250));
             const notional = cryptoQty * (spotPx > 0 ? spotPx : (entryPx > 2000 ? entryPx : 84250));
-            const premium = cryptoQty * entryPx;
+            const premium = cryptoQty * (entryPx > 0 ? entryPx : 1000);
             comm = Math.round(Math.min(notional * 0.0003, premium * 0.10) * 100) / 100;
           }
           const rc = parseFloat(p.realized_cashflow || 0);
           const uc = parseFloat(p.unrealized_cashflow || 0);
           const rawGrossUpnl = size < 0 ? (entryPx - markPx) * cryptoQty : (markPx - entryPx) * cryptoQty;
-          let uPnl = 0;
           let grossUpnl = rawGrossUpnl;
+          let uPnl = 0;
           if (metaNet !== undefined && !isNaN(parseFloat(metaNet))) {
             uPnl = parseFloat(metaNet);
-            grossUpnl = uPnl + comm;
+            grossUpnl = (entryPx > 0 && markPx > 0) ? rawGrossUpnl : Math.round((uPnl + comm) * 100) / 100;
           } else if (entryPx > 0 && markPx > 0) {
-            uPnl = Math.round((rawGrossUpnl - comm) * 100) / 100;
             grossUpnl = rawGrossUpnl;
+            uPnl = Math.round((rawGrossUpnl - comm) * 100) / 100;
           } else if (p.realized_cashflow !== undefined && p.unrealized_cashflow !== undefined && (rc !== 0 || uc !== 0)) {
-            uPnl = rc + uc;
-            grossUpnl = uPnl + comm;
+            grossUpnl = rc + uc;
+            uPnl = Math.round((grossUpnl - comm) * 100) / 100;
           } else {
-            uPnl = parseFloat(p.unrealized_pnl_usd || p.unrealized_pnl || 0.0);
-            grossUpnl = uPnl + comm;
+            grossUpnl = parseFloat(p.gross_unrealized_pnl_usd ?? (p.unrealized_pnl_usd || p.unrealized_pnl || 0.0));
+            uPnl = Math.round((grossUpnl - comm) * 100) / 100;
           }
           if (isNaN(uPnl)) {
             uPnl = 0.0;
@@ -8752,8 +8752,9 @@
 
     function parsePositionLeg(p) {
       const parsed = parseOptionSymbol(p.symbol);
-      const ticker = liveTickersBySymbol[p.symbol] || {};
-      const entryPx = Number(p.entry_price || p.entry_px || 0);
+      const normSym = (p.symbol || '').replace('-BTC-', '-').replace('-ETH-', '-').replace('-SOL-', '-').replace('-XRP-', '-');
+      const ticker = liveTickersBySymbol[p.symbol] || (normSym ? liveTickersBySymbol[normSym] : {}) || {};
+      const entryPx = Number(p.entry_price || p.average_fill_price || p.avg_entry_price || p.entry_px || 0);
       const isSell = (String(p.side || '').toLowerCase() === 'sell' || String(p.side || '').toUpperCase() === 'SHORT');
       const isBuy = (String(p.side || '').toLowerCase() === 'buy' || String(p.side || '').toUpperCase() === 'LONG');
       const rawLots = Number(p.lots !== undefined ? p.lots : (p.size !== undefined ? p.size : -500));
@@ -8775,44 +8776,14 @@
       let decayPct = 0;
 
       // True directional uPnL calculation:
-      // Delta Exchange position UPNL in the UI displays directional PnL net of entry commission.
+      // Delta Exchange position UPNL in the UI displays directional PnL net of standard options entry commission.
       const metaNet = p.meta_data ? p.meta_data.net_pnl : undefined;
       let comm = parseFloat(p.commission || p.commission_usd || p.paid_commission || (p.meta_data && (p.meta_data.commission || p.meta_data.entry_commission)) || 0);
-      if (!comm && entryPx > 0 && cryptoQty > 0) {
-        let exactComm = 0;
-        let foundExact = false;
-        if (typeof dashboardState !== 'undefined' && dashboardState && Array.isArray(dashboardState.fills)) {
-          const openSide = isLong ? 'buy' : 'sell';
-          const symStr = p.symbol || '';
-          const normSymStr = symStr.replace('-BTC-', '-').replace('-ETH-', '-').replace('-SOL-', '-').replace('-XRP-', '-');
-          const pid = p.product_id;
-          const seenFills = new Set();
-          for (const f of dashboardState.fills) {
-            const fSym = f.product_symbol || f.symbol || '';
-            const fPid = f.product_id;
-            const normFSym = fSym.replace('-BTC-', '-').replace('-ETH-', '-').replace('-SOL-', '-').replace('-XRP-', '-');
-            const matchesProd = (pid && fPid && pid === fPid) || (symStr && (fSym === symStr || normFSym === symStr || fSym === normSymStr));
-            if (matchesProd && (f.side || '').toLowerCase() === openSide.toLowerCase()) {
-              const fId = f.id || `${f.order_id}_${f.created_at}_${f.price}`;
-              if (!seenFills.has(fId)) {
-                seenFills.add(fId);
-                const feeVal = parseFloat(f.commission ?? f.fee ?? f.paid_commission ?? f.commission_usd ?? 0);
-                if (!isNaN(feeVal) && feeVal > 0) {
-                  exactComm += feeVal;
-                  foundExact = true;
-                }
-              }
-            }
-          }
-        }
-        if (foundExact && exactComm > 0) {
-          comm = Math.round(exactComm * 100) / 100;
-        } else {
-          const spotPx = parseFloat(ticker.spot_price || (assetUnit === 'ETH' ? liveEthSpotPriceNumeric : liveSpotPriceNumeric) || (assetUnit === 'ETH' ? 3120 : 84250));
-          const notional = cryptoQty * (spotPx > 0 ? spotPx : (entryPx > 2000 ? entryPx : 84250));
-          const premium = cryptoQty * entryPx;
-          comm = Math.round(Math.min(notional * 0.0003, premium * 0.10) * 100) / 100;
-        }
+      if (!comm && (parsed.isOption || entryPx > 0) && cryptoQty > 0) {
+        const spotPx = parseFloat(ticker.spot_price || (assetUnit === 'ETH' ? liveEthSpotPriceNumeric : liveSpotPriceNumeric) || (assetUnit === 'ETH' ? 3120 : 84250));
+        const notional = cryptoQty * (spotPx > 0 ? spotPx : (entryPx > 2000 ? entryPx : 84250));
+        const premium = cryptoQty * (entryPx > 0 ? entryPx : 1000);
+        comm = Math.round(Math.min(notional * 0.0003, premium * 0.10) * 100) / 100;
       }
       const rc = parseFloat(p.realized_cashflow || 0);
       const uc = parseFloat(p.unrealized_cashflow || 0);
@@ -8820,16 +8791,16 @@
       let grossUpnl = rawGrossUpnl;
       if (metaNet !== undefined && !isNaN(parseFloat(metaNet))) {
         upnl = parseFloat(metaNet);
-        grossUpnl = upnl + comm;
+        grossUpnl = (entryPx > 0 && markPx > 0) ? rawGrossUpnl : Math.round((upnl + comm) * 100) / 100;
       } else if (entryPx > 0 && markPx > 0) {
-        upnl = Math.round((rawGrossUpnl - comm) * 100) / 100;
         grossUpnl = rawGrossUpnl;
+        upnl = Math.round((rawGrossUpnl - comm) * 100) / 100;
       } else if (p.realized_cashflow !== undefined && p.unrealized_cashflow !== undefined && (rc !== 0 || uc !== 0)) {
-        upnl = rc + uc;
-        grossUpnl = upnl + comm;
+        grossUpnl = rc + uc;
+        upnl = Math.round((grossUpnl - comm) * 100) / 100;
       } else {
-        upnl = parseFloat(p.unrealized_pnl_usd || p.unrealized_pnl || 0.0);
-        grossUpnl = upnl + comm;
+        grossUpnl = parseFloat(p.gross_unrealized_pnl_usd ?? (p.unrealized_pnl_usd || p.unrealized_pnl || 0.0));
+        upnl = Math.round((grossUpnl - comm) * 100) / 100;
       }
       if (isNaN(upnl)) {
         upnl = 0.0;
