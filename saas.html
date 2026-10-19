@@ -7528,7 +7528,7 @@
           deltaFetch('/v2/wallet/balances'),
           deltaFetch('/v2/positions/margined'),
           deltaFetch('/v2/orders?state=open').catch(() => ({ result: [] })),
-          deltaFetch('/v2/orders/history?page_size=30').catch(() => ({ result: [] })),
+          deltaFetch('/v2/orders/history?page_size=100').catch(() => ({ result: [] })),
           deltaFetch('/v2/tickers').catch(() => ({ result: [] }))
         ]);
 
@@ -7606,20 +7606,19 @@
           const isLong = side === 'buy' || size > 0;
 
           // True directional uPnL calculation:
-          // Delta API positions provide realized_cashflow and unrealized_cashflow.
-          // In Delta Exchange derivatives, Position UPNL = realized_cashflow + unrealized_cashflow.
-          // This matches Delta Exchange official UI to the exact penny (+391.00 USD).
+          // Delta Exchange position UPNL in the UI displays directional PnL net of entry commission.
+          const metaNet = p.meta_data ? p.meta_data.net_pnl : undefined;
+          const comm = parseFloat(p.commission || p.paid_commission || (p.meta_data && p.meta_data.commission) || 0);
           const rc = parseFloat(p.realized_cashflow || 0);
           const uc = parseFloat(p.unrealized_cashflow || 0);
           let uPnl = 0;
-          if (p.realized_cashflow !== undefined && p.unrealized_cashflow !== undefined && (rc !== 0 || uc !== 0)) {
-            uPnl = rc + uc;
+          if (metaNet !== undefined && !isNaN(parseFloat(metaNet))) {
+            uPnl = parseFloat(metaNet);
           } else if (entryPx > 0 && markPx > 0) {
-            if (size < 0) {
-              uPnl = (entryPx - markPx) * cryptoQty;
-            } else {
-              uPnl = (markPx - entryPx) * cryptoQty;
-            }
+            const rawUpnl = size < 0 ? (entryPx - markPx) * cryptoQty : (markPx - entryPx) * cryptoQty;
+            uPnl = Math.round((rawUpnl - comm) * 100) / 100;
+          } else if (p.realized_cashflow !== undefined && p.unrealized_cashflow !== undefined && (rc !== 0 || uc !== 0)) {
+            uPnl = rc + uc;
           } else {
             uPnl = parseFloat(p.unrealized_pnl_usd || p.unrealized_pnl || 0.0);
           }
@@ -7721,10 +7720,13 @@
           };
         });
 
-        // Format audit orders
-        const auditOrders = historyOrders.map(o => {
+        // Format audit orders from fetched history
+        const fetchedAuditOrders = historyOrders.map(o => {
           const sym = o.product_symbol || '';
           const stratId = sym.includes('-ETH-') ? 'eth_1dte' : (sym.includes('BTCUSD') ? 'btc_trend_breakout' : 'btc_1dte');
+          const rawPnl = parseFloat(o.realized_pnl || o.pnl_usd || 0);
+          const fee = parseFloat(o.commission || o.paid_commission || 0);
+          const netPnl = o.net_pnl_usd !== undefined ? parseFloat(o.net_pnl_usd) : (rawPnl - fee);
           return {
             id: o.id,
             order_id: o.id,
@@ -7738,18 +7740,44 @@
             audit_status: (o.state || '').toUpperCase(),
             price: parseFloat(o.limit_price || o.avg_fill_price || 0),
             avg_fill_price: parseFloat(o.avg_fill_price || o.limit_price || 0),
-            pnl_usd: parseFloat(o.realized_pnl || 0),
-            net_pnl_usd: parseFloat(o.realized_pnl || 0),
-            paid_commission: parseFloat(o.commission || 0),
-            fee: parseFloat(o.commission || 0),
+            pnl_usd: rawPnl,
+            net_pnl_usd: netPnl,
+            paid_commission: fee,
+            fee: fee,
             created_at: o.created_at,
             created_at_ist: new Date(o.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
             date_ist: new Date(o.created_at).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
           };
         });
 
-        // Compute daily PnL breakdown from history
+        // Merge fetched history orders into existing dashboardState audit_orders so complete history is preserved
+        const existingAudit = Array.isArray(dashboardState?.audit_orders) ? dashboardState.audit_orders : [];
+        const existingMap = {};
+        for (const o of existingAudit) {
+          if (o && o.id) existingMap[o.id] = o;
+        }
+        for (const o of fetchedAuditOrders) {
+          if (o && o.id) existingMap[o.id] = o;
+        }
+        const auditOrders = Object.values(existingMap).length > 0
+          ? Object.values(existingMap).sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))
+          : fetchedAuditOrders;
+
+        // Compute daily PnL breakdown from merged history
         const dailyMap = {};
+        if (Array.isArray(dashboardState?.daily_pnl)) {
+          for (const d of dashboardState.daily_pnl) {
+            if (d && d.date) {
+              dailyMap[d.date] = {
+                date: d.date,
+                net_pnl_usd: parseFloat(d.net_pnl_usd || 0),
+                gross_pnl_usd: parseFloat(d.gross_pnl_usd || d.realized_pnl_usd || 0),
+                commissions_usd: parseFloat(d.commissions_usd || 0),
+                closed_orders_count: parseInt(d.closed_orders_count || 0)
+              };
+            }
+          }
+        }
         for (const ord of auditOrders) {
           const d = ord.date_ist;
           if (!d) continue;
@@ -7762,10 +7790,12 @@
               closed_orders_count: 0
             };
           }
-          dailyMap[d].net_pnl_usd += ord.net_pnl_usd;
-          dailyMap[d].gross_pnl_usd += ord.pnl_usd;
-          dailyMap[d].commissions_usd += ord.paid_commission;
-          dailyMap[d].closed_orders_count++;
+          if (ord.state === 'closed' || (parseFloat(ord.pnl_usd) || 0) !== 0) {
+            dailyMap[d].net_pnl_usd += (parseFloat(ord.net_pnl_usd) || 0);
+            dailyMap[d].gross_pnl_usd += (parseFloat(ord.pnl_usd) || 0);
+            dailyMap[d].commissions_usd += (parseFloat(ord.paid_commission) || 0);
+            dailyMap[d].closed_orders_count++;
+          }
         }
         const dailyPnl = Object.values(dailyMap).sort((a, b) => a.date.localeCompare(b.date));
 
@@ -7779,19 +7809,8 @@
         const totalRealizedGross = auditOrders.reduce((acc, o) => acc + (parseFloat(o.pnl_usd) || 0), 0);
         const totalFees = auditOrders.reduce((acc, o) => acc + (parseFloat(o.paid_commission || o.fee) || 0), 0);
         const closedCount = auditOrders.filter(o => o.audit_status === 'CLOSED' || o.state === 'closed' || (parseFloat(o.net_pnl_usd) || 0) !== 0).length;
-        const winCount = auditOrders.filter(o => (parseFloat(o.net_pnl_usd) || 0) > 0).length;
+        const winCount = auditOrders.filter(o => (parseFloat(o.pnl_usd) || 0) > 0).length;
         const winRate = closedCount > 0 ? Math.round((winCount / closedCount) * 1000) / 10 : 0.0;
-
-        const totalBrokerUpnl = openPositions.reduce((acc, p) => acc + (parseFloat(p.unrealized_pnl_usd) || 0), 0);
-
-        // In Delta Exchange portfolio margin accounts, anchor to true capital base ($11,173.64 / ₹9.50L)
-        // moving dynamically in real-time with live open uPnL:
-        if (blockedMargin > 10000.0 && totalCash > 12000.0 && totalShortCredit > 5000.0) {
-          const upnlDelta = totalBrokerUpnl - 391.00;
-          accountEquity = Math.round((11173.64 + upnlDelta) * 100) / 100;
-          availCash = Math.round((8554.23 + upnlDelta) * 100) / 100;
-          blockedMargin = Math.round((accountEquity - availCash) * 100) / 100;
-        }
 
         const snapshot = {
           is_empty_state: false,
@@ -8020,84 +8039,94 @@
       const summary = (dashboardState.portfolio_performance && dashboardState.portfolio_performance.summary) || {};
       const isReadOnly = (SessionManager && SessionManager.session && !SessionManager.session.has_vault_keys && !SessionManager.session.is_demo) || dashboardState.is_empty_state;
 
-      let curMo = summary.current_month;
-      let lastMo = summary.last_month;
+      // Always resolve to true calendar months: Current month and immediately preceding calendar month
+      const nowObj = new Date();
+      const curYear = nowObj.getUTCFullYear();
+      const curMonthNum = nowObj.getUTCMonth(); // 0 to 11
+      const curKey = `${curYear}-${String(curMonthNum + 1).padStart(2, '0')}`;
+      const prevMonthDate = new Date(Date.UTC(curYear, curMonthNum - 1, 1));
+      const lastKey = `${prevMonthDate.getUTCFullYear()}-${String(prevMonthDate.getUTCMonth() + 1).padStart(2, '0')}`;
 
-      // Dynamic calculation if not provided by backend summary
-      if (!curMo || !lastMo) {
-        const dailyList = Array.isArray(dashboardState.daily_pnl) ? dashboardState.daily_pnl : [];
-        const mAgg = {};
-        for (const d of dailyList) {
-          const mk = String(d.date || '').slice(0, 7);
-          if (mk && mk.length === 7) {
-            if (!mAgg[mk]) {
-              mAgg[mk] = { net: 0, gross: 0, fees: 0, wins: 0, losses: 0, days: 0 };
-            }
-            mAgg[mk].days += 1;
-            const netVal = Number(d.net_pnl_usd ?? ((d.gross_pnl_usd || 0) - (d.commissions_usd || 0)));
-            const grossVal = Number(d.gross_pnl_usd ?? d.realized_pnl_usd ?? netVal);
-            const feeVal = Number(d.commissions_usd ?? 0);
-            mAgg[mk].net += netVal;
-            mAgg[mk].gross += grossVal;
-            mAgg[mk].fees += feeVal;
-            if (netVal > 0) mAgg[mk].wins += 1;
-            else if (netVal < 0) mAgg[mk].losses += 1;
-          }
-        }
-        const sortedKeys = Object.keys(mAgg).sort();
-        const curKey = sortedKeys.length > 0 ? sortedKeys[sortedKeys.length - 1] : new Date().toISOString().slice(0, 7);
-        const priorKeys = sortedKeys.filter(k => k < curKey);
-        const lastKey = priorKeys.length > 0 ? priorKeys[priorKeys.length - 1] : '';
+      const curDate = new Date(curKey + '-01T00:00:00Z');
+      const curShort = !isNaN(curDate) ? curDate.toLocaleString('en-US', { month: 'short' }) + " '" + String(curDate.getFullYear()).slice(2) : curKey;
+      const lDate = new Date(lastKey + '-01T00:00:00Z');
+      const lastShort = !isNaN(lDate) ? lDate.toLocaleString('en-US', { month: 'short' }) + " '" + String(lDate.getFullYear()).slice(2) : lastKey;
 
-        const curDate = new Date(curKey + '-01T00:00:00Z');
-        const curShort = !isNaN(curDate) ? curDate.toLocaleString('en-US', { month: 'short' }) + " '" + String(curDate.getFullYear()).slice(2) : curKey;
-        const cData = mAgg[curKey] || { net: 0, gross: 0, fees: 0, wins: 0, losses: 0, days: 0 };
-        const cTotalDays = cData.wins + cData.losses;
-        const cWinRate = cTotalDays > 0 ? Math.round((cData.wins / cTotalDays) * 1000) / 10 : 0.0;
+      let curMo = (summary.current_month && summary.current_month.month === curKey) ? { ...summary.current_month } : null;
+      let lastMo = (summary.last_month && summary.last_month.month === lastKey) ? { ...summary.last_month } : null;
 
-        let lastShort = 'Last Mo';
-        let lData = { net: 0, gross: 0, fees: 0, wins: 0, losses: 0, days: 0 };
-        let lWinRate = 0.0;
-        if (lastKey) {
-          const lDate = new Date(lastKey + '-01T00:00:00Z');
-          lastShort = !isNaN(lDate) ? lDate.toLocaleString('en-US', { month: 'short' }) + " '" + String(lDate.getFullYear()).slice(2) : lastKey;
-          lData = mAgg[lastKey] || lData;
-          const lTotalDays = lData.wins + lData.losses;
-          lWinRate = lTotalDays > 0 ? Math.round((lData.wins / lTotalDays) * 1000) / 10 : 0.0;
-        }
+      // Calculate trade-level win rate & stats from audit orders for exact Delta Exchange parity
+      const auditList = Array.isArray(dashboardState.audit_orders) ? dashboardState.audit_orders : [];
+      const curClosedTrades = auditList.filter(o => String(o.date_ist || o.created_at || '').slice(0, 7) === curKey && (o.state === 'closed' || (parseFloat(o.pnl_usd) || 0) !== 0));
+      const curWins = curClosedTrades.filter(o => (parseFloat(o.pnl_usd) || 0) > 0).length;
+      const curLosses = curClosedTrades.filter(o => (parseFloat(o.pnl_usd) || 0) < 0).length;
+      const curTotalTrades = curWins + curLosses;
+      const curTradeWinRate = curTotalTrades > 0 ? Math.round((curWins / curTotalTrades) * 1000) / 10 : 0.0;
+      const curGross = curClosedTrades.reduce((acc, o) => acc + (parseFloat(o.pnl_usd) || 0), 0);
+      const curFees = curClosedTrades.reduce((acc, o) => acc + (parseFloat(o.paid_commission || o.fee) || 0), 0);
+      const curNet = curClosedTrades.reduce((acc, o) => acc + (parseFloat(o.net_pnl_usd) || 0), 0);
 
-        let liveIv = 38.5;
-        if (dashboardState.strategies && dashboardState.strategies.regime_condor && dashboardState.strategies.regime_condor.current_iv) {
-          liveIv = Number(dashboardState.strategies.regime_condor.current_iv);
-        }
+      const lastClosedTrades = auditList.filter(o => String(o.date_ist || o.created_at || '').slice(0, 7) === lastKey && (o.state === 'closed' || (parseFloat(o.pnl_usd) || 0) !== 0));
+      const lastWins = lastClosedTrades.filter(o => (parseFloat(o.pnl_usd) || 0) > 0).length;
+      const lastLosses = lastClosedTrades.filter(o => (parseFloat(o.pnl_usd) || 0) < 0).length;
+      const lastTotalTrades = lastWins + lastLosses;
+      const lastTradeWinRate = lastTotalTrades > 0 ? Math.round((lastWins / lastTotalTrades) * 1000) / 10 : 0.0;
+      const lastGross = lastClosedTrades.reduce((acc, o) => acc + (parseFloat(o.pnl_usd) || 0), 0);
+      const lastFees = lastClosedTrades.reduce((acc, o) => acc + (parseFloat(o.paid_commission || o.fee) || 0), 0);
+      const lastNet = lastClosedTrades.reduce((acc, o) => acc + (parseFloat(o.net_pnl_usd) || 0), 0);
 
+      let liveIv = 34.8;
+      if (dashboardState.strategies && dashboardState.strategies.regime_condor && dashboardState.strategies.regime_condor.current_iv) {
+        liveIv = Number(dashboardState.strategies.regime_condor.current_iv);
+      }
+
+      if (!curMo) {
         curMo = {
           month: curKey,
+          label: curDate.toLocaleString('en-US', { month: 'long', year: 'numeric' }),
           short_label: curShort,
-          net_pnl_usd: Math.round(cData.net * 100) / 100,
-          gross_pnl_usd: Math.round(cData.gross * 100) / 100,
-          fees_usd: Math.round(cData.fees * 100) / 100,
-          win_rate_pct: cWinRate,
+          net_pnl_usd: Math.round(curNet * 100) / 100,
+          gross_pnl_usd: Math.round(curGross * 100) / 100,
+          fees_usd: Math.round(curFees * 100) / 100,
+          win_rate_pct: curTradeWinRate,
           avg_iv_pct: liveIv,
-          trading_days: cData.days
+          trades_count: curTotalTrades
         };
+      } else {
+        if (curTotalTrades > 0) {
+          curMo.win_rate_pct = curTradeWinRate;
+          curMo.gross_pnl_usd = Math.round(curGross * 100) / 100;
+          curMo.fees_usd = Math.round(curFees * 100) / 100;
+          curMo.net_pnl_usd = Math.round(curNet * 100) / 100;
+        }
+      }
+
+      if (!lastMo) {
         lastMo = {
           month: lastKey,
+          label: lDate.toLocaleString('en-US', { month: 'long', year: 'numeric' }),
           short_label: lastShort,
-          net_pnl_usd: Math.round(lData.net * 100) / 100,
-          gross_pnl_usd: Math.round(lData.gross * 100) / 100,
-          fees_usd: Math.round(lData.fees * 100) / 100,
-          win_rate_pct: lWinRate,
+          net_pnl_usd: Math.round(lastNet * 100) / 100,
+          gross_pnl_usd: Math.round(lastGross * 100) / 100,
+          fees_usd: Math.round(lastFees * 100) / 100,
+          win_rate_pct: lastTradeWinRate,
           avg_iv_pct: 42.0,
-          trading_days: lData.days
+          trades_count: lastTotalTrades
         };
+      } else {
+        if (lastTotalTrades > 0) {
+          lastMo.win_rate_pct = lastTradeWinRate;
+          lastMo.gross_pnl_usd = Math.round(lastGross * 100) / 100;
+          lastMo.fees_usd = Math.round(lastFees * 100) / 100;
+          lastMo.net_pnl_usd = Math.round(lastNet * 100) / 100;
+        }
       }
 
       // Update button labels
       const btnThis = document.getElementById('kpi-btn-this-month');
       const btnLast = document.getElementById('kpi-btn-last-month');
-      if (btnThis) btnThis.textContent = curMo.short_label || 'This Mo';
-      if (btnLast) btnLast.textContent = lastMo.short_label || 'Last Mo';
+      if (btnThis) btnThis.textContent = curMo.short_label || curShort;
+      if (btnLast) btnLast.textContent = lastMo.short_label || lastShort;
 
       // Active button styling
       const isCur = (window.monthlyKpiView !== 'last');
@@ -8115,24 +8144,27 @@
       const activeMo = isCur ? curMo : lastMo;
       const titleEl = document.getElementById('kpi-month-title');
       if (titleEl) {
-        titleEl.textContent = isCur ? `${activeMo.short_label || 'Monthly'} Realized P&L` : `${activeMo.short_label || 'Last Month'} Realized P&L`;
+        titleEl.textContent = isCur ? `${activeMo.short_label || curShort} Realized P&L` : `${activeMo.short_label || lastShort} Realized P&L`;
       }
 
+      // In Delta Exchange, "Total Realised PNL" displays gross realized PnL before fees
+      const headlinePnl = isReadOnly ? 0.0 : ((activeMo.gross_pnl_usd !== undefined && activeMo.gross_pnl_usd !== null && activeMo.gross_pnl_usd !== 0)
+        ? Number(activeMo.gross_pnl_usd)
+        : Number(activeMo.net_pnl_usd || 0.0));
       const netPnl = isReadOnly ? 0.0 : Number(activeMo.net_pnl_usd || 0.0);
-      const grossPnl = isReadOnly ? 0.0 : Number(activeMo.gross_pnl_usd || 0.0);
       const fees = isReadOnly ? 0.0 : Number(activeMo.fees_usd || 0.0);
       const winRate = isReadOnly ? 0 : Number(activeMo.win_rate_pct || 0);
-      const iv = Number(activeMo.avg_iv_pct || 38.5);
+      const iv = Number(activeMo.avg_iv_pct || liveIv);
 
       const netEl = document.getElementById('kpi-realized-pnl');
       if (netEl) {
-        netEl.textContent = formatMoney(netPnl, true);
-        netEl.className = `text-xl font-bold font-mono ${netPnl > 0 ? 'text-emerald-400' : (netPnl < 0 ? 'text-rose-400' : 'text-gray-300')}`;
+        netEl.textContent = formatMoney(headlinePnl, true);
+        netEl.className = `text-xl font-bold font-mono ${headlinePnl > 0 ? 'text-emerald-400' : (headlinePnl < 0 ? 'text-rose-400' : 'text-gray-300')}`;
       }
 
       const grossEl = document.getElementById('kpi-gross-pnl');
       if (grossEl) {
-        grossEl.textContent = `Gross: ${formatMoney(grossPnl, true)}`;
+        grossEl.textContent = `Net: ${formatMoney(netPnl, true)}`;
       }
 
       const winEl = document.getElementById('kpi-win-rate');
@@ -8153,13 +8185,13 @@
       const compEl = document.getElementById('kpi-month-compare');
       if (compEl) {
         if (isCur) {
-          const lastNet = Number(lastMo.net_pnl_usd || 0);
-          const diff = Math.round((netPnl - lastNet) * 100) / 100;
+          const lastVal = Number(lastMo.gross_pnl_usd ?? lastMo.net_pnl_usd ?? 0);
+          const diff = Math.round((headlinePnl - lastVal) * 100) / 100;
           const sign = diff >= 0 ? '+' : '';
-          compEl.textContent = `vs ${lastMo.short_label || 'Last'}: ${sign}${formatMoney(diff)}`;
+          compEl.textContent = `vs ${lastMo.short_label || lastShort}: ${sign}${formatMoney(diff)}`;
           compEl.className = `text-[10px] px-1.5 py-0.5 rounded bg-gray-800/80 font-mono ${diff >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
         } else {
-          compEl.textContent = `${activeMo.trading_days || 0} Trading Days`;
+          compEl.textContent = `${activeMo.trades_count || activeMo.trading_days || 0} Trades`;
           compEl.className = 'text-[10px] px-1.5 py-0.5 rounded bg-gray-800/80 text-gray-400 font-mono';
         }
       }
@@ -8562,18 +8594,18 @@
       let decayPct = 0;
 
       // True directional uPnL calculation:
-      // Delta API positions provide realized_cashflow and unrealized_cashflow.
-      // In Delta Exchange derivatives, Position UPNL = realized_cashflow + unrealized_cashflow.
+      // Delta Exchange position UPNL in the UI displays directional PnL net of entry commission.
+      const metaNet = p.meta_data ? p.meta_data.net_pnl : undefined;
+      const comm = parseFloat(p.commission || p.paid_commission || (p.meta_data && p.meta_data.commission) || 0);
       const rc = parseFloat(p.realized_cashflow || 0);
       const uc = parseFloat(p.unrealized_cashflow || 0);
-      if (p.realized_cashflow !== undefined && p.unrealized_cashflow !== undefined && (rc !== 0 || uc !== 0)) {
-        upnl = rc + uc;
+      if (metaNet !== undefined && !isNaN(parseFloat(metaNet))) {
+        upnl = parseFloat(metaNet);
       } else if (entryPx > 0 && markPx > 0) {
-        if (isLong) {
-          upnl = (markPx - entryPx) * cryptoQty;
-        } else {
-          upnl = (entryPx - markPx) * cryptoQty;
-        }
+        const rawUpnl = isLong ? (markPx - entryPx) * cryptoQty : (entryPx - markPx) * cryptoQty;
+        upnl = Math.round((rawUpnl - comm) * 100) / 100;
+      } else if (p.realized_cashflow !== undefined && p.unrealized_cashflow !== undefined && (rc !== 0 || uc !== 0)) {
+        upnl = rc + uc;
       } else {
         upnl = parseFloat(p.unrealized_pnl_usd || p.unrealized_pnl || 0.0);
       }
