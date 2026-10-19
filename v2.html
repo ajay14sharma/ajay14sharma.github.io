@@ -1107,11 +1107,26 @@
       });
 
       // Update KPI Card 2
-      document.getElementById('kpi-open-pnl').textContent = formatMoney(totalUpnl, true);
+      const openPnlVal = totalUpnl;
+      const openPnlEl = document.getElementById('kpi-open-pnl');
+      if (openPnlEl) {
+        openPnlEl.textContent = formatMoney(openPnlVal, true);
+        openPnlEl.className = `text-xl font-bold font-mono ${
+          openPnlVal > 0 ? 'text-emerald-400' : (openPnlVal < 0 ? 'text-rose-400' : 'text-gray-300')
+        }`;
+      }
       const overallDecayPct = totalCredit > 0 ? (totalUpnl / totalCredit) * 100 : 0;
-      document.getElementById('kpi-theta-pct').textContent = `+${overallDecayPct.toFixed(1)}% Theta`;
-      document.getElementById('kpi-open-details').textContent = `Sold: ${formatMoney(totalCredit)} • Net Δ: +0.03 BTC`;
-      document.getElementById('kpi-open-legs-count').textContent = `${rawPositions.length} Open Legs`;
+      const thetaPctEl = document.getElementById('kpi-theta-pct');
+      if (thetaPctEl) {
+        thetaPctEl.textContent = `${overallDecayPct > 0 ? '+' : ''}${overallDecayPct.toFixed(1)}% Theta`;
+        thetaPctEl.className = `text-xs font-semibold ${
+          overallDecayPct > 0 ? 'text-emerald-400/90' : (overallDecayPct < 0 ? 'text-rose-400/90' : 'text-gray-400')
+        }`;
+      }
+      const openDetailsEl = document.getElementById('kpi-open-details');
+      if (openDetailsEl) openDetailsEl.textContent = `Sold: ${formatMoney(totalCredit)} • Net Δ: +0.03 BTC`;
+      const openLegsEl = document.getElementById('kpi-open-legs-count');
+      if (openLegsEl) openLegsEl.textContent = `${rawPositions.length} Open Legs`;
 
       // Render Table Rows
       parsedPositions.forEach(p => {

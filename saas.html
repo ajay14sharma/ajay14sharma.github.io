@@ -9028,12 +9028,27 @@
       });
 
       // Update KPI Card 2
-      document.getElementById('kpi-open-pnl').textContent = formatMoney(isReadOnly ? 0 : totalUpnl, true);
+      const openPnlVal = isReadOnly ? 0 : totalUpnl;
+      const openPnlEl = document.getElementById('kpi-open-pnl');
+      if (openPnlEl) {
+        openPnlEl.textContent = formatMoney(openPnlVal, true);
+        openPnlEl.className = `text-xl font-bold font-mono ${
+          openPnlVal > 0 ? 'text-emerald-400' : (openPnlVal < 0 ? 'text-rose-400' : 'text-gray-300')
+        }`;
+      }
       const overallDecayPct = (totalCredit > 0 && !isReadOnly) ? (totalUpnl / totalCredit) * 100 : 0;
-      document.getElementById('kpi-theta-pct').textContent = `${(totalCredit > 0 && !isReadOnly) ? '+' : ''}${overallDecayPct.toFixed(1)}% Theta`;
+      const thetaPctEl = document.getElementById('kpi-theta-pct');
+      if (thetaPctEl) {
+        thetaPctEl.textContent = `${(totalCredit > 0 && !isReadOnly && overallDecayPct > 0) ? '+' : ''}${overallDecayPct.toFixed(1)}% Theta`;
+        thetaPctEl.className = `text-xs font-semibold ${
+          overallDecayPct > 0 ? 'text-emerald-400/90' : (overallDecayPct < 0 ? 'text-rose-400/90' : 'text-gray-400')
+        }`;
+      }
       const activeLabel = currentPositionSleeve !== 'all' ? currentPositionSleeve.toUpperCase() : currentStrategy.toUpperCase();
-      document.getElementById('kpi-open-details').textContent = isReadOnly ? 'Read-Only Mode • Connect Broker Keys' : `Credit: ${formatMoney(Math.max(0, totalCredit))} • Sleeve: ${activeLabel}`;
-      document.getElementById('kpi-open-legs-count').textContent = isReadOnly ? '0 Open Legs' : `${rawPositions.length} Open Legs`;
+      const openDetailsEl = document.getElementById('kpi-open-details');
+      if (openDetailsEl) openDetailsEl.textContent = isReadOnly ? 'Read-Only Mode • Connect Broker Keys' : `Credit: ${formatMoney(Math.max(0, totalCredit))} • Sleeve: ${activeLabel}`;
+      const openLegsEl = document.getElementById('kpi-open-legs-count');
+      if (openLegsEl) openLegsEl.textContent = isReadOnly ? '0 Open Legs' : `${rawPositions.length} Open Legs`;
 
       // Render Table Rows (7 Columns)
       parsedPositions.forEach(p => {
