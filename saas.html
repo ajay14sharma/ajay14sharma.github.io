@@ -7622,16 +7622,21 @@
           }
           const rc = parseFloat(p.realized_cashflow || 0);
           const uc = parseFloat(p.unrealized_cashflow || 0);
+          const rawGrossUpnl = size < 0 ? (entryPx - markPx) * cryptoQty : (markPx - entryPx) * cryptoQty;
           let uPnl = 0;
+          let grossUpnl = rawGrossUpnl;
           if (metaNet !== undefined && !isNaN(parseFloat(metaNet))) {
             uPnl = parseFloat(metaNet);
+            grossUpnl = uPnl + comm;
           } else if (entryPx > 0 && markPx > 0) {
-            const rawUpnl = size < 0 ? (entryPx - markPx) * cryptoQty : (markPx - entryPx) * cryptoQty;
-            uPnl = Math.round((rawUpnl - comm) * 100) / 100;
+            uPnl = Math.round((rawGrossUpnl - comm) * 100) / 100;
+            grossUpnl = rawGrossUpnl;
           } else if (p.realized_cashflow !== undefined && p.unrealized_cashflow !== undefined && (rc !== 0 || uc !== 0)) {
             uPnl = rc + uc;
+            grossUpnl = uPnl + comm;
           } else {
             uPnl = parseFloat(p.unrealized_pnl_usd || p.unrealized_pnl || 0.0);
+            grossUpnl = uPnl + comm;
           }
           if (isNaN(uPnl)) {
             uPnl = 0.0;
@@ -7709,6 +7714,8 @@
             mark_price: markPx,
             unrealized_pnl_usd: uPnl,
             unrealized_pnl: uPnl,
+            gross_unrealized_pnl_usd: Math.round(grossUpnl * 100) / 100,
+            commission_usd: Math.round(comm * 100) / 100,
             realized_cashflow: rc,
             unrealized_cashflow: uc,
             realized_cashflow_usd: rc,
@@ -7810,15 +7817,16 @@
         }
         const dailyPnl = Object.values(dailyMap).sort((a, b) => a.date.localeCompare(b.date));
 
-        const totalUpnl = openPositions.reduce((acc, p) => acc + (p.unrealized_pnl_usd || 0), 0);
+        const totalNetUpnl = openPositions.reduce((acc, p) => acc + (p.unrealized_pnl_usd || 0), 0);
+        const totalGrossUpnl = openPositions.reduce((acc, p) => acc + (p.gross_unrealized_pnl_usd !== undefined ? p.gross_unrealized_pnl_usd : ((p.unrealized_pnl_usd || 0) + (p.commission_usd || 0))), 0);
         const totalCredit = openPositions
           .filter(p => !p.isLong && (p.option_type || (p.symbol && p.symbol.split('-').length >= 4 && (p.symbol.startsWith('C-') || p.symbol.startsWith('P-')))))
           .reduce((acc, p) => acc + (Math.abs(p.lots) * (p.contract_multiplier || (p.symbol.includes('-ETH-') ? 0.01 : 0.001)) * p.entry_price), 0);
 
         // Account Value (Net Equity) & Margin Utilization Parity
         // In Delta Exchange derivatives accounts:
-        // Account Value = Gross Cash Balance - Total Short Option Credit + Open uPnL
-        const reconciledEquity = Math.round((totalCash - totalCredit + totalUpnl) * 100) / 100;
+        // Account Value = Gross Cash Balance - Total Short Option Credit + Open Directional uPnL
+        const reconciledEquity = Math.round((totalCash - totalCredit + totalGrossUpnl) * 100) / 100;
         accountEquity = (reconciledEquity >= availCash && totalCash > 0)
           ? reconciledEquity
           : ((availCash + blockedMargin) > 0 ? (availCash + blockedMargin) : (metaEquity > 0 ? metaEquity : totalCash));
@@ -7862,16 +7870,16 @@
         const winRate = closedCount > 0 ? Math.round((winCount / closedCount) * 1000) / 10 : 0.0;
 
         const preservedGross = hasExisting
-          ? Number(existingSummary.total_gross_pnl_usd ?? existingSummary.current_month?.gross_pnl_usd ?? verifiedOctLedger.gross)
+          ? Number(existingSummary.total_gross_pnl_usd || existingSummary.current_month?.gross_pnl_usd || verifiedOctLedger.gross)
           : verifiedOctLedger.gross;
         const preservedNet = hasExisting
-          ? Number(existingSummary.total_net_pnl_usd ?? existingSummary.current_month?.net_pnl_usd ?? verifiedOctLedger.net)
+          ? Number(existingSummary.total_net_pnl_usd || existingSummary.current_month?.net_pnl_usd || verifiedOctLedger.net)
           : verifiedOctLedger.net;
         const preservedFees = hasExisting
-          ? Number(existingSummary.total_fees_usd ?? existingSummary.current_month?.fees_usd ?? verifiedOctLedger.fees)
+          ? Number(existingSummary.total_fees_usd || existingSummary.current_month?.fees_usd || verifiedOctLedger.fees)
           : verifiedOctLedger.fees;
         const preservedWinRate = hasExisting
-          ? Number(existingSummary.day_win_rate_pct ?? existingSummary.win_rate_pct ?? existingSummary.current_month?.win_rate_pct ?? verifiedOctLedger.win_rate)
+          ? Number(existingSummary.day_win_rate_pct || existingSummary.win_rate_pct || existingSummary.current_month?.win_rate_pct || verifiedOctLedger.win_rate)
           : verifiedOctLedger.win_rate;
 
         const finalGross = (closedCount > 0 && totalRealizedGross !== 0) ? Math.round(totalRealizedGross * 100) / 100 : preservedGross;
@@ -7921,7 +7929,8 @@
             free_margin_pct: freeMarginPct,
             gross_cash_usd: Math.round((totalCash > 0 ? totalCash : accountEquity) * 100) / 100,
             total_credit_usd: Math.round(totalCredit * 100) / 100,
-            total_upnl_usd: Math.round(totalUpnl * 100) / 100,
+            total_upnl_usd: Math.round(totalNetUpnl * 100) / 100,
+            total_gross_upnl_usd: Math.round(totalGrossUpnl * 100) / 100,
             balance_inr_est: Math.round(accountEquity * 85.0)
           },
           portfolio_risk: {
@@ -8185,10 +8194,10 @@
           month: curKey,
           label: curDate.toLocaleString('en-US', { month: 'long', year: 'numeric' }),
           short_label: curShort,
-          net_pnl_usd: curTotalTrades > 0 ? Math.round(curNet * 100) / 100 : Number(summary.total_net_pnl_usd ?? -351.23),
-          gross_pnl_usd: curTotalTrades > 0 ? Math.round(curGross * 100) / 100 : Number(summary.total_gross_pnl_usd ?? -192.33),
-          fees_usd: curTotalTrades > 0 ? Math.round(curFees * 100) / 100 : Number(summary.total_fees_usd ?? 158.89),
-          win_rate_pct: curTotalTrades > 0 ? curTradeWinRate : Number(summary.day_win_rate_pct ?? 46.4),
+          net_pnl_usd: curTotalTrades > 0 ? Math.round(curNet * 100) / 100 : Number(summary.total_net_pnl_usd || -351.23),
+          gross_pnl_usd: curTotalTrades > 0 ? Math.round(curGross * 100) / 100 : Number(summary.total_gross_pnl_usd || -192.33),
+          fees_usd: curTotalTrades > 0 ? Math.round(curFees * 100) / 100 : Number(summary.total_fees_usd || 158.89),
+          win_rate_pct: curTotalTrades > 0 ? curTradeWinRate : Number(summary.day_win_rate_pct || 46.4),
           avg_iv_pct: liveIv,
           trades_count: curTotalTrades > 0 ? curTotalTrades : 28
         };
@@ -8199,10 +8208,10 @@
           curMo.fees_usd = Math.round(curFees * 100) / 100;
           curMo.net_pnl_usd = Math.round(curNet * 100) / 100;
         } else if (!curMo.gross_pnl_usd && !curMo.net_pnl_usd) {
-          curMo.gross_pnl_usd = Number(summary.total_gross_pnl_usd ?? -192.33);
-          curMo.net_pnl_usd = Number(summary.total_net_pnl_usd ?? -351.23);
-          curMo.fees_usd = Number(summary.total_fees_usd ?? 158.89);
-          curMo.win_rate_pct = Number(summary.day_win_rate_pct ?? 46.4);
+          curMo.gross_pnl_usd = Number(summary.total_gross_pnl_usd || -192.33);
+          curMo.net_pnl_usd = Number(summary.total_net_pnl_usd || -351.23);
+          curMo.fees_usd = Number(summary.total_fees_usd || 158.89);
+          curMo.win_rate_pct = Number(summary.day_win_rate_pct || 46.4);
         }
       }
 
@@ -8319,6 +8328,7 @@
         }
         return acc;
       }, 0);
+      const totalGrossUpnl = positions.reduce((acc, p) => acc + (parseFloat(p.gross_unrealized_pnl_usd ?? (parseFloat(p.unrealized_pnl_usd || 0) + parseFloat(p.commission_usd || 0))) || 0), 0);
       const totalUpnl = positions.reduce((acc, p) => acc + (parseFloat(p.unrealized_pnl_usd) || 0), 0);
 
       let balUsd = isReadOnlyTenant ? 0.0 : Number(w.account_value_usd ?? w.balance_usd ?? 0.0);
@@ -8328,7 +8338,7 @@
 
       if (!balUsd && !isReadOnlyTenant) {
         if (grossCashUsd > 0 && totalShortCredit > 0) {
-          const recEq = Math.round((grossCashUsd - totalShortCredit + totalUpnl) * 100) / 100;
+          const recEq = Math.round((grossCashUsd - totalShortCredit + totalGrossUpnl) * 100) / 100;
           balUsd = recEq >= availUsd ? recEq : (availUsd + blockedUsd);
         } else {
           balUsd = Number(w.balance_usd ?? (availUsd + blockedUsd));
