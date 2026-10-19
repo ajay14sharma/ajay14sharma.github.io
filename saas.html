@@ -7524,12 +7524,13 @@
           return resp.json();
         }
 
-        const [balRes, posRes, openOrdersRes, historyRes, tickersRes] = await Promise.all([
+        const [balRes, posRes, openOrdersRes, historyRes, tickersRes, fillsRes] = await Promise.all([
           deltaFetch('/v2/wallet/balances'),
           deltaFetch('/v2/positions/margined'),
           deltaFetch('/v2/orders?state=open').catch(() => ({ result: [] })),
           deltaFetch('/v2/orders/history?page_size=100').catch(() => ({ result: [] })),
-          deltaFetch('/v2/tickers').catch(() => ({ result: [] }))
+          deltaFetch('/v2/tickers').catch(() => ({ result: [] })),
+          deltaFetch('/v2/fills?page_size=100').catch(() => ({ result: [] }))
         ]);
 
         const tickersBySymbol = {};
@@ -7567,6 +7568,28 @@
         const rawPositions = posRes?.result || [];
         const openOrders = openOrdersRes?.result || [];
         const historyOrders = historyRes?.result || [];
+        const rawFills = fillsRes?.result || [];
+
+        // Index fills by product_symbol, normalized symbol, and product_id
+        const fillsBySymbol = {};
+        const fillsByPid = {};
+        for (const f of rawFills) {
+          const fSym = f.product_symbol || f.symbol || '';
+          const fPid = f.product_id;
+          if (fSym) {
+            if (!fillsBySymbol[fSym]) fillsBySymbol[fSym] = [];
+            fillsBySymbol[fSym].push(f);
+            const normSym = fSym.replace('-BTC-', '-').replace('-ETH-', '-').replace('-SOL-', '-').replace('-XRP-', '-');
+            if (normSym !== fSym) {
+              if (!fillsBySymbol[normSym]) fillsBySymbol[normSym] = [];
+              fillsBySymbol[normSym].push(f);
+            }
+          }
+          if (fPid) {
+            if (!fillsByPid[fPid]) fillsByPid[fPid] = [];
+            fillsByPid[fPid].push(f);
+          }
+        }
 
         // Map open orders by product_symbol to find active SL trigger
         const slOrderBySymbol = {};
@@ -7597,6 +7620,9 @@
 
           const size = parseInt(p.size) || 0;
           const side = size < 0 ? 'sell' : 'buy';
+          const openSide = side; // for short position opening side is sell, for long buy
+          const pid = p.product_id;
+          const normSym = sym.replace('-BTC-', '-').replace('-ETH-', '-').replace('-SOL-', '-').replace('-XRP-', '-');
           const lots = size; // preserve directional sign: negative for short, positive for long
           const entryPx = parseFloat(p.entry_price || 0);
           const tInfo = tickersBySymbol[sym] || liveTickersBySymbol[sym] || {};
@@ -7605,20 +7631,46 @@
           const cryptoQty = Math.abs(size) * multiplier;
           const isLong = side === 'buy' || size > 0;
 
+          // Check fill slips for exact opening commission
+          const candidateFills = [];
+          if (pid && fillsByPid[pid]) candidateFills.push(...fillsByPid[pid]);
+          if (sym && fillsBySymbol[sym]) candidateFills.push(...fillsBySymbol[sym]);
+          if (normSym && fillsBySymbol[normSym]) candidateFills.push(...fillsBySymbol[normSym]);
+
+          const seenFillIds = new Set();
+          let exactComm = 0;
+          let foundExactFill = false;
+
+          for (const f of candidateFills) {
+            const fId = f.id || `${f.order_id}_${f.created_at}_${f.price}`;
+            if (seenFillIds.has(fId)) continue;
+            seenFillIds.add(fId);
+
+            if ((f.side || '').toLowerCase() === openSide.toLowerCase()) {
+              const feeVal = parseFloat(f.commission ?? f.fee ?? f.paid_commission ?? 0);
+              if (!isNaN(feeVal) && feeVal > 0) {
+                exactComm += feeVal;
+                foundExactFill = true;
+              }
+            }
+          }
+          exactComm = Math.round(exactComm * 100) / 100;
+
           // True directional uPnL calculation:
           // Delta Exchange position UPNL in the UI displays directional PnL net of entry commission.
           const metaNet = p.meta_data ? p.meta_data.net_pnl : undefined;
-          let comm = parseFloat(p.commission || p.paid_commission || (p.meta_data && (p.meta_data.commission || p.meta_data.entry_commission)) || 0);
+          let comm = 0;
+          if (foundExactFill && exactComm > 0) {
+            comm = exactComm;
+          } else {
+            comm = parseFloat(p.commission || p.paid_commission || (p.meta_data && (p.meta_data.commission || p.meta_data.entry_commission)) || 0);
+          }
+
           if (!comm && entryPx > 0 && cryptoQty > 0) {
             const spotPx = parseFloat(tInfo.spot_price || (underlying === 'ETH' ? liveEthSpotPriceNumeric : liveSpotPriceNumeric) || (underlying === 'ETH' ? 3120 : 84250));
             const notional = cryptoQty * (spotPx > 0 ? spotPx : (entryPx > 2000 ? entryPx : 84250));
             const premium = cryptoQty * entryPx;
-            const estStandardFee = (underlying === 'BTC') ? (cryptoQty / 0.5) * 23.88 : (cryptoQty / 5.0) * 15.0;
-            const notionalCapFee = Math.min(notional * 0.0003, premium * 0.10);
-            comm = estStandardFee > 0 ? estStandardFee : notionalCapFee;
-            if (premium > 0 && comm > premium * 0.20) {
-              comm = premium * 0.10;
-            }
+            comm = Math.round(Math.min(notional * 0.0003, premium * 0.10) * 100) / 100;
           }
           const rc = parseFloat(p.realized_cashflow || 0);
           const uc = parseFloat(p.unrealized_cashflow || 0);
@@ -7964,6 +8016,7 @@
           open_positions: openPositions,
           daily_pnl: finalDailyPnl,
           audit_orders: auditOrders,
+          fills: rawFills,
           strategies: {
             btc_1dte: { name: 'BTC 1DTE Strangle', status: 'ACTIVE', total_credit_usd: totalCredit, open_legs: openPositions.length },
             eth_1dte: { name: 'ETH 1DTE Strangle', status: 'STANDBY', total_credit_usd: 0, open_legs: 0 },
@@ -8720,16 +8773,41 @@
       // True directional uPnL calculation:
       // Delta Exchange position UPNL in the UI displays directional PnL net of entry commission.
       const metaNet = p.meta_data ? p.meta_data.net_pnl : undefined;
-      let comm = parseFloat(p.commission || p.paid_commission || (p.meta_data && (p.meta_data.commission || p.meta_data.entry_commission)) || 0);
+      let comm = parseFloat(p.commission || p.commission_usd || p.paid_commission || (p.meta_data && (p.meta_data.commission || p.meta_data.entry_commission)) || 0);
       if (!comm && entryPx > 0 && cryptoQty > 0) {
-        const spotPx = parseFloat(ticker.spot_price || (assetUnit === 'ETH' ? liveEthSpotPriceNumeric : liveSpotPriceNumeric) || (assetUnit === 'ETH' ? 3120 : 84250));
-        const notional = cryptoQty * (spotPx > 0 ? spotPx : (entryPx > 2000 ? entryPx : 84250));
-        const premium = cryptoQty * entryPx;
-        const estStandardFee = (assetUnit === 'BTC') ? (cryptoQty / 0.5) * 23.88 : (cryptoQty / 5.0) * 15.0;
-        const notionalCapFee = Math.min(notional * 0.0003, premium * 0.10);
-        comm = estStandardFee > 0 ? estStandardFee : notionalCapFee;
-        if (premium > 0 && comm > premium * 0.20) {
-          comm = premium * 0.10;
+        let exactComm = 0;
+        let foundExact = false;
+        if (typeof dashboardState !== 'undefined' && dashboardState && Array.isArray(dashboardState.fills)) {
+          const openSide = isLong ? 'buy' : 'sell';
+          const symStr = p.symbol || '';
+          const normSymStr = symStr.replace('-BTC-', '-').replace('-ETH-', '-').replace('-SOL-', '-').replace('-XRP-', '-');
+          const pid = p.product_id;
+          const seenFills = new Set();
+          for (const f of dashboardState.fills) {
+            const fSym = f.product_symbol || f.symbol || '';
+            const fPid = f.product_id;
+            const normFSym = fSym.replace('-BTC-', '-').replace('-ETH-', '-').replace('-SOL-', '-').replace('-XRP-', '-');
+            const matchesProd = (pid && fPid && pid === fPid) || (symStr && (fSym === symStr || normFSym === symStr || fSym === normSymStr));
+            if (matchesProd && (f.side || '').toLowerCase() === openSide.toLowerCase()) {
+              const fId = f.id || `${f.order_id}_${f.created_at}_${f.price}`;
+              if (!seenFills.has(fId)) {
+                seenFills.add(fId);
+                const feeVal = parseFloat(f.commission ?? f.fee ?? f.paid_commission ?? f.commission_usd ?? 0);
+                if (!isNaN(feeVal) && feeVal > 0) {
+                  exactComm += feeVal;
+                  foundExact = true;
+                }
+              }
+            }
+          }
+        }
+        if (foundExact && exactComm > 0) {
+          comm = Math.round(exactComm * 100) / 100;
+        } else {
+          const spotPx = parseFloat(ticker.spot_price || (assetUnit === 'ETH' ? liveEthSpotPriceNumeric : liveSpotPriceNumeric) || (assetUnit === 'ETH' ? 3120 : 84250));
+          const notional = cryptoQty * (spotPx > 0 ? spotPx : (entryPx > 2000 ? entryPx : 84250));
+          const premium = cryptoQty * entryPx;
+          comm = Math.round(Math.min(notional * 0.0003, premium * 0.10) * 100) / 100;
         }
       }
       const rc = parseFloat(p.realized_cashflow || 0);

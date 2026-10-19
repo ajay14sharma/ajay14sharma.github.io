@@ -6659,16 +6659,41 @@
       // True directional uPnL calculation:
       // Delta Exchange position UPNL in the UI displays directional PnL net of entry commission.
       const metaNet = p.meta_data ? p.meta_data.net_pnl : undefined;
-      let comm = parseFloat(p.commission || p.paid_commission || (p.meta_data && (p.meta_data.commission || p.meta_data.entry_commission)) || 0);
+      let comm = parseFloat(p.commission || p.commission_usd || p.paid_commission || (p.meta_data && (p.meta_data.commission || p.meta_data.entry_commission)) || 0);
       if (!comm && entryPx > 0 && cryptoQty > 0) {
-        const spotPx = parseFloat(ticker.spot_price || (assetUnit === 'ETH' ? (window.liveEthSpotPriceNumeric || 3120) : (window.liveSpotPriceNumeric || 84250)));
-        const notional = cryptoQty * (spotPx > 0 ? spotPx : (entryPx > 2000 ? entryPx : 84250));
-        const premium = cryptoQty * entryPx;
-        const estStandardFee = (assetUnit === 'BTC') ? (cryptoQty / 0.5) * 23.88 : (cryptoQty / 5.0) * 15.0;
-        const notionalCapFee = Math.min(notional * 0.0003, premium * 0.10);
-        comm = estStandardFee > 0 ? estStandardFee : notionalCapFee;
-        if (premium > 0 && comm > premium * 0.20) {
-          comm = premium * 0.10;
+        let exactComm = 0;
+        let foundExact = false;
+        if (typeof dashboardState !== 'undefined' && dashboardState && Array.isArray(dashboardState.fills)) {
+          const openSide = isLong ? 'buy' : 'sell';
+          const symStr = p.symbol || '';
+          const normSymStr = symStr.replace('-BTC-', '-').replace('-ETH-', '-').replace('-SOL-', '-').replace('-XRP-', '-');
+          const pid = p.product_id;
+          const seenFills = new Set();
+          for (const f of dashboardState.fills) {
+            const fSym = f.product_symbol || f.symbol || '';
+            const fPid = f.product_id;
+            const normFSym = fSym.replace('-BTC-', '-').replace('-ETH-', '-').replace('-SOL-', '-').replace('-XRP-', '-');
+            const matchesProd = (pid && fPid && pid === fPid) || (symStr && (fSym === symStr || normFSym === symStr || fSym === normSymStr));
+            if (matchesProd && (f.side || '').toLowerCase() === openSide.toLowerCase()) {
+              const fId = f.id || `${f.order_id}_${f.created_at}_${f.price}`;
+              if (!seenFills.has(fId)) {
+                seenFills.add(fId);
+                const feeVal = parseFloat(f.commission ?? f.fee ?? f.paid_commission ?? f.commission_usd ?? 0);
+                if (!isNaN(feeVal) && feeVal > 0) {
+                  exactComm += feeVal;
+                  foundExact = true;
+                }
+              }
+            }
+          }
+        }
+        if (foundExact && exactComm > 0) {
+          comm = Math.round(exactComm * 100) / 100;
+        } else {
+          const spotPx = parseFloat(ticker.spot_price || (assetUnit === 'ETH' ? (window.liveEthSpotPriceNumeric || 3120) : (window.liveSpotPriceNumeric || 84250)));
+          const notional = cryptoQty * (spotPx > 0 ? spotPx : (entryPx > 2000 ? entryPx : 84250));
+          const premium = cryptoQty * entryPx;
+          comm = Math.round(Math.min(notional * 0.0003, premium * 0.10) * 100) / 100;
         }
       }
       const rc = parseFloat(p.realized_cashflow || 0);
