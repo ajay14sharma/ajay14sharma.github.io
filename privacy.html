@@ -58,7 +58,7 @@
       background: #f1f5f9;
       padding: 18px;
       border-radius: 8px;
-      border-left: 4px solid #ff5722;
+      border-left: 4px solid #0284c7;
       margin: 20px 0;
     }
     .badge {
@@ -104,7 +104,7 @@
     <div class="updated">Last updated: November 18, 2026</div>
 
     <div class="highlight">
-      <strong>Executive Summary:</strong> <strong>Delta Edge</strong> is a 100% client-side Chrome browser extension built for traders on Delta Exchange. The extension does not collect, track, transmit, monetize, or sell any personal or financial information. All calculations (fees, 18% GST splits, Greeks, SL/TP simulations) happen entirely within your local browser. No data ever leaves your device.
+      <strong>Executive Summary:</strong> <strong>Delta Edge</strong> is a privacy-first browser extension designed for traders on Delta Exchange. All core financial computations—including real-time maker/taker fees, 18% Indian GST separation, Black-Scholes Greeks, and SL/TP payoff simulations—run <strong>100% locally on your machine</strong>. We <strong>never collect, transmit, or store personal information, trading balances, order amounts, passwords, API keys, or private wallet keys</strong>. To help us understand which features are most useful, the extension collects strictly pseudonymous, aggregated feature adoption events (via Google Analytics 4), which users can opt out of with a single click at any time in the extension settings.
     </div>
 
     <h2>1. Single Purpose & Product Identity</h2>
@@ -112,13 +112,14 @@
       The single purpose of the <strong>Delta Edge</strong> extension (Chrome Web Store ID: <code>kjmpmihngnckancnmiikpjhfdbginpgi</code>) is to enhance trading transparency on Delta Exchange (<code>https://india.delta.exchange</code> and <code>https://www.delta.exchange</code>). It provides real-time maker/taker fee breakdowns, 18% Indian GST isolation, multi-expiry risk filtering, and institutional options payoff charts directly within the trader's interface.
     </p>
 
-    <h2>2. Data Collection & Processing Scope</h2>
-    <p>We adhere to strict data minimization. Delta Edge:</p>
+    <h2>2. Data Collection & Non-Collection Scope</h2>
+    <p>We adhere to strict data minimization principles. Delta Edge:</p>
     <ul>
       <li><strong>Does NOT collect</strong> any Personally Identifiable Information (PII) such as your name, email address, phone number, physical address, or IP address.</li>
       <li><strong>Does NOT collect, ask for, or store</strong> trading passwords, API keys, private keys, or wallet credentials.</li>
+      <li><strong>Does NOT track or inspect</strong> user account balances, trade quantities, margin details, or actual execution prices.</li>
       <li><strong>Does NOT track</strong> user browsing activity, search history, or keystrokes outside of the active Delta Exchange tab.</li>
-      <li><strong>Does NOT use</strong> tracking cookies, fingerprinting scripts, or third-party advertising identifiers.</li>
+      <li><strong>Does NOT use</strong> advertising trackers, cross-site cookies, or fingerprinting scripts.</li>
     </ul>
 
     <h2>3. Chrome Permissions & Host Access Justification</h2>
@@ -145,25 +146,37 @@
           <td><code>storage</code></td>
           <td>Chrome API</td>
           <td>
-            Used locally to persist your interface display preferences across browser reloads (e.g. Master Power switch, Net vs. Gross GST toggle, selected language: English/Hindi).
+            Used locally to persist your interface display preferences across browser reloads (e.g. Master Power switch, Net vs. Gross GST toggle, selected language: English/Hindi, and telemetry opt-out choice).
           </td>
         </tr>
       </tbody>
     </table>
 
-    <h2>4. Client-Side Processing & Zero Remote Server Transmission</h2>
+    <h2>4. Client-Side Processing Guarantee</h2>
     <p>
-      Delta Edge executes <strong>100% client-side</strong> inside your browser:
+      All trading and pricing logic in Delta Edge executes <strong>100% client-side</strong> inside your browser:
     </p>
     <ul>
       <li>All fee calculations, Black-Scholes Greeks formulas, and SL/TP payoff simulations run locally in the browser's JavaScript engine.</li>
-      <li>The extension does not maintain or communicate with any developer-owned backend servers, analytics endpoints, or cloud databases.</li>
-      <li>Network requests to Delta Exchange's API (<code>/v2/fills</code>) originate directly from your browser to Delta Exchange's official servers—no intermediate proxy or intermediary server is ever used.</li>
+      <li>Network requests to Delta Exchange's API (<code>/v2/fills</code>) originate directly from your browser to Delta Exchange's official servers—no intermediate proxy or developer server is ever used.</li>
+      <li>The extension does not maintain any custom backend servers, user databases, or credential storage.</li>
     </ul>
 
-    <h2>5. Data Retention, Storage & Cache Eviction</h2>
+    <h2>5. Anonymized Feature Usage Telemetry (Google Analytics 4)</h2>
     <p>
-      To prevent redundant API queries and avoid hitting rate limits, recently fetched execution fills are cached locally in your machine's browser memory (<code>localStorage</code>):
+      To understand how traders use Delta Edge and identify areas for improvement, the extension collects strictly pseudonymous, aggregated feature adoption signals via the <strong>Google Analytics 4 (GA4) Measurement Protocol</strong>:
+    </p>
+    <ul>
+      <li><strong>What is Collected:</strong> Generic, non-personal user interaction events (such as opening the Smart Payoff Studio, applying an SL/TP preset, clicking the scenario matrix, toggling GST mode, or extension version updates).</li>
+      <li><strong>Pseudonymous Identifier:</strong> A randomly generated UUID <code>client_id</code> is generated locally in your browser (<code>chrome.storage.local</code>) to group feature usage anonymously. This identifier is never linked to your identity, IP address, Google account, or Delta Exchange account.</li>
+      <li><strong>Zero Financial or Credential Data:</strong> Telemetry payloads strictly exclude trade sizes, dollar amounts, strike prices, account balances, or any identifying exchange data.</li>
+      <li><strong>Data Processor:</strong> Telemetry is processed by Google Analytics (Google LLC) under standard data processing terms solely for aggregate metrics.</li>
+      <li><strong>Full User Opt-Out:</strong> You can disable feature telemetry at any time. Simply toggle off <strong>"Anonymous Telemetry"</strong> in the extension popup settings or during initial setup on <code>welcome.html</code>. When opted out, all telemetry dispatch is immediately halted.</li>
+    </ul>
+
+    <h2>6. Data Retention, Storage & Cache Eviction</h2>
+    <p>
+      To prevent redundant API queries and avoid hitting rate limits, recently fetched execution fills are cached locally in your machine's browser memory (<code>localStorage</code> and <code>chrome.storage.local</code>):
     </p>
     <ul>
       <li><strong>Retention Period:</strong> Fill cache entries are retained only while a trading position remains active. When a position is closed or expired, cached fills for that instrument are automatically deleted.</li>
@@ -171,30 +184,31 @@
       <li><strong>Uninstall Deletion:</strong> Removing the extension immediately purges all stored preferences and cache from your device.</li>
     </ul>
 
-    <h2>6. Data Sharing, Transfers & Third-Party Disclosure</h2>
+    <h2>7. Data Sharing, Transfers & Third-Party Disclosure</h2>
     <p>
-      We maintain an affirmative zero-transfer policy:
+      We maintain a strict non-monetization policy:
     </p>
     <ul>
       <li><strong>No Sale of Data:</strong> We never sell, rent, lease, or monetize user data under any circumstances.</li>
-      <li><strong>No Third-Party Access:</strong> No third-party companies, advertisers, brokers, or data brokers have access to any extension information or trading activity.</li>
+      <li><strong>No Broker or Advertiser Access:</strong> No trading data or user information is shared with commercial brokers, advertisers, or third-party data brokers.</li>
       <li><strong>No Cross-Context Tracking:</strong> The extension cannot and does not monitor any web pages or applications other than Delta Exchange.</li>
     </ul>
 
-    <h2>7. User Data Rights & Revocation Controls</h2>
-    <p>You have complete control over your data and extension operations at all times:</p>
+    <h2>8. User Data Rights & Revocation Controls</h2>
+    <p>You maintain full control over your data and extension operations at all times:</p>
     <ul>
+      <li><strong>Opt Out of Telemetry:</strong> Toggle off the <em>"Anonymous Telemetry"</em> switch in the extension popup to instantly stop all event reporting.</li>
       <li><strong>Disable Extension:</strong> Toggle the master switch off in the extension popup to instantly revert to Delta Exchange's default interface.</li>
-      <li><strong>Clear Cache:</strong> Click the "Cached Fills" <code>[✕]</code> button in the popup to wipe local storage.</li>
+      <li><strong>Clear Cache:</strong> Click the "Cached Fills" <code>[✕]</code> button in the popup to wipe all cached execution fills.</li>
       <li><strong>Complete Removal:</strong> Right-click the extension icon in Chrome and select <em>"Remove from Chrome..."</em> to permanently delete the extension and all associated local data.</li>
     </ul>
 
-    <h2>8. Policy Revisions & Updates</h2>
+    <h2>9. Policy Revisions & Updates</h2>
     <p>
       If our data handling practices change in future releases, this policy will be updated with an updated revision date. Any material changes will be accompanied by in-product release notes.
     </p>
 
-    <h2>9. Developer & Publisher Contact</h2>
+    <h2>10. Developer & Publisher Contact</h2>
     <p>
       If you have questions, concerns, or feedback regarding this Privacy Policy or Delta Edge, please contact:
     </p>
