@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Privacy Policy - Delta Exchange Fee Calculator</title>
+  <title>Privacy Policy - Delta Edge (formerly Delta Exchange Fee Calculator)</title>
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -14,7 +14,7 @@
       margin: 0;
     }
     .container {
-      max-width: 780px;
+      max-width: 820px;
       margin: 0 auto;
       background: #ffffff;
       padding: 40px;
@@ -25,17 +25,25 @@
     h1 {
       color: #0f172a;
       font-size: 28px;
+      margin-bottom: 4px;
+    }
+    .subtitle {
+      color: #64748b;
+      font-size: 16px;
       margin-bottom: 8px;
+      font-weight: 500;
     }
     .updated {
       color: #64748b;
       font-size: 14px;
-      margin-bottom: 30px;
+      margin-bottom: 24px;
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 12px;
     }
     h2 {
       color: #1e293b;
       font-size: 20px;
-      margin-top: 30px;
+      margin-top: 32px;
       border-bottom: 1px solid #e2e8f0;
       padding-bottom: 8px;
     }
@@ -48,49 +56,154 @@
     }
     .highlight {
       background: #f1f5f9;
-      padding: 16px;
+      padding: 18px;
       border-radius: 8px;
       border-left: 4px solid #ff5722;
       margin: 20px 0;
+    }
+    .badge {
+      display: inline-block;
+      background: #0284c7;
+      color: white;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 14px;
+    }
+    th, td {
+      border: 1px solid #e2e8f0;
+      padding: 10px 12px;
+      text-align: left;
+    }
+    th {
+      background: #f8fafc;
+      font-weight: 600;
+      color: #1e293b;
+    }
+    code {
+      background: #f1f5f9;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 13px;
+      color: #0f172a;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Privacy Policy</h1>
-    <div class="updated">Last updated: October 28, 2026</div>
+    <h1>Privacy Policy — Delta Edge</h1>
+    <div class="subtitle">Formerly known as <em>Delta Exchange Fee Calculator</em> <span class="badge">v3.0.0</span></div>
+    <div class="updated">Last updated: November 18, 2026</div>
 
     <div class="highlight">
-      <strong>Summary:</strong> Delta Exchange Fee Calculator is a 100% client-side browser extension. It does not collect, transmit, store on remote servers, or sell any personal or financial information. All calculations happen entirely within your local browser.
+      <strong>Executive Summary:</strong> <strong>Delta Edge</strong> is a 100% client-side Chrome browser extension built for traders on Delta Exchange. The extension does not collect, track, transmit, monetize, or sell any personal or financial information. All calculations (fees, 18% GST splits, Greeks, SL/TP simulations) happen entirely within your local browser. No data ever leaves your device.
     </div>
 
-    <h2>1. Single Purpose</h2>
-    <p>The single purpose of the <strong>Delta Exchange Fee Calculator</strong> extension is to calculate and display exact historical entry fees from the official Delta Exchange API and estimate live closing fees for open positions on Delta Exchange.</p>
+    <h2>1. Single Purpose & Product Identity</h2>
+    <p>
+      The single purpose of the <strong>Delta Edge</strong> extension (Chrome Web Store ID: <code>kjmpmihngnckancnmiikpjhfdbginpgi</code>) is to enhance trading transparency on Delta Exchange (<code>https://india.delta.exchange</code> and <code>https://www.delta.exchange</code>). It provides real-time maker/taker fee breakdowns, 18% Indian GST isolation, multi-expiry risk filtering, and institutional options payoff charts directly within the trader's interface.
+    </p>
 
-    <h2>2. Data Collection & Processing</h2>
-    <p>We believe in absolute data privacy. The extension:</p>
+    <h2>2. Data Collection & Processing Scope</h2>
+    <p>We adhere to strict data minimization. Delta Edge:</p>
     <ul>
-      <li><strong>Does NOT collect</strong> any personally identifiable information (PII).</li>
-      <li><strong>Does NOT track</strong> user activity, browsing history, or keystrokes.</li>
-      <li><strong>Does NOT communicate</strong> with any developer-owned or third-party tracking servers.</li>
-      <li><strong>Does NOT store</strong> sensitive user credentials or passwords.</li>
+      <li><strong>Does NOT collect</strong> any Personally Identifiable Information (PII) such as your name, email address, phone number, physical address, or IP address.</li>
+      <li><strong>Does NOT collect, ask for, or store</strong> trading passwords, API keys, private keys, or wallet credentials.</li>
+      <li><strong>Does NOT track</strong> user browsing activity, search history, or keystrokes outside of the active Delta Exchange tab.</li>
+      <li><strong>Does NOT use</strong> tracking cookies, fingerprinting scripts, or third-party advertising identifiers.</li>
     </ul>
 
-    <h2>3. Host Permissions (https://*.delta.exchange/*)</h2>
-    <p>The extension requests host permissions strictly for <code>https://*.delta.exchange/*</code>. This permission is used exclusively to:</p>
+    <h2>3. Chrome Permissions & Host Access Justification</h2>
+    <p>Delta Edge requests only the minimal permissions strictly required to execute its core trading analytics features:</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Permission</th>
+          <th>Type</th>
+          <th>Technical Purpose & Justification</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>https://*.delta.exchange/*</code></td>
+          <td>Host Permission</td>
+          <td>
+            Strictly limited to official Delta Exchange domains. Used exclusively to:
+            <br>1. Inject fee columns, Greeks badges, and filter chip controls into the open Positions / Risk View table.
+            <br>2. Query Delta's authenticated REST endpoint (<code>/v2/fills</code>) directly from your active session to look up execution fees for your open contracts.
+          </td>
+        </tr>
+        <tr>
+          <td><code>storage</code></td>
+          <td>Chrome API</td>
+          <td>
+            Used locally to persist your interface display preferences across browser reloads (e.g. Master Power switch, Net vs. Gross GST toggle, selected language: English/Hindi).
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>4. Client-Side Processing & Zero Remote Server Transmission</h2>
+    <p>
+      Delta Edge executes <strong>100% client-side</strong> inside your browser:
+    </p>
     <ul>
-      <li>Inject the fee calculation columns ("Open Fee" and "Est. Close") directly into the Delta Exchange positions table (Risk View).</li>
-      <li>Query Delta Exchange's official authenticated REST API endpoint (<code>/v2/fills</code>) directly from your active session to fetch execution fees for your open contracts.</li>
+      <li>All fee calculations, Black-Scholes Greeks formulas, and SL/TP payoff simulations run locally in the browser's JavaScript engine.</li>
+      <li>The extension does not maintain or communicate with any developer-owned backend servers, analytics endpoints, or cloud databases.</li>
+      <li>Network requests to Delta Exchange's API (<code>/v2/fills</code>) originate directly from your browser to Delta Exchange's official servers—no intermediate proxy or intermediary server is ever used.</li>
     </ul>
 
-    <h2>4. Local Storage & Data Retention</h2>
-    <p>To avoid redundant API calls and optimize performance, the extension caches calculated fees locally on your machine using your browser's standard <code>localStorage</code>. This data never leaves your device and is automatically deleted when positions are closed.</p>
+    <h2>5. Data Retention, Storage & Cache Eviction</h2>
+    <p>
+      To prevent redundant API queries and avoid hitting rate limits, recently fetched execution fills are cached locally in your machine's browser memory (<code>localStorage</code>):
+    </p>
+    <ul>
+      <li><strong>Retention Period:</strong> Fill cache entries are retained only while a trading position remains active. When a position is closed or expired, cached fills for that instrument are automatically deleted.</li>
+      <li><strong>Manual Eviction:</strong> Users can instantly clear all cached fills at any time by clicking the <code>[✕]</code> flush action inside the extension's popup dashboard.</li>
+      <li><strong>Uninstall Deletion:</strong> Removing the extension immediately purges all stored preferences and cache from your device.</li>
+    </ul>
 
-    <h2>5. Data Sharing & Third Parties</h2>
-    <p>We do not sell, rent, monetize, or transfer your data to any third party under any circumstances.</p>
+    <h2>6. Data Sharing, Transfers & Third-Party Disclosure</h2>
+    <p>
+      We maintain an affirmative zero-transfer policy:
+    </p>
+    <ul>
+      <li><strong>No Sale of Data:</strong> We never sell, rent, lease, or monetize user data under any circumstances.</li>
+      <li><strong>No Third-Party Access:</strong> No third-party companies, advertisers, brokers, or data brokers have access to any extension information or trading activity.</li>
+      <li><strong>No Cross-Context Tracking:</strong> The extension cannot and does not monitor any web pages or applications other than Delta Exchange.</li>
+    </ul>
 
-    <h2>6. Contact</h2>
-    <p>If you have any questions about this privacy policy, you may contact the developer at: <a href="mailto:ajay14sharma@gmail.com">ajay14sharma@gmail.com</a>.</p>
+    <h2>7. User Data Rights & Revocation Controls</h2>
+    <p>You have complete control over your data and extension operations at all times:</p>
+    <ul>
+      <li><strong>Disable Extension:</strong> Toggle the master switch off in the extension popup to instantly revert to Delta Exchange's default interface.</li>
+      <li><strong>Clear Cache:</strong> Click the "Cached Fills" <code>[✕]</code> button in the popup to wipe local storage.</li>
+      <li><strong>Complete Removal:</strong> Right-click the extension icon in Chrome and select <em>"Remove from Chrome..."</em> to permanently delete the extension and all associated local data.</li>
+    </ul>
+
+    <h2>8. Policy Revisions & Updates</h2>
+    <p>
+      If our data handling practices change in future releases, this policy will be updated with an updated revision date. Any material changes will be accompanied by in-product release notes.
+    </p>
+
+    <h2>9. Developer & Publisher Contact</h2>
+    <p>
+      If you have questions, concerns, or feedback regarding this Privacy Policy or Delta Edge, please contact:
+    </p>
+    <ul>
+      <li><strong>Publisher:</strong> AJ</li>
+      <li><strong>Support Email:</strong> <a href="mailto:ajay14sharma@gmail.com">ajay14sharma@gmail.com</a></li>
+      <li><strong>Chrome Web Store Listing:</strong> <a href="https://chromewebstore.google.com/detail/delta-exchange-fee-calcul/kjmpmihngnckancnmiikpjhfdbginpgi" target="_blank" rel="noopener">Delta Edge on Chrome Web Store</a></li>
+      <li><strong>Open Source Repository:</strong> Hosted on GitHub (<a href="https://github.com/ajay14sharma/ajay14sharma.github.io" target="_blank" rel="noopener">ajay14sharma.github.io</a>)</li>
+    </ul>
   </div>
 </body>
 </html>
